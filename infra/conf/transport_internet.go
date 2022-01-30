@@ -24,18 +24,6 @@ var (
 	}, "type", "")
 )
 
-type KCPConfig struct {
-	Mtu             *uint32         `json:"mtu"`
-	Tti             *uint32         `json:"tti"`
-	UpCap           *uint32         `json:"uplinkCapacity"`
-	DownCap         *uint32         `json:"downlinkCapacity"`
-	Congestion      *bool           `json:"congestion"`
-	ReadBufferSize  *uint32         `json:"readBufferSize"`
-	WriteBufferSize *uint32         `json:"writeBufferSize"`
-	HeaderConfig    json.RawMessage `json:"header"`
-	Seed            *string         `json:"seed"`
-}
-
 type TCPConfig struct {
 	HeaderConfig        json.RawMessage `json:"header"`
 	AcceptProxyProtocol bool            `json:"acceptProxyProtocol"`
