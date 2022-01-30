@@ -2,12 +2,6 @@ name: Linter
 
 on:
   push:
-    branches:
-      - master
-      - v*
-    paths:
-      - "**/*.go"
-      - ".github/workflows/linter.yml"
   pull_request:
     types: [opened, synchronize, reopened]
     paths:
