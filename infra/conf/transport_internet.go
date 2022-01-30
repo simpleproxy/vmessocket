@@ -247,8 +247,6 @@ func (p TransportProtocol) Build() (string, error) {
 		return "websocket", nil
 	case "h2", "http":
 		return "http", nil
-	case "ds", "domainsocket":
-		return "domainsocket", nil
 	case "quic":
 		return "quic", nil
 	case "gun", "grpc":
