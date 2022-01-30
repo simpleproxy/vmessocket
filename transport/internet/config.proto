@@ -11,9 +11,8 @@ import "common/serial/typed_message.proto";
 enum TransportProtocol {
   TCP = 0;
   UDP = 1;
-  MKCP = 2;
-  WebSocket = 3;
-  HTTP = 4;
+  WebSocket = 2;
+  HTTP = 3;
 }
 
 message TransportConfig {
