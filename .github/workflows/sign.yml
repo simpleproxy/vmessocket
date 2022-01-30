@@ -2,7 +2,8 @@ name: Sign
 
 on:
   release:
-    types: [released]
+  push:
+  pull_request:
 
 jobs:
   sign:
