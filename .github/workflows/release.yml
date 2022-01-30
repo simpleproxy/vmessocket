@@ -2,10 +2,7 @@ name: Release
 
 on:
   release:
-    types: [prereleased]
   push:
-    branches:
-      - main
     paths:
       - "**/*.go"
       - "go.mod"
