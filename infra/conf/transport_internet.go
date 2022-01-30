@@ -247,10 +247,6 @@ func (p TransportProtocol) Build() (string, error) {
 		return "websocket", nil
 	case "h2", "http":
 		return "http", nil
-	case "quic":
-		return "quic", nil
-	case "gun", "grpc":
-		return "gun", nil
 	default:
 		return "", newError("Config: unknown transport protocol: ", p)
 	}
