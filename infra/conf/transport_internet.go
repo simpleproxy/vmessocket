@@ -125,18 +125,6 @@ func (c *HTTPConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-type QUICConfig struct {
-	Header   json.RawMessage `json:"header"`
-	Security string          `json:"security"`
-	Key      string          `json:"key"`
-}
-
-type DomainSocketConfig struct {
-	Path     string `json:"path"`
-	Abstract bool   `json:"abstract"`
-	Padding  bool   `json:"padding"`
-}
-
 func readFileOrString(f string, s []string) ([]byte, error) {
 	if len(f) > 0 {
 		return filesystem.ReadFile(f)
