@@ -308,7 +308,6 @@ type StreamConfig struct {
 	KCPSettings    *KCPConfig          `json:"kcpSettings"`
 	WSSettings     *WebSocketConfig    `json:"wsSettings"`
 	HTTPSettings   *HTTPConfig         `json:"httpSettings"`
-	QUICSettings   *QUICConfig         `json:"quicSettings"`
 	SocketSettings *SocketConfig       `json:"sockopt"`
 }
 
