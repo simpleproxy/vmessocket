@@ -132,9 +132,9 @@ jobs:
       - name: Create ZIP archive
         run: |
           pushd build_assets || exit 1
-          zip -9vr ../v2ray-$ASSET_NAME.zip .
+          zip -9vr ../vmessocket-$ASSET_NAME.zip .
           popd || exit 1
-          FILE=./v2ray-$ASSET_NAME.zip
+          FILE=./vmessocket-$ASSET_NAME.zip
           DGST=$FILE.dgst
           openssl dgst -md5    $FILE | sed 's/([^)]*)//g' >>$DGST
           openssl dgst -sha1   $FILE | sed 's/([^)]*)//g' >>$DGST
