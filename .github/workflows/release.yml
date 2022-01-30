@@ -1,36 +1,22 @@
 name: Release
 
 on:
-  release:
-  push:
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
   pull_request:
-    types: [opened, synchronize, reopened]
-    paths:
-      - "**/*.go"
-      - "go.mod"
-      - "go.sum"
-      - ".github/workflows/*.yml"
+  push:
+  release:
 
 jobs:
   build:
     strategy:
       matrix:
-        # Include amd64 on all platforms.
         goos: [windows, freebsd, openbsd, linux, dragonfly, darwin]
         goarch: [amd64, 386]
         exclude:
-          # Exclude i386 on darwin and dragonfly.
           - goarch: 386
             goos: dragonfly
           - goarch: 386
             goos: darwin
         include:
-          # BEGIN Linux ARM 5 6 7
           - goos: linux
             goarch: arm
             goarm: 7
@@ -40,12 +26,9 @@ jobs:
           - goos: linux
             goarch: arm
             goarm: 5
-          # END Linux ARM 5 6 7
-          # Windows ARM 7
           - goos: windows
             goarch: arm
             goarm: 7
-          # BEGIN Other architectures
           - goos: darwin
             goarch: arm64
           - goos: linux
@@ -54,7 +37,6 @@ jobs:
             goarch: riscv64
           - goos: windows
             goarch: arm64
-          # BEGIN MIPS
           - goos: linux
             goarch: mips64
           - goos: linux
@@ -63,12 +45,8 @@ jobs:
             goarch: mipsle
           - goos: linux
             goarch: mips
-          # END MIPS
-          # BEGIN Android
           - goos: android
             goarch: arm64
-          # END Android
-          # END Other architectures
       fail-fast: false
 
     runs-on: ubuntu-latest
