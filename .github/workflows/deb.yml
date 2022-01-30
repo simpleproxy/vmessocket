@@ -19,7 +19,7 @@ on:
 
 jobs:
   package:
-    if: github.repository == 'v2fly/v2ray-core'
+    if: github.repository == 'vmessocket/vmessocket'
     runs-on: ubuntu-latest
     container: golang:1.17-bullseye
 
@@ -55,7 +55,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-artifact@v2
         with:
-          name: v2ray-debian-packages
+          name: vmessocket-debian-packages
           path: ./*.deb
 
       - name: Setup Repository
