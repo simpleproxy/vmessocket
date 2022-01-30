@@ -11,7 +11,6 @@ type TransportConfig struct {
 	KCPConfig  *KCPConfig          `json:"kcpSettings"`
 	WSConfig   *WebSocketConfig    `json:"wsSettings"`
 	HTTPConfig *HTTPConfig         `json:"httpSettings"`
-	QUICConfig *QUICConfig         `json:"quicSettings"`
 }
 
 func (c *TransportConfig) Build() (*transport.Config, error) {
