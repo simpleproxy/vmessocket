@@ -1,5 +1,8 @@
 name: Semgrep
-on: [pull_request]
+on:
+ release:
+ pull_request:
+ push:
 jobs:
   semgrep:
     name: Scan
