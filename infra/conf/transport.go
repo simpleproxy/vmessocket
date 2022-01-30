@@ -11,7 +11,6 @@ type TransportConfig struct {
 	KCPConfig  *KCPConfig          `json:"kcpSettings"`
 	WSConfig   *WebSocketConfig    `json:"wsSettings"`
 	HTTPConfig *HTTPConfig         `json:"httpSettings"`
-	DSConfig   *DomainSocketConfig `json:"dsSettings"`
 	QUICConfig *QUICConfig         `json:"quicSettings"`
 }
 
