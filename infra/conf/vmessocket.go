@@ -458,11 +458,7 @@ func (c *Config) Build() (*core.Config, error) {
 	}
 
 	if msg, err := c.BuildServices(c.Services); err != nil {
-		developererr := newError("Loading a V2Ray Features as a service is intended for developers only. " +
-			"This is used for developers to prototype new features or for an advanced client to use special features in V2Ray," +
-			" instead of allowing end user to enable it without special tool and knowledge.")
-		sb := strings.Builder{}
-		return nil, newError("Cannot load service").Base(developererr).Base(err).Base(newError(sb.String()))
+		return nil, newError("Cannot load service").Base(err)
 	} else {
 		config.App = append(config.App, msg...)
 	}
