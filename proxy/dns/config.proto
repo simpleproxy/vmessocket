@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package vmessocket.core.proxy.dns;
+option csharp_namespace = "vmessocket.Core.Proxy.Dns";
+option go_package = "github.com/vmessocket/vmessocket/proxy/dns";
+option java_package = "com.vmessocket.core.proxy.dns";
+option java_multiple_files = true;
+
+import "common/net/destination.proto";
+
+message Config {
+  vmessocket.core.common.net.Endpoint server = 1;
+  uint32 user_level = 2;
+}

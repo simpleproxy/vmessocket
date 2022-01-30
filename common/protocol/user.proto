@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package vmessocket.core.common.protocol;
+option csharp_namespace = "vmessocket.Core.Common.Protocol";
+option go_package = "github.com/vmessocket/vmessocket/common/protocol";
+option java_package = "com.vmessocket.core.common.protocol";
+option java_multiple_files = true;
+
+import "common/serial/typed_message.proto";
+
+message User {
+  uint32 level = 1;
+  string email = 2;
+  vmessocket.core.common.serial.TypedMessage account = 3;
+}

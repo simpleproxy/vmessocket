@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package vmessocket.core.proxy.http;
+option csharp_namespace = "vmessocket.Core.Proxy.Http";
+option go_package = "github.com/vmessocket/vmessocket/proxy/http";
+option java_package = "com.vmessocket.core.proxy.http";
+option java_multiple_files = true;
+
+import "common/protocol/server_spec.proto";
+
+message Account {
+  string username = 1;
+  string password = 2;
+}
+
+message ServerConfig {
+  uint32 timeout = 1 [deprecated = true];
+  map<string, string> accounts = 2;
+  bool allow_transparent = 3;
+  uint32 user_level = 4;
+}
+
+message ClientConfig {
+  repeated vmessocket.core.common.protocol.ServerEndpoint server = 1;
+}

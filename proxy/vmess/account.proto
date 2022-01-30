@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package vmessocket.core.proxy.vmess;
+option csharp_namespace = "vmessocket.Core.Proxy.Vmess";
+option go_package = "github.com/vmessocket/vmessocket/proxy/vmess";
+option java_package = "com.vmessocket.core.proxy.vmess";
+option java_multiple_files = true;
+
+import "common/protocol/headers.proto";
+
+message Account {
+  string id = 1;
+  uint32 alter_id = 2;
+  vmessocket.core.common.protocol.SecurityConfig security_settings = 3;
+  string tests_enabled = 4;
+}

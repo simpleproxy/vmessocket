@@ -1,0 +1,9 @@
+syntax = "proto3";
+
+package vmessocket.core.transport.internet.udp;
+option csharp_namespace = "vmessocket.Core.Transport.Internet.Udp";
+option go_package = "github.com/vmessocket/vmessocket/transport/internet/udp";
+option java_package = "com.vmessocket.core.transport.internet.udp";
+option java_multiple_files = true;
+
+message Config {}

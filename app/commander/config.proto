@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package vmessocket.core.app.commander;
+option csharp_namespace = "vmessocket.Core.App.Commander";
+option go_package = "github.com/vmessocket/vmessocket/app/commander";
+option java_package = "com.vmessocket.core.app.commander";
+option java_multiple_files = true;
+
+import "common/serial/typed_message.proto";
+
+message Config {
+  string tag = 1;
+  repeated vmessocket.core.common.serial.TypedMessage service = 2;
+}
+
+message ReflectionConfig {}

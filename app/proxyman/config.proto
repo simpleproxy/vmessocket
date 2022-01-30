@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package vmessocket.core.app.proxyman;
+option csharp_namespace = "vmessocket.Core.App.Proxyman";
+option go_package = "github.com/vmessocket/vmessocket/app/proxyman";
+option java_package = "com.vmessocket.core.app.proxyman";
+option java_multiple_files = true;
+
+import "common/net/address.proto";
+import "common/net/port.proto";
+import "transport/internet/config.proto";
+import "common/serial/typed_message.proto";
+
+message InboundConfig {}
+
+message AllocationStrategy {
+  enum Type {
+    Always = 0;
+    Random = 1;
+    External = 2;
+  }
+
+  Type type = 1;
+
+  message AllocationStrategyConcurrency {
+    uint32 value = 1;
+  }
+
+  AllocationStrategyConcurrency concurrency = 2;
+
+  message AllocationStrategyRefresh {
+    uint32 value = 1;
+  }
+
+  AllocationStrategyRefresh refresh = 3;
+}
+
+enum KnownProtocols {
+  HTTP = 0;
+  TLS = 1;
+}
+
+message SniffingConfig {
+  bool enabled = 1;
+  repeated string destination_override = 2;
+  bool metadata_only = 3;
+}
+
+message ReceiverConfig {
+  vmessocket.core.common.net.PortRange port_range = 1;
+  vmessocket.core.common.net.IPOrDomain listen = 2;
+  AllocationStrategy allocation_strategy = 3;
+  vmessocket.core.transport.internet.StreamConfig stream_settings = 4;
+  bool receive_original_destination = 5;
+  reserved 6;
+  repeated KnownProtocols domain_override = 7 [deprecated = true];
+  SniffingConfig sniffing_settings = 8;
+}
+
+message InboundHandlerConfig {
+  string tag = 1;
+  vmessocket.core.common.serial.TypedMessage receiver_settings = 2;
+  vmessocket.core.common.serial.TypedMessage proxy_settings = 3;
+}
+
+message OutboundConfig {}
+
+message SenderConfig {
+  vmessocket.core.common.net.IPOrDomain via = 1;
+  vmessocket.core.transport.internet.StreamConfig stream_settings = 2;
+  vmessocket.core.transport.internet.ProxyConfig proxy_settings = 3;
+  MultiplexingConfig multiplex_settings = 4;
+}
+
+message MultiplexingConfig {
+  bool enabled = 1;
+  uint32 concurrency = 2;
+}

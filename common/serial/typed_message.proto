@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package vmessocket.core.common.serial;
+option csharp_namespace = "vmessocket.Core.Common.Serial";
+option go_package = "github.com/vmessocket/vmessocket/common/serial";
+option java_package = "com.vmessocket.core.common.serial";
+option java_multiple_files = true;
+
+message TypedMessage {
+  string type = 1;
+  bytes value = 2;
+}

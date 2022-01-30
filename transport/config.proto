@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+package vmessocket.core.transport;
+option csharp_namespace = "vmessocket.Core.Transport";
+option go_package = "github.com/vmessocket/vmessocket/transport";
+option java_package = "com.vmessocket.core.transport";
+option java_multiple_files = true;
+
+import "transport/internet/config.proto";
+
+message Config {
+  option deprecated = true;
+  repeated vmessocket.core.transport.internet.TransportConfig transport_settings = 1;
+}

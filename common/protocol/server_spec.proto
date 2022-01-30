@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package vmessocket.core.common.protocol;
+option csharp_namespace = "vmessocket.Core.Common.Protocol";
+option go_package = "github.com/vmessocket/vmessocket/common/protocol";
+option java_package = "com.vmessocket.core.common.protocol";
+option java_multiple_files = true;
+
+import "common/net/address.proto";
+import "common/protocol/user.proto";
+
+message ServerEndpoint {
+  vmessocket.core.common.net.IPOrDomain address = 1;
+  uint32 port = 2;
+  repeated vmessocket.core.common.protocol.User user = 3;
+}

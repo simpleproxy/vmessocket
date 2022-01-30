@@ -1,0 +1,25 @@
+syntax = "proto3";
+
+package vmessocket.core.app.log;
+option csharp_namespace = "vmessocket.Core.App.Log";
+option go_package = "github.com/vmessocket/vmessocket/app/log";
+option java_package = "com.vmessocket.core.app.log";
+option java_multiple_files = true;
+
+import "common/log/log.proto";
+
+enum LogType {
+  None = 0;
+  Console = 1;
+  File = 2;
+  Event = 3;
+}
+
+message Config {
+  LogType error_log_type = 1;
+  vmessocket.core.common.log.Severity error_log_level = 2;
+  string error_log_path = 3;
+
+  LogType access_log_type = 4;
+  string access_log_path = 5;
+}

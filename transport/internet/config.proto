@@ -1,0 +1,65 @@
+syntax = "proto3";
+
+package vmessocket.core.transport.internet;
+option csharp_namespace = "vmessocket.Core.Transport.Internet";
+option go_package = "github.com/vmessocket/vmessocket/transport/internet";
+option java_package = "com.vmessocket.core.transport.internet";
+option java_multiple_files = true;
+
+import "common/serial/typed_message.proto";
+
+enum TransportProtocol {
+  TCP = 0;
+  UDP = 1;
+  MKCP = 2;
+  WebSocket = 3;
+  HTTP = 4;
+  DomainSocket = 5;
+}
+
+message TransportConfig {
+  TransportProtocol protocol = 1 [ deprecated = true ];
+  string protocol_name = 3;
+  vmessocket.core.common.serial.TypedMessage settings = 2;
+}
+
+message StreamConfig {
+  TransportProtocol protocol = 1 [ deprecated = true ];
+  string protocol_name = 5;
+  repeated TransportConfig transport_settings = 2;
+  string security_type = 3;
+  repeated vmessocket.core.common.serial.TypedMessage security_settings = 4;
+  SocketConfig socket_settings = 6;
+}
+
+message ProxyConfig {
+  string tag = 1;
+
+  bool transportLayerProxy = 2;
+}
+
+message SocketConfig {
+  uint32 mark = 1;
+
+  enum TCPFastOpenState {
+    AsIs = 0;
+    Enable = 1;
+    Disable = 2;
+  }
+
+  TCPFastOpenState tfo = 2;
+
+  enum TProxyMode {
+    Off = 0;
+    TProxy = 1;
+    Redirect = 2;
+  }
+
+  TProxyMode tproxy = 3;
+  bool receive_original_dest_address = 4;
+  bytes bind_address = 5;
+  uint32 bind_port = 6;
+  bool accept_proxy_protocol = 7;
+  int32 tcp_keep_alive_interval = 8;
+  uint32 tfo_queue_length = 9;
+}

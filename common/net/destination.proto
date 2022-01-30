@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package vmessocket.core.common.net;
+option csharp_namespace = "vmessocket.Core.Common.Net";
+option go_package = "github.com/vmessocket/vmessocket/common/net";
+option java_package = "com.vmessocket.core.common.net";
+option java_multiple_files = true;
+
+import "common/net/network.proto";
+import "common/net/address.proto";
+
+message Endpoint {
+  Network network = 1;
+  IPOrDomain address = 2;
+  uint32 port = 3;
+}
