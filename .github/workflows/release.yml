@@ -4,7 +4,6 @@ on:
   release:
     types: [prereleased]
   push:
-    branches:
     paths:
       - "**/*.go"
       - "go.mod"
