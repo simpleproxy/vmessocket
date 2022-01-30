@@ -107,13 +107,13 @@ jobs:
 
       - name: Build vmessocket
         run: |
-          mkdir -p build_assets
-          go build -v -o build_assets/vmessocket -trimpath -ldflags "-s -w -buildid=" ./main
+          mkdir -p build
+          go build -v -o build/vmessocket -trimpath -ldflags "-s -w -buildid=" ./main
 
       - name: Build on windows
         if: matrix.goos == 'windows'
         run: |
-          cd ./build_assets || exit 1
+          cd ./build || exit 1
           mv vmessocket vmessocket.exe
 
       - name: Download geo files
@@ -123,15 +123,15 @@ jobs:
           wget -O release/config/geosite.dat "https://raw.githubusercontent.com/v2fly/domain-list-community/release/dlc.dat"
 
       - name: Prepare package
-        run: cp -v ./release/config/*.* ./build_assets
+        run: cp -v ./release/config/*.* ./build
 
       - name: Prepare package for Linux
         if: matrix.goos == 'linux'
-        run: cp -rv ./release/config/systemd ./build_assets/
+        run: cp -rv ./release/config/systemd ./build
 
       - name: Create ZIP archive
         run: |
-          pushd build_assets || exit 1
+          pushd build || exit 1
           zip -9vr ../vmessocket-$ASSET_NAME.zip .
           popd || exit 1
           FILE=./vmessocket-$ASSET_NAME.zip
