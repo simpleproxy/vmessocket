@@ -229,8 +229,6 @@ func (p TransportProtocol) Build() (string, error) {
 	switch strings.ToLower(string(p)) {
 	case "tcp":
 		return "tcp", nil
-	case "kcp", "mkcp":
-		return "mkcp", nil
 	case "ws", "websocket":
 		return "websocket", nil
 	case "h2", "http":
@@ -289,7 +287,6 @@ type StreamConfig struct {
 	Security       string              `json:"security"`
 	TLSSettings    *TLSConfig          `json:"tlsSettings"`
 	TCPSettings    *TCPConfig          `json:"tcpSettings"`
-	KCPSettings    *KCPConfig          `json:"kcpSettings"`
 	WSSettings     *WebSocketConfig    `json:"wsSettings"`
 	HTTPSettings   *HTTPConfig         `json:"httpSettings"`
 	SocketSettings *SocketConfig       `json:"sockopt"`
