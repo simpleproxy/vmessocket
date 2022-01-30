@@ -29,7 +29,6 @@ const (
 	TransportProtocol_MKCP         TransportProtocol = 2
 	TransportProtocol_WebSocket    TransportProtocol = 3
 	TransportProtocol_HTTP         TransportProtocol = 4
-	TransportProtocol_DomainSocket TransportProtocol = 5
 )
 
 // Enum value maps for TransportProtocol.
@@ -40,7 +39,6 @@ var (
 		2: "MKCP",
 		3: "WebSocket",
 		4: "HTTP",
-		5: "DomainSocket",
 	}
 	TransportProtocol_value = map[string]int32{
 		"TCP":          0,
@@ -48,7 +46,6 @@ var (
 		"MKCP":         2,
 		"WebSocket":    3,
 		"HTTP":         4,
-		"DomainSocket": 5,
 	}
 )
 
