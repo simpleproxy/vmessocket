@@ -113,8 +113,6 @@ jobs:
       - name: Build on windows
         if: matrix.goos == 'windows'
         run: |
-          echo "::warning ::w.exe will be removed in v5"
-          go build -v -o build_assets/w.exe -trimpath -ldflags "-s -w -H windowsgui -buildid=" ./main
           cd ./build_assets || exit 1
           mv vmessocket vmessocket.exe
 
