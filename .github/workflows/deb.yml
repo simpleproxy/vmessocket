@@ -3,9 +3,6 @@ name: Build debian packages
 on:
   workflow_dispatch:
   push:
-    branches:
-      - master
-      - v*
     paths:
       - ".github/workflows/deb.yml"
       - "release/debian/*"
