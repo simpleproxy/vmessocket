@@ -358,12 +358,8 @@ func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		return New(ctx, config.(*Config))
 	}))
-
-	defaultFlagValue := "NOT_DEFINED_AT_ALL"
-
-	if time.Now().Year() >= 2022 {
-		defaultFlagValue = "true_by_default_2022"
-	}
+	
+	defaultFlagValue := "true_by_default_2022"
 
 	isAeadForced := platform.NewEnvFlag("vmessocket.vmess.aead.forced").GetValue(func() string { return defaultFlagValue })
 	if isAeadForced == "true" {
