@@ -10,7 +10,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/stats"
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
@@ -25,8 +24,6 @@ type Handler struct {
 	proxy           proxy.Outbound
 	outboundManager outbound.Manager
 	mux             *mux.ClientManager
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
 }
 
 func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbound.Handler, error) {
