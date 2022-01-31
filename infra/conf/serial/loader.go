@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"io"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common/errors"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/infra/conf"
 	json_reader "github.com/vmessocket/vmessocket/infra/conf/json"
 )
