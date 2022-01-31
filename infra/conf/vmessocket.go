@@ -344,9 +344,6 @@ func (c *Config) Override(o *Config, fn string) {
 	if o.Transport != nil {
 		c.Transport = o.Transport
 	}
-	if o.Stats != nil {
-		c.Stats = o.Stats
-	}
 	if o.InboundConfig != nil {
 		c.InboundConfig = o.InboundConfig
 	}
