@@ -7,7 +7,7 @@ import (
 	"context"
 	"time"
 
-	core "github.com/vmessocket/vmessocket"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
