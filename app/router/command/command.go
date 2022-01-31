@@ -7,25 +7,21 @@ package command
 
 import (
 	"context"
-	"time"
 
 	"google.golang.org/grpc"
 
 	core "github.com/vmessocket/vmessocket"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/features/routing"
-	"github.com/vmessocket/vmessocket/features/stats"
 )
 
 type routingServer struct {
-	router       routing.Router
-	routingStats stats.Channel
+	router routing.Router
 }
 
-func NewRoutingServer(router routing.Router, routingStats stats.Channel) RoutingServiceServer {
+func NewRoutingServer(router routing.Router) RoutingServiceServer {
 	return &routingServer{
-		router:       router,
-		routingStats: routingStats,
+		router: router,
 	}
 }
 
@@ -37,41 +33,11 @@ func (s *routingServer) TestRoute(ctx context.Context, request *TestRouteRequest
 	if err != nil {
 		return nil, err
 	}
-	if request.PublishResult && s.routingStats != nil {
-		ctx, _ := context.WithTimeout(context.Background(), 4*time.Second) // nolint: govet
-		s.routingStats.Publish(ctx, route)
-	}
 	return AsProtobufMessage(request.FieldSelectors)(route), nil
 }
 
 func (s *routingServer) SubscribeRoutingStats(request *SubscribeRoutingStatsRequest, stream RoutingService_SubscribeRoutingStatsServer) error {
-	if s.routingStats == nil {
-		return newError("Routing statistics not enabled.")
-	}
-	genMessage := AsProtobufMessage(request.FieldSelectors)
-	subscriber, err := stats.SubscribeRunnableChannel(s.routingStats)
-	if err != nil {
-		return err
-	}
-	defer stats.UnsubscribeClosableChannel(s.routingStats, subscriber)
-	for {
-		select {
-		case value, ok := <-subscriber:
-			if !ok {
-				return newError("Upstream closed the subscriber channel.")
-			}
-			route, ok := value.(routing.Route)
-			if !ok {
-				return newError("Upstream sent malformed statistics.")
-			}
-			err := stream.Send(genMessage(route))
-			if err != nil {
-				return err
-			}
-		case <-stream.Context().Done():
-			return stream.Context().Err()
-		}
-	}
+	return nil
 }
 
 func (s *routingServer) mustEmbedUnimplementedRoutingServiceServer() {}
@@ -81,8 +47,8 @@ type service struct {
 }
 
 func (s *service) Register(server *grpc.Server) {
-	common.Must(s.v.RequireFeatures(func(router routing.Router, stats stats.Manager) {
-		RegisterRoutingServiceServer(server, NewRoutingServer(router, nil))
+	common.Must(s.v.RequireFeatures(func(router routing.Router) {
+		RegisterRoutingServiceServer(server, NewRoutingServer(router))
 	}))
 }
 
