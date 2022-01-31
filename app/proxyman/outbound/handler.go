@@ -31,8 +31,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 	h := &Handler{
 		tag:             config.Tag,
 		outboundManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
-		uplinkCounter:   uplinkCounter,
-		downlinkCounter: downlinkCounter,
 	}
 
 	if config.SenderSettings != nil {
