@@ -12,10 +12,10 @@ import (
 
 	"golang.org/x/net/http2"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/transport/internet"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
 	"github.com/vmessocket/vmessocket/transport/pipe"
