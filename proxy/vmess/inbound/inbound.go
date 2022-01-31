@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/errors"
@@ -24,6 +23,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/common/uuid"
+	"github.com/vmessocket/vmessocket/core"
 	feature_inbound "github.com/vmessocket/vmessocket/features/inbound"
 	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
