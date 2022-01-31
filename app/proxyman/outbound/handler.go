@@ -172,17 +172,6 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 	return h.getStatCouterConnection(conn), err
 }
 
-func (h *Handler) getStatCouterConnection(conn internet.Connection) internet.Connection {
-	if h.uplinkCounter != nil || h.downlinkCounter != nil {
-		return &internet.StatCouterConnection{
-			Connection:   conn,
-			ReadCounter:  h.downlinkCounter,
-			WriteCounter: h.uplinkCounter,
-		}
-	}
-	return conn
-}
-
 func (h *Handler) GetOutbound() proxy.Outbound {
 	return h.proxy
 }
