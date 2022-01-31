@@ -305,7 +305,6 @@ type Config struct {
 	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
-	Stats           *StatsConfig           `json:"stats"`
 
 	Services map[string]*json.RawMessage `json:"services"`
 }
@@ -344,9 +343,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.Transport != nil {
 		c.Transport = o.Transport
-	}
-	if o.Stats != nil {
-		c.Stats = o.Stats
 	}
 	if o.InboundConfig != nil {
 		c.InboundConfig = o.InboundConfig
