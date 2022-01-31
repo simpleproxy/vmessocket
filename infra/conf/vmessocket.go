@@ -305,7 +305,6 @@ type Config struct {
 	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
-	Stats           *StatsConfig           `json:"stats"`
 
 	Services map[string]*json.RawMessage `json:"services"`
 }
