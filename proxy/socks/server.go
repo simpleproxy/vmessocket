@@ -8,7 +8,6 @@ import (
 	"io"
 	"time"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/log"
@@ -18,6 +17,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features"
 	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
