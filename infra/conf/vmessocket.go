@@ -6,10 +6,10 @@ import (
 	"os"
 	"strings"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/app/dispatcher"
 	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common/serial"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 )
 

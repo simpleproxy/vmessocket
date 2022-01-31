@@ -8,8 +8,8 @@ import (
 
 	grpc "google.golang.org/grpc"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/inbound"
 	"github.com/vmessocket/vmessocket/features/outbound"
 	"github.com/vmessocket/vmessocket/proxy"

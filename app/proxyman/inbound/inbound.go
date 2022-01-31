@@ -6,11 +6,11 @@ import (
 	"context"
 	"sync"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/common/session"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/inbound"
 )
 

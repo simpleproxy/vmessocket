@@ -9,11 +9,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/app/router"
 	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/strmatcher"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/features/routing"
 )
