@@ -17,7 +17,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/outbound"
 	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
-	"github.com/vmessocket/vmessocket/features/stats"
 )
 
 type Server interface {
@@ -204,7 +203,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 		{dns.ClientType(), localdns.New()},
 		{policy.ManagerType(), policy.DefaultManager{}},
 		{routing.RouterType(), routing.DefaultRouter{}},
-		{stats.ManagerType(), stats.NoopManager{}},
 	}
 
 	for _, f := range essentialFeatures {
