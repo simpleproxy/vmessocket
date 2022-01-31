@@ -83,7 +83,7 @@ jobs:
           mkdir -p build
           go build -v -o build/vmessocket -trimpath -ldflags "-s -w -buildid=" ./main
 
-      - name: Build on windows
+      - name: Add exe suffix for windows
         if: matrix.goos == 'windows'
         run: |
           cd ./build || exit 1
