@@ -7,7 +7,7 @@ import (
 	"strings"
 	"sync"
 
-	core "github.com/vmessocket/vmessocket"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/errors"

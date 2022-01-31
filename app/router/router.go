@@ -8,7 +8,7 @@ package router
 import (
 	"context"
 
-	core "github.com/vmessocket/vmessocket"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/features/outbound"

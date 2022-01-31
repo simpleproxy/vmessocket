@@ -7,7 +7,7 @@
 package command
 
 import (
-	v4 "github.com/vmessocket/vmessocket"
+	v4 "github.com/vmessocket/vmessocket/core"
 	protocol "github.com/vmessocket/vmessocket/common/protocol"
 	serial "github.com/vmessocket/vmessocket/common/serial"
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"

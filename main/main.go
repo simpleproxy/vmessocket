@@ -14,7 +14,7 @@ import (
 	"strings"
 	"syscall"
 
-	core "github.com/vmessocket/vmessocket"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common/cmdarg"
 	"github.com/vmessocket/vmessocket/common/platform"
 	_ "github.com/vmessocket/vmessocket/main/distro/all"

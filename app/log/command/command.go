@@ -10,7 +10,7 @@ import (
 
 	grpc "google.golang.org/grpc"
 
-	core "github.com/vmessocket/vmessocket"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/app/log"
 	"github.com/vmessocket/vmessocket/common"
 )

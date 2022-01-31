@@ -3,7 +3,7 @@ package jsonem
 import (
 	"io"
 
-	core "github.com/vmessocket/vmessocket"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/cmdarg"
 	"github.com/vmessocket/vmessocket/infra/conf"
