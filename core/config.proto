@@ -1,0 +1,33 @@
+syntax = "proto3";
+
+package vmessocket.core;
+option csharp_namespace = "vmessocket.Core";
+option go_package = "github.com/vmessocket/vmessocket;core";
+option java_package = "com.vmessocket.core";
+option java_multiple_files = true;
+
+import "common/serial/typed_message.proto";
+import "transport/config.proto";
+
+message Config {
+  repeated InboundHandlerConfig inbound = 1;
+  repeated OutboundHandlerConfig outbound = 2;
+  reserved 3;
+  repeated vmessocket.core.common.serial.TypedMessage app = 4;
+  vmessocket.core.transport.Config transport = 5 [deprecated = true];
+  repeated vmessocket.core.common.serial.TypedMessage extension = 6;
+}
+
+message InboundHandlerConfig {
+  string tag = 1;
+  vmessocket.core.common.serial.TypedMessage receiver_settings = 2;
+  vmessocket.core.common.serial.TypedMessage proxy_settings = 3;
+}
+
+message OutboundHandlerConfig {
+  string tag = 1;
+  vmessocket.core.common.serial.TypedMessage sender_settings = 2;
+  vmessocket.core.common.serial.TypedMessage proxy_settings = 3;
+  int64 expire = 4;
+  string comment = 5;
+}
