@@ -14,7 +14,6 @@ import (
 
 	"golang.org/x/net/http2"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/bytespool"
@@ -24,6 +23,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
+	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
