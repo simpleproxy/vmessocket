@@ -6,16 +6,13 @@ package dispatcher
 import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
-	"github.com/vmessocket/vmessocket/features/stats"
 )
 
 type SizeStatWriter struct {
-	Counter stats.Counter
-	Writer  buf.Writer
+	Writer buf.Writer
 }
 
 func (w *SizeStatWriter) WriteMultiBuffer(mb buf.MultiBuffer) error {
-	w.Counter.Add(int64(mb.Len()))
 	return w.Writer.WriteMultiBuffer(mb)
 }
 

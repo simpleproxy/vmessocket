@@ -3,43 +3,15 @@ package inbound
 import (
 	"context"
 
-	core "github.com/vmessocket/vmessocket"
 	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/dice"
 	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/mux"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/features/policy"
-	"github.com/vmessocket/vmessocket/features/stats"
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
-
-func getStatCounter(v *core.Instance, tag string) (stats.Counter, stats.Counter) {
-	var uplinkCounter stats.Counter
-	var downlinkCounter stats.Counter
-
-	policy := v.GetFeature(policy.ManagerType()).(policy.Manager)
-	if len(tag) > 0 && policy.ForSystem().Stats.InboundUplink {
-		statsManager := v.GetFeature(stats.ManagerType()).(stats.Manager)
-		name := "inbound>>>" + tag + ">>>traffic>>>uplink"
-		c, _ := stats.GetOrRegisterCounter(statsManager, name)
-		if c != nil {
-			uplinkCounter = c
-		}
-	}
-	if len(tag) > 0 && policy.ForSystem().Stats.InboundDownlink {
-		statsManager := v.GetFeature(stats.ManagerType()).(stats.Manager)
-		name := "inbound>>>" + tag + ">>>traffic>>>downlink"
-		c, _ := stats.GetOrRegisterCounter(statsManager, name)
-		if c != nil {
-			downlinkCounter = c
-		}
-	}
-
-	return uplinkCounter, downlinkCounter
-}
 
 type AlwaysOnInboundHandler struct {
 	proxy   proxy.Inbound
@@ -63,8 +35,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 		mux:   mux.NewServer(ctx),
 		tag:   tag,
 	}
-
-	uplinkCounter, downlinkCounter := getStatCounter(core.MustFromContext(ctx), tag)
 
 	nl := p.Network()
 	pr := receiverConfig.PortRange
@@ -92,15 +62,13 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 			newError("creating unix domain socket worker on ", address).AtDebug().WriteToLog()
 
 			worker := &dsWorker{
-				address:         address,
-				proxy:           p,
-				stream:          mss,
-				tag:             tag,
-				dispatcher:      h.mux,
-				sniffingConfig:  receiverConfig.GetEffectiveSniffingSettings(),
-				uplinkCounter:   uplinkCounter,
-				downlinkCounter: downlinkCounter,
-				ctx:             ctx,
+				address:        address,
+				proxy:          p,
+				stream:         mss,
+				tag:            tag,
+				dispatcher:     h.mux,
+				sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
+				ctx:            ctx,
 			}
 			h.workers = append(h.workers, worker)
 		}
@@ -111,33 +79,29 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 				newError("creating stream worker on ", address, ":", port).AtDebug().WriteToLog()
 
 				worker := &tcpWorker{
-					address:         address,
-					port:            net.Port(port),
-					proxy:           p,
-					stream:          mss,
-					recvOrigDest:    receiverConfig.ReceiveOriginalDestination,
-					tag:             tag,
-					dispatcher:      h.mux,
-					sniffingConfig:  receiverConfig.GetEffectiveSniffingSettings(),
-					uplinkCounter:   uplinkCounter,
-					downlinkCounter: downlinkCounter,
-					ctx:             ctx,
+					address:        address,
+					port:           net.Port(port),
+					proxy:          p,
+					stream:         mss,
+					recvOrigDest:   receiverConfig.ReceiveOriginalDestination,
+					tag:            tag,
+					dispatcher:     h.mux,
+					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
+					ctx:            ctx,
 				}
 				h.workers = append(h.workers, worker)
 			}
 
 			if net.HasNetwork(nl, net.Network_UDP) {
 				worker := &udpWorker{
-					ctx:             ctx,
-					tag:             tag,
-					proxy:           p,
-					address:         address,
-					port:            net.Port(port),
-					dispatcher:      h.mux,
-					sniffingConfig:  receiverConfig.GetEffectiveSniffingSettings(),
-					uplinkCounter:   uplinkCounter,
-					downlinkCounter: downlinkCounter,
-					stream:          mss,
+					ctx:            ctx,
+					tag:            tag,
+					proxy:          p,
+					address:        address,
+					port:           net.Port(port),
+					dispatcher:     h.mux,
+					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
+					stream:         mss,
 				}
 				h.workers = append(h.workers, worker)
 			}

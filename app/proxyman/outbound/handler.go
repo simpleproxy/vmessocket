@@ -10,39 +10,12 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/policy"
-	"github.com/vmessocket/vmessocket/features/stats"
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
-
-func getStatCounter(v *core.Instance, tag string) (stats.Counter, stats.Counter) {
-	var uplinkCounter stats.Counter
-	var downlinkCounter stats.Counter
-
-	policy := v.GetFeature(policy.ManagerType()).(policy.Manager)
-	if len(tag) > 0 && policy.ForSystem().Stats.OutboundUplink {
-		statsManager := v.GetFeature(stats.ManagerType()).(stats.Manager)
-		name := "outbound>>>" + tag + ">>>traffic>>>uplink"
-		c, _ := stats.GetOrRegisterCounter(statsManager, name)
-		if c != nil {
-			uplinkCounter = c
-		}
-	}
-	if len(tag) > 0 && policy.ForSystem().Stats.OutboundDownlink {
-		statsManager := v.GetFeature(stats.ManagerType()).(stats.Manager)
-		name := "outbound>>>" + tag + ">>>traffic>>>downlink"
-		c, _ := stats.GetOrRegisterCounter(statsManager, name)
-		if c != nil {
-			downlinkCounter = c
-		}
-	}
-
-	return uplinkCounter, downlinkCounter
-}
 
 type Handler struct {
 	tag             string
@@ -51,18 +24,13 @@ type Handler struct {
 	proxy           proxy.Outbound
 	outboundManager outbound.Manager
 	mux             *mux.ClientManager
-	uplinkCounter   stats.Counter
-	downlinkCounter stats.Counter
 }
 
 func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbound.Handler, error) {
 	v := core.MustFromContext(ctx)
-	uplinkCounter, downlinkCounter := getStatCounter(v, config.Tag)
 	h := &Handler{
 		tag:             config.Tag,
 		outboundManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
-		uplinkCounter:   uplinkCounter,
-		downlinkCounter: downlinkCounter,
 	}
 
 	if config.SenderSettings != nil {
@@ -178,7 +146,7 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 					conn = tls.Client(conn, tlsConfig)
 				}
 
-				return h.getStatCouterConnection(conn), nil
+				return nil, nil
 			}
 
 			newError("failed to get outbound handler with tag: ", tag).AtWarning().WriteToLog(session.ExportIDToError(ctx))
@@ -201,18 +169,7 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 	}
 
 	conn, err := internet.Dial(ctx, dest, h.streamSettings)
-	return h.getStatCouterConnection(conn), err
-}
-
-func (h *Handler) getStatCouterConnection(conn internet.Connection) internet.Connection {
-	if h.uplinkCounter != nil || h.downlinkCounter != nil {
-		return &internet.StatCouterConnection{
-			Connection:   conn,
-			ReadCounter:  h.downlinkCounter,
-			WriteCounter: h.uplinkCounter,
-		}
-	}
-	return conn
+	return conn, err
 }
 
 func (h *Handler) GetOutbound() proxy.Outbound {
