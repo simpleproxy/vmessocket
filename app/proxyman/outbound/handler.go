@@ -169,7 +169,7 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 	}
 
 	conn, err := internet.Dial(ctx, dest, h.streamSettings)
-	return nil, err
+	return conn, err
 }
 
 func (h *Handler) GetOutbound() proxy.Outbound {
