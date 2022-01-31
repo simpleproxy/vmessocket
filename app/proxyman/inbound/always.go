@@ -119,8 +119,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					tag:             tag,
 					dispatcher:      h.mux,
 					sniffingConfig:  receiverConfig.GetEffectiveSniffingSettings(),
-					uplinkCounter:   uplinkCounter,
-					downlinkCounter: downlinkCounter,
 					ctx:             ctx,
 				}
 				h.workers = append(h.workers, worker)
@@ -135,8 +133,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					port:            net.Port(port),
 					dispatcher:      h.mux,
 					sniffingConfig:  receiverConfig.GetEffectiveSniffingSettings(),
-					uplinkCounter:   uplinkCounter,
-					downlinkCounter: downlinkCounter,
 					stream:          mss,
 				}
 				h.workers = append(h.workers, worker)
