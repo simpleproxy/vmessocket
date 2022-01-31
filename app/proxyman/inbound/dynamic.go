@@ -114,8 +114,6 @@ func (h *DynamicInboundHandler) refresh() error {
 		address = net.AnyIP
 	}
 
-	uplinkCounter, downlinkCounter := getStatCounter(h.v, h.tag)
-
 	for i := uint32(0); i < concurrency; i++ {
 		port := h.allocatePort()
 		rawProxy, err := core.CreateObject(h.v, h.proxyConfig)
