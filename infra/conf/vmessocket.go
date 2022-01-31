@@ -305,7 +305,6 @@ type Config struct {
 	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
 	Transport       *TransportConfig       `json:"transport"`
-	API             *APIConfig             `json:"api"`
 	Stats           *StatsConfig           `json:"stats"`
 
 	Services map[string]*json.RawMessage `json:"services"`
@@ -345,9 +344,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if o.Transport != nil {
 		c.Transport = o.Transport
-	}
-	if o.API != nil {
-		c.API = o.API
 	}
 	if o.Stats != nil {
 		c.Stats = o.Stats
@@ -419,14 +415,6 @@ func (c *Config) Build() (*core.Config, error) {
 			serial.ToTypedMessage(&proxyman.InboundConfig{}),
 			serial.ToTypedMessage(&proxyman.OutboundConfig{}),
 		},
-	}
-
-	if c.API != nil {
-		apiConf, err := c.API.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(apiConf))
 	}
 
 	var logConfMsg *serial.TypedMessage
