@@ -98,10 +98,6 @@ jobs:
       - name: Prepare package
         run: cp -v ./release/config/*.* ./build
 
-      - name: Prepare package for Linux
-        if: matrix.goos == 'linux'
-        run: cp -rv ./release/config/systemd ./build
-
       - name: Create ZIP archive
         run: |
           pushd build || exit 1
