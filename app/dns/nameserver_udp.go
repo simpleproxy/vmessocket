@@ -12,7 +12,6 @@ import (
 
 	"golang.org/x/net/dns/dnsmessage"
 
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol/dns"
@@ -20,6 +19,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal/pubsub"
 	"github.com/vmessocket/vmessocket/common/task"
+	"github.com/vmessocket/vmessocket/core"
 	dns_feature "github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport/internet/udp"
