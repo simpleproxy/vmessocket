@@ -23,12 +23,12 @@ import (
 var (
 	configFiles cmdarg.Arg
 	configDir   string
-	version     = flag.Bool("version", false, "Show current version of V2Ray.")
-	test        = flag.Bool("test", false, "Test config file only, without launching V2Ray server.")
+	version     = flag.Bool("version", false, "Show current version of vmessocket.")
+	test        = flag.Bool("test", false, "Test config file only, without launching vmessocket server.")
 	format      = flag.String("format", "json", "Format of input file.")
 
 	_ = func() error {
-		flag.Var(&configFiles, "config", "Config file for V2Ray. Multiple assign is accepted (only json). Latter ones overrides the former ones.")
+		flag.Var(&configFiles, "config", "Config file for vmessocket. Multiple assign is accepted (only json). Latter ones overrides the former ones.")
 		flag.Var(&configFiles, "c", "Short alias of -config")
 		flag.StringVar(&configDir, "confdir", "", "A dir with multiple json config")
 
@@ -100,7 +100,7 @@ func GetConfigFormat() string {
 	}
 }
 
-func startV2Ray() (core.Server, error) {
+func startVmessocket) (core.Server, error) {
 	configFiles := getConfigFilePath()
 
 	config, err := core.LoadConfig(GetConfigFormat(), configFiles[0], configFiles)
@@ -132,7 +132,7 @@ func main() {
 		return
 	}
 
-	server, err := startV2Ray()
+	server, err := startVmessocket()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(23)
