@@ -33,10 +33,10 @@ build_v2() {
 		local VERSIONTAG=$(git describe --abbrev=0 --tags)
 	fi
 
-	LDFLAGS="-s -w -buildid= -X github.com/vmessocket/vmessocket.codename=${CODENAME} -X github.com/vmessocket/vmessocket.build=${BUILDNAME} -X github.com/v2fly/v2ray-core/v4.version=${VERSIONTAG}"
+	LDFLAGS="-s -w -buildid= -X github.com/vmessocket/vmessocket.codename=${CODENAME} -X github.com/vmessocket/vmessocket.build=${BUILDNAME} -X github.com/vmessocket/vmessocket.version=${VERSIONTAG}"
 
 	echo ">>> Compile vmessocket ..."
-	env CGO_ENABLED=0 go build -o "$TMP"/v2ray"${EXESUFFIX}" -ldflags "$LDFLAGS" ./main
+	env CGO_ENABLED=0 go build -o "$TMP"/vmessocket"${EXESUFFIX}" -ldflags "$LDFLAGS" ./main
 	if [[ $GOOS == "windows" ]]; then
 		env CGO_ENABLED=0 go build -o "$TMP"/wv2ray"${EXESUFFIX}" -ldflags "-H windowsgui $LDFLAGS" ./main
 	fi
@@ -67,7 +67,7 @@ copyconf() {
 packzip() {
 	echo ">>> Generating zip package"
 	cd "$TMP"
-	local PKG=${SRCDIR}/v2ray-custom-${GOARCH}-${GOOS}-${PKGSUFFIX}${NOW}.zip
+	local PKG=${SRCDIR}/vmessocket-custom-${GOARCH}-${GOOS}-${PKGSUFFIX}${NOW}.zip
 	zip -r "$PKG" .
 	echo ">>> Generated: $(basename "$PKG") at $(dirname "$PKG")"
 }
@@ -75,7 +75,7 @@ packzip() {
 packtgz() {
 	echo ">>> Generating tgz package"
 	cd "$TMP"
-	local PKG=${SRCDIR}/v2ray-custom-${GOARCH}-${GOOS}-${PKGSUFFIX}${NOW}.tar.gz
+	local PKG=${SRCDIR}/vmessocket-custom-${GOARCH}-${GOOS}-${PKGSUFFIX}${NOW}.tar.gz
 	tar cvfz "$PKG" .
 	echo ">>> Generated: $(basename "$PKG") at $(dirname "$PKG")"
 }
