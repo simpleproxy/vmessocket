@@ -1,6 +1,3 @@
-//go:build !confonly
-// +build !confonly
-
 package commander
 
 //go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
