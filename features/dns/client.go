@@ -10,7 +10,6 @@ import (
 type IPOption struct {
 	IPv4Enable bool
 	IPv6Enable bool
-	FakeEnable bool
 }
 
 type Client interface {
@@ -29,7 +28,6 @@ type IPv6Lookup interface {
 type ClientWithIPOption interface {
 	GetIPOption() *IPOption
 	SetQueryOption(isIPv4Enable, isIPv6Enable bool)
-	SetFakeDNSOption(isFakeEnable bool)
 }
 
 func ClientType() interface{} {
