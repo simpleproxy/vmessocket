@@ -61,10 +61,6 @@ func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
 				p = append(p, "http")
 			case "tls", "https", "ssl":
 				p = append(p, "tls")
-			case "fakedns":
-				p = append(p, "fakedns")
-			case "fakedns+others":
-				p = append(p, "fakedns+others")
 			default:
 				return nil, newError("unknown protocol: ", domainOverride)
 			}
