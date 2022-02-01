@@ -78,7 +78,7 @@ jobs:
       - name: Get project dependencies
         run: go mod download
 
-      - name: Build vmessocket
+      - name: Build
         run: |
           mkdir -p build
           go build -v -o build/vmessocket -trimpath -ldflags "-s -w -buildid=" ./main
