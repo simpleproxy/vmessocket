@@ -18,24 +18,24 @@ cleanup() { rm -rf "$TMP"; }
 trap cleanup INT TERM ERR
 
 get_source() {
-	echo ">>> Clone v2fly/v2ray-core repo..."
-	git clone https://github.com/v2fly/v2ray-core.git
-	cd v2ray-core
+	echo ">>> Clone vmessocket/vmessocket repo..."
+	git clone https://github.com/vmessocket/vmessocket.git
+	cd vmessocket
 	go mod download
 }
 
 build_v2() {
 	if [[ $nosource != 1 ]]; then
-		cd ${SRCDIR}/v2ray-core
+		cd ${SRCDIR}/vmessocket
 		local VERSIONTAG=$(git describe --abbrev=0 --tags)
 	else
 		echo ">>> Use current directory as WORKDIR"
 		local VERSIONTAG=$(git describe --abbrev=0 --tags)
 	fi
 
-	LDFLAGS="-s -w -buildid= -X github.com/v2fly/v2ray-core/v4.codename=${CODENAME} -X github.com/v2fly/v2ray-core/v4.build=${BUILDNAME} -X github.com/v2fly/v2ray-core/v4.version=${VERSIONTAG}"
+	LDFLAGS="-s -w -buildid= -X github.com/vmessocket/vmessocket.codename=${CODENAME} -X github.com/v2fly/v2ray-core/v4.build=${BUILDNAME} -X github.com/v2fly/v2ray-core/v4.version=${VERSIONTAG}"
 
-	echo ">>> Compile v2ray ..."
+	echo ">>> Compile vmessocket ..."
 	env CGO_ENABLED=0 go build -o "$TMP"/v2ray"${EXESUFFIX}" -ldflags "$LDFLAGS" ./main
 	if [[ $GOOS == "windows" ]]; then
 		env CGO_ENABLED=0 go build -o "$TMP"/wv2ray"${EXESUFFIX}" -ldflags "-H windowsgui $LDFLAGS" ./main
