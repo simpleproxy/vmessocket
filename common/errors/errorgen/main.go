@@ -26,7 +26,7 @@ func main() {
 
 	fmt.Fprintf(file, `package %s
 
-import "github.com/v2fly/vmessocket/common/errors"
+import "github.com/vmessocket/vmessocket/common/errors"
 
 type errPathObjHolder struct{}
 
