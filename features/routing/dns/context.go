@@ -32,7 +32,6 @@ func (ctx *ResolvableContext) GetTargetIPs() []net.IP {
 
 		if c, ok := ctx.dnsClient.(dns.ClientWithIPOption); ok {
 			ipOption = c.GetIPOption()
-			c.SetFakeDNSOption(false)
 		} else {
 			newError("ctx.dnsClient doesn't implement ClientWithIPOption").AtDebug().WriteToLog()
 		}
