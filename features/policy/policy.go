@@ -56,7 +56,7 @@ func ManagerType() interface{} {
 var defaultBufferSize int32
 
 func init() {
-	const key = "v2ray.ray.buffer.size"
+	const key = "vmessocket.buffer.size"
 	const defaultValue = -17
 	size := platform.EnvFlag{
 		Name:    key,
