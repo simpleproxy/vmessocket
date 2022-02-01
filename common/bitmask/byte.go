@@ -1,19 +1,17 @@
 package bitmask
 
-type Byte byte
-
-func (b Byte) Has(bb Byte) bool {
+func (b byte) Has(bb byte) bool {
 	return (b & bb) != 0
 }
 
-func (b *Byte) Set(bb Byte) {
+func (b *byte) Set(bb byte) {
 	*b |= bb
 }
 
-func (b *Byte) Clear(bb Byte) {
+func (b *byte) Clear(bb byte) {
 	*b &= ^bb
 }
 
-func (b *Byte) Toggle(bb Byte) {
+func (b *byte) Toggle(bb byte) {
 	*b ^= bb
 }
