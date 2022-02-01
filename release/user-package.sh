@@ -33,7 +33,7 @@ build_v2() {
 		local VERSIONTAG=$(git describe --abbrev=0 --tags)
 	fi
 
-	LDFLAGS="-s -w -buildid= -X github.com/vmessocket/vmessocket.codename=${CODENAME} -X github.com/v2fly/v2ray-core/v4.build=${BUILDNAME} -X github.com/v2fly/v2ray-core/v4.version=${VERSIONTAG}"
+	LDFLAGS="-s -w -buildid= -X github.com/vmessocket/vmessocket.codename=${CODENAME} -X github.com/vmessocket/vmessocket.build=${BUILDNAME} -X github.com/v2fly/v2ray-core/v4.version=${VERSIONTAG}"
 
 	echo ">>> Compile vmessocket ..."
 	env CGO_ENABLED=0 go build -o "$TMP"/v2ray"${EXESUFFIX}" -ldflags "$LDFLAGS" ./main
@@ -41,8 +41,6 @@ build_v2() {
 		env CGO_ENABLED=0 go build -o "$TMP"/wv2ray"${EXESUFFIX}" -ldflags "-H windowsgui $LDFLAGS" ./main
 	fi
 
-	echo ">>> Compile v2ctl ..."
-	env CGO_ENABLED=0 go build -o "$TMP"/v2ctl"${EXESUFFIX}" -tags confonly -ldflags "$LDFLAGS" ./infra/control/main
 }
 
 build_dat() {
