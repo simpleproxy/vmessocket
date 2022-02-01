@@ -8,7 +8,7 @@ option java_multiple_files = true;
 
 import "common/protocol/user.proto";
 import "common/serial/typed_message.proto";
-import "config.proto";
+import "core/config.proto";
 
 message AddUserOperation {
   vmessocket.core.common.protocol.User user = 1;
