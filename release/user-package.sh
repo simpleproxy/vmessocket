@@ -37,10 +37,6 @@ build_v2() {
 
 	echo ">>> Compile vmessocket ..."
 	env CGO_ENABLED=0 go build -o "$TMP"/vmessocket"${EXESUFFIX}" -ldflags "$LDFLAGS" ./main
-	if [[ $GOOS == "windows" ]]; then
-		env CGO_ENABLED=0 go build -o "$TMP"/wv2ray"${EXESUFFIX}" -ldflags "-H windowsgui $LDFLAGS" ./main
-	fi
-
 }
 
 build_dat() {
