@@ -100,7 +100,7 @@ func GetConfigFormat() string {
 	}
 }
 
-func startVmessocket) (core.Server, error) {
+func startVmessocket() (core.Server, error) {
 	configFiles := getConfigFilePath()
 
 	config, err := core.LoadConfig(GetConfigFormat(), configFiles[0], configFiles)
