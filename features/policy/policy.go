@@ -16,11 +16,6 @@ type Timeout struct {
 	DownlinkOnly   time.Duration
 }
 
-type Stats struct {
-	UserUplink   bool
-	UserDownlink bool
-}
-
 type Buffer struct {
 	PerConnection int32
 }
@@ -39,7 +34,6 @@ type System struct {
 
 type Session struct {
 	Timeouts Timeout
-	Stats    Stats
 	Buffer   Buffer
 }
 
@@ -93,10 +87,6 @@ func SessionDefault() Session {
 			ConnectionIdle: time.Second * 300,
 			UplinkOnly:     time.Second * 1,
 			DownlinkOnly:   time.Second * 1,
-		},
-		Stats: Stats{
-			UserUplink:   false,
-			UserDownlink: false,
 		},
 		Buffer: defaultBufferPolicy(),
 	}
