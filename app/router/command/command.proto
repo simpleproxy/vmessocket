@@ -23,20 +23,10 @@ message RoutingContext {
   string OutboundTag = 12;
 }
 
-message SubscribeRoutingStatsRequest {
-  repeated string FieldSelectors = 1;
-}
-
 message TestRouteRequest {
   RoutingContext RoutingContext = 1;
   repeated string FieldSelectors = 2;
   bool PublishResult = 3;
-}
-
-service RoutingService {
-  rpc SubscribeRoutingStats(SubscribeRoutingStatsRequest)
-      returns (stream RoutingContext) {}
-  rpc TestRoute(TestRouteRequest) returns (RoutingContext) {}
 }
 
 message Config {}
