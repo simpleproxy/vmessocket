@@ -1,6 +1,3 @@
-//go:build linux && !confonly
-// +build linux,!confonly
-
 package tcp
 
 import (
