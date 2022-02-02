@@ -1,6 +1,3 @@
-//go:build !confonly
-// +build !confonly
-
 package socks
 
 import "github.com/vmessocket/vmessocket/common/protocol"

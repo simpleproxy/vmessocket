@@ -1,6 +1,3 @@
-//go:build !confonly
-// +build !confonly
-
 package freedom
 
 //go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
