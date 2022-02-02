@@ -1,6 +1,3 @@
-//go:build !linux && !freebsd && !confonly
-// +build !linux,!freebsd,!confonly
-
 package tcp
 
 import (
