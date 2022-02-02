@@ -29,10 +29,4 @@ message TestRouteRequest {
   bool PublishResult = 3;
 }
 
-service RoutingService {
-  rpc SubscribeRoutingStats(SubscribeRoutingStatsRequest)
-      returns (stream RoutingContext) {}
-  rpc TestRoute(TestRouteRequest) returns (RoutingContext) {}
-}
-
 message Config {}
