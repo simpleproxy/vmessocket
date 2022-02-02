@@ -1,6 +1,3 @@
-//go:build !confonly
-// +build !confonly
-
 package inbound
 
 func (c *Config) GetDefaultValue() *DefaultConfig {
