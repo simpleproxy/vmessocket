@@ -23,10 +23,6 @@ message RoutingContext {
   string OutboundTag = 12;
 }
 
-message SubscribeRoutingStatsRequest {
-  repeated string FieldSelectors = 1;
-}
-
 message TestRouteRequest {
   RoutingContext RoutingContext = 1;
   repeated string FieldSelectors = 2;
