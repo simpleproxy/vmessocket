@@ -12,7 +12,6 @@ var (
 	version  = "1.0.0"
 	build    = "Custom"
 	codename = "VMESSOCKET, an implementation of vmess and websocket protocol."
-	intro    = "A unified platform for anti-censorship."
 )
 
 func Version() string {
@@ -22,6 +21,5 @@ func Version() string {
 func VersionStatement() []string {
 	return []string{
 		serial.Concat("VMESSOCKET ", Version(), " (", codename, ") ", build, " (", runtime.Version(), " ", runtime.GOOS, "/", runtime.GOARCH, ")"),
-		intro,
 	}
 }
