@@ -13,6 +13,9 @@ import (
 	dns_feature "github.com/vmessocket/vmessocket/features/dns"
 )
 
+
+var errRecordNotFound = errors.New("record not found")
+
 func Fqdn(domain string) string {
 	if len(domain) > 0 && strings.HasSuffix(domain, ".") {
 		return domain
@@ -51,8 +54,6 @@ func isNewer(baseRec *IPRecord, newRec *IPRecord) bool {
 	}
 	return baseRec.Expire.Before(newRec.Expire)
 }
-
-var errRecordNotFound = errors.New("record not found")
 
 type dnsRequest struct {
 	reqType dnsmessage.Type
