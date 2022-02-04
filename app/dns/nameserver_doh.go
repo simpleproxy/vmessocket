@@ -19,7 +19,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal/pubsub"
 	"github.com/vmessocket/vmessocket/common/task"
-	dns_feature "github.com/vmessocket/vmessocket/features/dns"
+	"github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
@@ -194,7 +194,7 @@ func (s *DoHNameServer) newReqID() uint16 {
 	return uint16(atomic.AddUint32(&s.reqID, 1))
 }
 
-func (s *DoHNameServer) sendQuery(ctx context.Context, domain string, clientIP net.IP, option dns_feature.IPOption) {
+func (s *DoHNameServer) sendQuery(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption) {
 	newError(s.name, " querying: ", domain).AtInfo().WriteToLog(session.ExportIDToError(ctx))
 
 	reqs := buildReqMsgs(domain, option, s.newReqID, genEDNS0Options(clientIP))
@@ -269,7 +269,7 @@ func (s *DoHNameServer) dohHTTPSContext(ctx context.Context, b []byte) ([]byte, 
 	return io.ReadAll(resp.Body)
 }
 
-func (s *DoHNameServer) findIPsForDomain(domain string, option dns_feature.IPOption) ([]net.IP, error) {
+func (s *DoHNameServer) findIPsForDomain(domain string, option dns.IPOption) ([]net.IP, error) {
 	s.RLock()
 	record, found := s.ips[domain]
 	s.RUnlock()
@@ -305,13 +305,13 @@ func (s *DoHNameServer) findIPsForDomain(domain string, option dns_feature.IPOpt
 	}
 
 	if (option.IPv4Enable && record.A != nil) || (option.IPv6Enable && record.AAAA != nil) {
-		return nil, dns_feature.ErrEmptyResponse
+		return nil, dns.ErrEmptyResponse
 	}
 
 	return nil, errRecordNotFound
 }
 
-func (s *DoHNameServer) QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns_feature.IPOption, disableCache bool) ([]net.IP, error) {
+func (s *DoHNameServer) QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption, disableCache bool) ([]net.IP, error) {
 	fqdn := Fqdn(domain)
 
 	if disableCache {
