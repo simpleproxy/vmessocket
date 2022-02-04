@@ -286,8 +286,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	}, nil
 }
 
-type StatsConfig struct{}
-
 type Config struct {
 	Port            uint16                 `json:"port"`
 	InboundConfig   *InboundDetourConfig   `json:"inbound"`
