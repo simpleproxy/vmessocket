@@ -9,11 +9,11 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 )
 
+type reflectionService struct{}
+
 type Service interface {
 	Register(*grpc.Server)
 }
-
-type reflectionService struct{}
 
 func (r reflectionService) Register(s *grpc.Server) {
 	reflection.Register(s)
