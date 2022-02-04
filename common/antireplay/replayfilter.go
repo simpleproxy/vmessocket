@@ -11,8 +11,8 @@ const replayFilterCapacity = 100000
 
 type ReplayFilter struct {
 	lock     sync.Mutex
-	poolA    *cuckoofilter.Filter
-	poolB    *cuckoofilter.Filter
+	poolA    *cuckoo.Filter
+	poolB    *cuckoo.Filter
 	poolSwap bool
 	lastSwap int64
 	interval int64
@@ -35,8 +35,8 @@ func (filter *ReplayFilter) Check(sum []byte) bool {
 	now := time.Now().Unix()
 	if filter.lastSwap == 0 {
 		filter.lastSwap = now
-		filter.poolA = cuckoofilter.NewFilter(replayFilterCapacity)
-		filter.poolB = cuckoofilter.NewFilter(replayFilterCapacity)
+		filter.poolA = cuckoo.NewFilter(replayFilterCapacity)
+		filter.poolB = cuckoo.NewFilter(replayFilterCapacity)
 	}
 
 	elapsed := now - filter.lastSwap
