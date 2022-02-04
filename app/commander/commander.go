@@ -49,8 +49,16 @@ func NewCommander(ctx context.Context, config *Config) (*Commander, error) {
 	return c, nil
 }
 
-func (c *Commander) Type() interface{} {
-	return (*Commander)(nil)
+func (c *Commander) Close() error {
+	c.Lock()
+	defer c.Unlock()
+
+	if c.server != nil {
+		c.server.Stop()
+		c.server = nil
+	}
+
+	return nil
 }
 
 func (c *Commander) Start() error {
@@ -82,16 +90,8 @@ func (c *Commander) Start() error {
 	})
 }
 
-func (c *Commander) Close() error {
-	c.Lock()
-	defer c.Unlock()
-
-	if c.server != nil {
-		c.server.Stop()
-		c.server = nil
-	}
-
-	return nil
+func (c *Commander) Type() interface{} {
+	return (*Commander)(nil)
 }
 
 func init() {
