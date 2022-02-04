@@ -4,15 +4,15 @@ import (
 	"sync"
 	"time"
 
-	cuckoo "github.com/seiflotfy/cuckoofilter"
+	"github.com/seiflotfy/cuckoofilter"
 )
 
 const replayFilterCapacity = 100000
 
 type ReplayFilter struct {
 	lock     sync.Mutex
-	poolA    *cuckoo.Filter
-	poolB    *cuckoo.Filter
+	poolA    *cuckoofilter.Filter
+	poolB    *cuckoofilter.Filter
 	poolSwap bool
 	lastSwap int64
 	interval int64
@@ -35,8 +35,8 @@ func (filter *ReplayFilter) Check(sum []byte) bool {
 	now := time.Now().Unix()
 	if filter.lastSwap == 0 {
 		filter.lastSwap = now
-		filter.poolA = cuckoo.NewFilter(replayFilterCapacity)
-		filter.poolB = cuckoo.NewFilter(replayFilterCapacity)
+		filter.poolA = cuckoofilter.NewFilter(replayFilterCapacity)
+		filter.poolB = cuckoofilter.NewFilter(replayFilterCapacity)
 	}
 
 	elapsed := now - filter.lastSwap
