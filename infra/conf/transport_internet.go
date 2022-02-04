@@ -11,7 +11,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	httpheader "github.com/vmessocket/vmessocket/transport/internet/headers/http"
 	"github.com/vmessocket/vmessocket/transport/internet/http"
 	"github.com/vmessocket/vmessocket/transport/internet/tcp"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
