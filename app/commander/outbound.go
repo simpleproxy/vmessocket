@@ -22,6 +22,15 @@ type OutboundListener struct {
 	done   *done.Instance
 }
 
+func (l *OutboundListener) Accept() (net.Conn, error) {
+	select {
+	case <-l.done.Wait():
+		return nil, newError("listen closed")
+	case c := <-l.buffer:
+		return c, nil
+	}
+}
+
 func (l *OutboundListener) add(conn net.Conn) {
 	select {
 	case l.buffer <- conn:
@@ -29,15 +38,6 @@ func (l *OutboundListener) add(conn net.Conn) {
 		conn.Close()
 	default:
 		conn.Close()
-	}
-}
-
-func (l *OutboundListener) Accept() (net.Conn, error) {
-	select {
-	case <-l.done.Wait():
-		return nil, newError("listen closed")
-	case c := <-l.buffer:
-		return c, nil
 	}
 }
 
