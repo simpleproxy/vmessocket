@@ -6,7 +6,6 @@ import (
 	"github.com/golang/protobuf/proto"
 
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
-	"github.com/vmessocket/vmessocket/transport/internet/headers/http"
 )
 
 type AuthenticatorRequest struct {
