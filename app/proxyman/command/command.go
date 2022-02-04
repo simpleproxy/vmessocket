@@ -3,7 +3,7 @@ package command
 import (
 	"context"
 
-	grpc "google.golang.org/grpc"
+	"google.golang.org/grpc"
 
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/core"

@@ -10,9 +10,8 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/net"
-	dns_feature "github.com/vmessocket/vmessocket/features/dns"
+	"github.com/vmessocket/vmessocket/features/dns"
 )
-
 
 var errRecordNotFound = errors.New("record not found")
 
@@ -40,7 +39,7 @@ func (r *IPRecord) getIPs() ([]net.Address, error) {
 		return nil, errRecordNotFound
 	}
 	if r.RCode != dnsmessage.RCodeSuccess {
-		return nil, dns_feature.RCodeError(r.RCode)
+		return nil, dns.RCodeError(r.RCode)
 	}
 	return r.IP, nil
 }
@@ -111,7 +110,7 @@ func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
 	return opt
 }
 
-func buildReqMsgs(domain string, option dns_feature.IPOption, reqIDGen func() uint16, reqOpts *dnsmessage.Resource) []*dnsRequest {
+func buildReqMsgs(domain string, option dns.IPOption, reqIDGen func() uint16, reqOpts *dnsmessage.Resource) []*dnsRequest {
 	qA := dnsmessage.Question{
 		Name:  dnsmessage.MustNewName(domain),
 		Type:  dnsmessage.TypeA,
