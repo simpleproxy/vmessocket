@@ -56,15 +56,11 @@ func shouldOverride(result SniffResult, domainOverride []string) bool {
 func sniffer(ctx context.Context, cReader *cachedReader, metadataOnly bool) (SniffResult, error) {
 	payload := buf.New()
 	defer payload.Release()
-
 	sniffer := NewSniffer(ctx)
-
 	metaresult, metadataErr := sniffer.SniffMetadata(ctx)
-
 	if metadataOnly {
 		return metaresult, metadataErr
 	}
-
 	contentResult, contentErr := func() (SniffResult, error) {
 		totalAttempt := 0
 		for {
@@ -172,17 +168,14 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 	opt := pipe.OptionsFromContext(ctx)
 	uplinkReader, uplinkWriter := pipe.New(opt...)
 	downlinkReader, downlinkWriter := pipe.New(opt...)
-
 	inboundLink := &transport.Link{
 		Reader: downlinkReader,
 		Writer: uplinkWriter,
 	}
-
 	outboundLink := &transport.Link{
 		Reader: uplinkReader,
 		Writer: downlinkWriter,
 	}
-
 	sessionInbound := session.InboundFromContext(ctx)
 	var user *protocol.MemoryUser
 	if sessionInbound != nil {
@@ -213,13 +206,11 @@ func (r *cachedReader) Interrupt() {
 func (r *cachedReader) readInternal() buf.MultiBuffer {
 	r.Lock()
 	defer r.Unlock()
-
 	if r.cache != nil && !r.cache.IsEmpty() {
 		mb := r.cache
 		r.cache = nil
 		return mb
 	}
-
 	return nil
 }
 
@@ -241,7 +232,6 @@ func (r *cachedReader) ReadMultiBufferTimeout(timeout time.Duration) (buf.MultiB
 
 func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.Link, destination net.Destination) {
 	var handler outbound.Handler
-
 	if forcedOutboundTag := session.GetForcedOutboundTagFromContext(ctx); forcedOutboundTag != "" {
 		ctx = session.SetForcedOutboundTagToContext(ctx, "")
 		if h := d.ohm.GetHandler(forcedOutboundTag); h != nil {
@@ -266,25 +256,21 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 			newError("default route for ", destination).AtWarning().WriteToLog(session.ExportIDToError(ctx))
 		}
 	}
-
 	if handler == nil {
 		handler = d.ohm.GetDefaultHandler()
 	}
-
 	if handler == nil {
 		newError("default outbound handler not exist").WriteToLog(session.ExportIDToError(ctx))
 		common.Close(link.Writer)
 		common.Interrupt(link.Reader)
 		return
 	}
-
 	if accessMessage := log.AccessMessageFromContext(ctx); accessMessage != nil {
 		if tag := handler.Tag(); tag != "" {
 			accessMessage.Detour = tag
 		}
 		log.Record(accessMessage)
 	}
-
 	handler.Dispatch(ctx, link)
 }
 
