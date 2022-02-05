@@ -34,40 +34,6 @@ type TCPNameServer struct {
 	dial        func(context.Context) (net.Conn, error)
 }
 
-func NewTCPNameServer(url *url.URL, dispatcher routing.Dispatcher) (*TCPNameServer, error) {
-	s, err := baseTCPNameServer(url, "TCP")
-	if err != nil {
-		return nil, err
-	}
-
-	s.dial = func(ctx context.Context) (net.Conn, error) {
-		link, err := dispatcher.Dispatch(ctx, *s.destination)
-		if err != nil {
-			return nil, err
-		}
-
-		return net.NewConnection(
-			net.ConnectionInputMulti(link.Writer),
-			net.ConnectionOutputMulti(link.Reader),
-		), nil
-	}
-
-	return s, nil
-}
-
-func NewTCPLocalNameServer(url *url.URL) (*TCPNameServer, error) {
-	s, err := baseTCPNameServer(url, "TCPL")
-	if err != nil {
-		return nil, err
-	}
-
-	s.dial = func(ctx context.Context) (net.Conn, error) {
-		return internet.DialSystem(ctx, *s.destination, nil)
-	}
-
-	return s, nil
-}
-
 func baseTCPNameServer(url *url.URL, prefix string) (*TCPNameServer, error) {
 	var err error
 	port := net.Port(53)
@@ -93,8 +59,38 @@ func baseTCPNameServer(url *url.URL, prefix string) (*TCPNameServer, error) {
 	return s, nil
 }
 
-func (s *TCPNameServer) Name() string {
-	return s.name
+func NewTCPLocalNameServer(url *url.URL) (*TCPNameServer, error) {
+	s, err := baseTCPNameServer(url, "TCPL")
+	if err != nil {
+		return nil, err
+	}
+
+	s.dial = func(ctx context.Context) (net.Conn, error) {
+		return internet.DialSystem(ctx, *s.destination, nil)
+	}
+
+	return s, nil
+}
+
+func NewTCPNameServer(url *url.URL, dispatcher routing.Dispatcher) (*TCPNameServer, error) {
+	s, err := baseTCPNameServer(url, "TCP")
+	if err != nil {
+		return nil, err
+	}
+
+	s.dial = func(ctx context.Context) (net.Conn, error) {
+		link, err := dispatcher.Dispatch(ctx, *s.destination)
+		if err != nil {
+			return nil, err
+		}
+
+		return net.NewConnection(
+			net.ConnectionInputMulti(link.Writer),
+			net.ConnectionOutputMulti(link.Reader),
+		), nil
+	}
+
+	return s, nil
 }
 
 func (s *TCPNameServer) Cleanup() error {
@@ -129,52 +125,104 @@ func (s *TCPNameServer) Cleanup() error {
 	return nil
 }
 
-func (s *TCPNameServer) updateIP(req *dnsRequest, ipRec *IPRecord) {
-	elapsed := time.Since(req.start)
+func (s *TCPNameServer) findIPsForDomain(domain string, option dns_feature.IPOption) ([]net.IP, error) {
+	s.RLock()
+	record, found := s.ips[domain]
+	s.RUnlock()
 
-	s.Lock()
-	rec, found := s.ips[req.domain]
 	if !found {
-		rec = &record{}
+		return nil, errRecordNotFound
 	}
-	updated := false
 
-	switch req.reqType {
-	case dnsmessage.TypeA:
-		if isNewer(rec.A, ipRec) {
-			rec.A = ipRec
-			updated = true
-		}
-	case dnsmessage.TypeAAAA:
-		addr := make([]net.Address, 0)
-		for _, ip := range ipRec.IP {
-			if len(ip.IP()) == net.IPv6len {
-				addr = append(addr, ip)
-			}
-		}
-		ipRec.IP = addr
-		if isNewer(rec.AAAA, ipRec) {
-			rec.AAAA = ipRec
-			updated = true
-		}
-	}
-	newError(s.name, " got answer: ", req.domain, " ", req.reqType, " -> ", ipRec.IP, " ", elapsed).AtInfo().WriteToLog()
+	var err4 error
+	var err6 error
+	var ips []net.Address
+	var ip6 []net.Address
 
-	if updated {
-		s.ips[req.domain] = rec
+	if option.IPv4Enable {
+		ips, err4 = record.A.getIPs()
 	}
-	switch req.reqType {
-	case dnsmessage.TypeA:
-		s.pub.Publish(req.domain+"4", nil)
-	case dnsmessage.TypeAAAA:
-		s.pub.Publish(req.domain+"6", nil)
+
+	if option.IPv6Enable {
+		ip6, err6 = record.AAAA.getIPs()
+		ips = append(ips, ip6...)
 	}
-	s.Unlock()
-	common.Must(s.cleanup.Start())
+
+	if len(ips) > 0 {
+		return toNetIP(ips)
+	}
+
+	if err4 != nil {
+		return nil, err4
+	}
+
+	if err6 != nil {
+		return nil, err6
+	}
+
+	return nil, dns_feature.ErrEmptyResponse
+}
+
+func (s *TCPNameServer) Name() string {
+	return s.name
 }
 
 func (s *TCPNameServer) newReqID() uint16 {
 	return uint16(atomic.AddUint32(&s.reqID, 1))
+}
+
+func (s *TCPNameServer) QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns_feature.IPOption, disableCache bool) ([]net.IP, error) {
+	fqdn := Fqdn(domain)
+
+	if disableCache {
+		newError("DNS cache is disabled. Querying IP for ", domain, " at ", s.name).AtDebug().WriteToLog()
+	} else {
+		ips, err := s.findIPsForDomain(fqdn, option)
+		if err != errRecordNotFound {
+			newError(s.name, " cache HIT ", domain, " -> ", ips).Base(err).AtDebug().WriteToLog()
+			return ips, err
+		}
+	}
+
+	var sub4, sub6 *pubsub.Subscriber
+	if option.IPv4Enable {
+		sub4 = s.pub.Subscribe(fqdn + "4")
+		defer sub4.Close()
+	}
+	if option.IPv6Enable {
+		sub6 = s.pub.Subscribe(fqdn + "6")
+		defer sub6.Close()
+	}
+	done := make(chan interface{})
+	go func() {
+		if sub4 != nil {
+			select {
+			case <-sub4.Wait():
+			case <-ctx.Done():
+			}
+		}
+		if sub6 != nil {
+			select {
+			case <-sub6.Wait():
+			case <-ctx.Done():
+			}
+		}
+		close(done)
+	}()
+	s.sendQuery(ctx, fqdn, clientIP, option)
+
+	for {
+		ips, err := s.findIPsForDomain(fqdn, option)
+		if err != errRecordNotFound {
+			return ips, err
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-done:
+		}
+	}
 }
 
 func (s *TCPNameServer) sendQuery(ctx context.Context, domain string, clientIP net.IP, option dns_feature.IPOption) {
@@ -261,94 +309,46 @@ func (s *TCPNameServer) sendQuery(ctx context.Context, domain string, clientIP n
 	}
 }
 
-func (s *TCPNameServer) findIPsForDomain(domain string, option dns_feature.IPOption) ([]net.IP, error) {
-	s.RLock()
-	record, found := s.ips[domain]
-	s.RUnlock()
+func (s *TCPNameServer) updateIP(req *dnsRequest, ipRec *IPRecord) {
+	elapsed := time.Since(req.start)
 
+	s.Lock()
+	rec, found := s.ips[req.domain]
 	if !found {
-		return nil, errRecordNotFound
+		rec = &record{}
 	}
+	updated := false
 
-	var err4 error
-	var err6 error
-	var ips []net.Address
-	var ip6 []net.Address
-
-	if option.IPv4Enable {
-		ips, err4 = record.A.getIPs()
-	}
-
-	if option.IPv6Enable {
-		ip6, err6 = record.AAAA.getIPs()
-		ips = append(ips, ip6...)
-	}
-
-	if len(ips) > 0 {
-		return toNetIP(ips)
-	}
-
-	if err4 != nil {
-		return nil, err4
-	}
-
-	if err6 != nil {
-		return nil, err6
-	}
-
-	return nil, dns_feature.ErrEmptyResponse
-}
-
-func (s *TCPNameServer) QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns_feature.IPOption, disableCache bool) ([]net.IP, error) {
-	fqdn := Fqdn(domain)
-
-	if disableCache {
-		newError("DNS cache is disabled. Querying IP for ", domain, " at ", s.name).AtDebug().WriteToLog()
-	} else {
-		ips, err := s.findIPsForDomain(fqdn, option)
-		if err != errRecordNotFound {
-			newError(s.name, " cache HIT ", domain, " -> ", ips).Base(err).AtDebug().WriteToLog()
-			return ips, err
+	switch req.reqType {
+	case dnsmessage.TypeA:
+		if isNewer(rec.A, ipRec) {
+			rec.A = ipRec
+			updated = true
 		}
-	}
-
-	var sub4, sub6 *pubsub.Subscriber
-	if option.IPv4Enable {
-		sub4 = s.pub.Subscribe(fqdn + "4")
-		defer sub4.Close()
-	}
-	if option.IPv6Enable {
-		sub6 = s.pub.Subscribe(fqdn + "6")
-		defer sub6.Close()
-	}
-	done := make(chan interface{})
-	go func() {
-		if sub4 != nil {
-			select {
-			case <-sub4.Wait():
-			case <-ctx.Done():
+	case dnsmessage.TypeAAAA:
+		addr := make([]net.Address, 0)
+		for _, ip := range ipRec.IP {
+			if len(ip.IP()) == net.IPv6len {
+				addr = append(addr, ip)
 			}
 		}
-		if sub6 != nil {
-			select {
-			case <-sub6.Wait():
-			case <-ctx.Done():
-			}
-		}
-		close(done)
-	}()
-	s.sendQuery(ctx, fqdn, clientIP, option)
-
-	for {
-		ips, err := s.findIPsForDomain(fqdn, option)
-		if err != errRecordNotFound {
-			return ips, err
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil, ctx.Err()
-		case <-done:
+		ipRec.IP = addr
+		if isNewer(rec.AAAA, ipRec) {
+			rec.AAAA = ipRec
+			updated = true
 		}
 	}
+	newError(s.name, " got answer: ", req.domain, " ", req.reqType, " -> ", ipRec.IP, " ", elapsed).AtInfo().WriteToLog()
+
+	if updated {
+		s.ips[req.domain] = rec
+	}
+	switch req.reqType {
+	case dnsmessage.TypeA:
+		s.pub.Publish(req.domain+"4", nil)
+	case dnsmessage.TypeAAAA:
+		s.pub.Publish(req.domain+"6", nil)
+	}
+	s.Unlock()
+	common.Must(s.cleanup.Start())
 }
