@@ -12,6 +12,21 @@ type LocalNameServer struct {
 	client *localdns.Client
 }
 
+func NewLocalDNSClient() *Client {
+	return &Client{server: NewLocalNameServer()}
+}
+
+func NewLocalNameServer() *LocalNameServer {
+	newError("DNS: created localhost client").AtInfo().WriteToLog()
+	return &LocalNameServer{
+		client: localdns.New(),
+	}
+}
+
+func (s *LocalNameServer) Name() string {
+	return "localhost"
+}
+
 func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, option dns.IPOption, _ bool) ([]net.IP, error) {
 	var ips []net.IP
 	var err error
@@ -30,19 +45,4 @@ func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, op
 	}
 
 	return ips, err
-}
-
-func (s *LocalNameServer) Name() string {
-	return "localhost"
-}
-
-func NewLocalNameServer() *LocalNameServer {
-	newError("DNS: created localhost client").AtInfo().WriteToLog()
-	return &LocalNameServer{
-		client: localdns.New(),
-	}
-}
-
-func NewLocalDNSClient() *Client {
-	return &Client{server: NewLocalNameServer()}
 }
