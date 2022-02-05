@@ -7,18 +7,10 @@ func (s *AllocationStrategy) GetConcurrencyValue() uint32 {
 	return s.Concurrency.Value
 }
 
-func (s *AllocationStrategy) GetRefreshValue() uint32 {
-	if s == nil || s.Refresh == nil {
-		return 5
-	}
-	return s.Refresh.Value
-}
-
 func (c *ReceiverConfig) GetEffectiveSniffingSettings() *SniffingConfig {
 	if c.SniffingSettings != nil {
 		return c.SniffingSettings
 	}
-
 	if len(c.DomainOverride) > 0 {
 		var p []string
 		for _, kd := range c.DomainOverride {
@@ -34,6 +26,12 @@ func (c *ReceiverConfig) GetEffectiveSniffingSettings() *SniffingConfig {
 			DestinationOverride: p,
 		}
 	}
-
 	return nil
+}
+
+func (s *AllocationStrategy) GetRefreshValue() uint32 {
+	if s == nil || s.Refresh == nil {
+		return 5
+	}
+	return s.Refresh.Value
 }
