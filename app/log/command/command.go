@@ -14,6 +14,18 @@ type LoggerServer struct {
 	V *core.Instance
 }
 
+type service struct {
+	v *core.Instance
+}
+
+func (s *LoggerServer) mustEmbedUnimplementedLoggerServiceServer() {}
+
+func (s *service) Register(server *grpc.Server) {
+	RegisterLoggerServiceServer(server, &LoggerServer{
+		V: s.v,
+	})
+}
+
 func (s *LoggerServer) RestartLogger(ctx context.Context, request *RestartLoggerRequest) (*RestartLoggerResponse, error) {
 	logger := s.V.GetFeature((*log.Instance)(nil))
 	if logger == nil {
@@ -26,18 +38,6 @@ func (s *LoggerServer) RestartLogger(ctx context.Context, request *RestartLogger
 		return nil, newError("failed to start logger").Base(err)
 	}
 	return &RestartLoggerResponse{}, nil
-}
-
-func (s *LoggerServer) mustEmbedUnimplementedLoggerServiceServer() {}
-
-type service struct {
-	v *core.Instance
-}
-
-func (s *service) Register(server *grpc.Server) {
-	RegisterLoggerServiceServer(server, &LoggerServer{
-		V: s.v,
-	})
 }
 
 func init() {
