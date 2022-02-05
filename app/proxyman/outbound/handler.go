@@ -32,7 +32,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 		tag:             config.Tag,
 		outboundManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
 	}
-
 	if config.SenderSettings != nil {
 		senderSettings, err := config.SenderSettings.GetInstance()
 		if err != nil {
@@ -50,22 +49,18 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 			return nil, newError("settings is not SenderConfig")
 		}
 	}
-
 	proxyConfig, err := config.ProxySettings.GetInstance()
 	if err != nil {
 		return nil, err
 	}
-
 	rawProxyHandler, err := common.CreateObject(ctx, proxyConfig)
 	if err != nil {
 		return nil, err
 	}
-
 	proxyHandler, ok := rawProxyHandler.(proxy.Outbound)
 	if !ok {
 		return nil, newError("not an outbound handler")
 	}
-
 	if h.senderSettings != nil && h.senderSettings.MultiplexSettings != nil {
 		config := h.senderSettings.MultiplexSettings
 		if config.Concurrency < 1 || config.Concurrency > 1024 {
@@ -86,7 +81,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 			},
 		}
 	}
-
 	h.proxy = proxyHandler
 	return h, nil
 }
@@ -145,13 +139,10 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 					tlsConfig := config.GetTLSConfig(tls.WithDestination(dest))
 					conn = tls.Client(conn, tlsConfig)
 				}
-
 				return nil, nil
 			}
-
 			newError("failed to get outbound handler with tag: ", tag).AtWarning().WriteToLog(session.ExportIDToError(ctx))
 		}
-
 		if h.senderSettings.Via != nil {
 			outbound := session.OutboundFromContext(ctx)
 			if outbound == nil {
@@ -161,13 +152,11 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 			outbound.Gateway = h.senderSettings.Via.AsAddress()
 		}
 	}
-
 	if h.senderSettings != nil && h.senderSettings.ProxySettings != nil && h.senderSettings.ProxySettings.HasTag() && h.senderSettings.ProxySettings.TransportLayerProxy {
 		tag := h.senderSettings.ProxySettings.Tag
 		newError("transport layer proxying to ", tag, " for dest ", dest).AtDebug().WriteToLog(session.ExportIDToError(ctx))
 		ctx = session.SetTransportLayerProxyTagToContext(ctx, tag)
 	}
-
 	conn, err := internet.Dial(ctx, dest, h.streamSettings)
 	return conn, err
 }
