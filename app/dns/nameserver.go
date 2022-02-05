@@ -15,10 +15,7 @@ import (
 	"github.com/vmessocket/vmessocket/features/routing"
 )
 
-type Server interface {
-	Name() string
-	QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption, disableCache bool) ([]net.IP, error)
-}
+var errExpectedIPNonMatch = errors.New("expectIPs not match")
 
 type Client struct {
 	server       Server
@@ -28,34 +25,9 @@ type Client struct {
 	expectIPs    []*router.GeoIPMatcher
 }
 
-var errExpectedIPNonMatch = errors.New("expectIPs not match")
-
-func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, error) {
-	if address := dest.Address; address.Family().IsDomain() {
-		u, err := url.Parse(address.Domain())
-		if err != nil {
-			return nil, err
-		}
-		switch {
-		case strings.EqualFold(u.String(), "localhost"):
-			return NewLocalNameServer(), nil
-		case strings.EqualFold(u.Scheme, "https"):
-			return NewDoHNameServer(u, dispatcher)
-		case strings.EqualFold(u.Scheme, "https+local"):
-			return NewDoHLocalNameServer(u), nil
-		case strings.EqualFold(u.Scheme, "tcp"):
-			return NewTCPNameServer(u, dispatcher)
-		case strings.EqualFold(u.Scheme, "tcp+local"):
-			return NewTCPLocalNameServer(u)
-		}
-	}
-	if dest.Network == net.Network_Unknown {
-		dest.Network = net.Network_UDP
-	}
-	if dest.Network == net.Network_UDP {
-		return NewClassicNameServer(dest, dispatcher), nil
-	}
-	return nil, newError("No available name server could be created from ", dest).AtWarning()
+type Server interface {
+	Name() string
+	QueryIP(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption, disableCache bool) ([]net.IP, error)
 }
 
 func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container router.GeoIPMatcherContainer, matcherInfos *[]*DomainMatcherInfo, updateDomainRule func(strmatcher.Matcher, int, []*DomainMatcherInfo) error) (*Client, error) {
@@ -135,6 +107,34 @@ func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container r
 	return client, err
 }
 
+func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, error) {
+	if address := dest.Address; address.Family().IsDomain() {
+		u, err := url.Parse(address.Domain())
+		if err != nil {
+			return nil, err
+		}
+		switch {
+		case strings.EqualFold(u.String(), "localhost"):
+			return NewLocalNameServer(), nil
+		case strings.EqualFold(u.Scheme, "https"):
+			return NewDoHNameServer(u, dispatcher)
+		case strings.EqualFold(u.Scheme, "https+local"):
+			return NewDoHLocalNameServer(u), nil
+		case strings.EqualFold(u.Scheme, "tcp"):
+			return NewTCPNameServer(u, dispatcher)
+		case strings.EqualFold(u.Scheme, "tcp+local"):
+			return NewTCPLocalNameServer(u)
+		}
+	}
+	if dest.Network == net.Network_Unknown {
+		dest.Network = net.Network_UDP
+	}
+	if dest.Network == net.Network_UDP {
+		return NewClassicNameServer(dest, dispatcher), nil
+	}
+	return nil, newError("No available name server could be created from ", dest).AtWarning()
+}
+
 func NewSimpleClient(ctx context.Context, endpoint *net.Endpoint, clientIP net.IP) (*Client, error) {
 	client := &Client{}
 	err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher) error {
@@ -159,21 +159,6 @@ func NewSimpleClient(ctx context.Context, endpoint *net.Endpoint, clientIP net.I
 	return client, err
 }
 
-func (c *Client) Name() string {
-	return c.server.Name()
-}
-
-func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption, disableCache bool) ([]net.IP, error) {
-	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
-	ips, err := c.server.QueryIP(ctx, domain, c.clientIP, option, disableCache)
-	cancel()
-
-	if err != nil {
-		return ips, err
-	}
-	return c.MatchExpectedIPs(domain, ips)
-}
-
 func (c *Client) MatchExpectedIPs(domain string, ips []net.IP) ([]net.IP, error) {
 	if len(c.expectIPs) == 0 {
 		return ips, nil
@@ -192,4 +177,19 @@ func (c *Client) MatchExpectedIPs(domain string, ips []net.IP) ([]net.IP, error)
 	}
 	newError("domain ", domain, " expectIPs ", newIps, " matched at server ", c.Name()).AtDebug().WriteToLog()
 	return newIps, nil
+}
+
+func (c *Client) Name() string {
+	return c.server.Name()
+}
+
+func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption, disableCache bool) ([]net.IP, error) {
+	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
+	ips, err := c.server.QueryIP(ctx, domain, c.clientIP, option, disableCache)
+	cancel()
+
+	if err != nil {
+		return ips, err
+	}
+	return c.MatchExpectedIPs(domain, ips)
 }
