@@ -111,15 +111,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	return h, nil
 }
 
-func (h *AlwaysOnInboundHandler) Start() error {
-	for _, worker := range h.workers {
-		if err := worker.Start(); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
 func (h *AlwaysOnInboundHandler) Close() error {
 	var errs []error
 	for _, worker := range h.workers {
@@ -132,6 +123,10 @@ func (h *AlwaysOnInboundHandler) Close() error {
 	return nil
 }
 
+func (h *AlwaysOnInboundHandler) GetInbound() proxy.Inbound {
+	return h.proxy
+}
+
 func (h *AlwaysOnInboundHandler) GetRandomInboundProxy() (interface{}, net.Port, int) {
 	if len(h.workers) == 0 {
 		return nil, 0, 0
@@ -140,10 +135,15 @@ func (h *AlwaysOnInboundHandler) GetRandomInboundProxy() (interface{}, net.Port,
 	return w.Proxy(), w.Port(), 9999
 }
 
-func (h *AlwaysOnInboundHandler) Tag() string {
-	return h.tag
+func (h *AlwaysOnInboundHandler) Start() error {
+	for _, worker := range h.workers {
+		if err := worker.Start(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (h *AlwaysOnInboundHandler) GetInbound() proxy.Inbound {
-	return h.proxy
+func (h *AlwaysOnInboundHandler) Tag() string {
+	return h.tag
 }
