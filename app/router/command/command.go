@@ -14,10 +14,26 @@ type routingServer struct {
 	router routing.Router
 }
 
+type service struct {
+	v *core.Instance
+}
+
 func NewRoutingServer(router routing.Router) RoutingServiceServer {
 	return &routingServer{
 		router: router,
 	}
+}
+
+func (s *routingServer) mustEmbedUnimplementedRoutingServiceServer() {}
+
+func (s *service) Register(server *grpc.Server) {
+	common.Must(s.v.RequireFeatures(func(router routing.Router) {
+		RegisterRoutingServiceServer(server, NewRoutingServer(router))
+	}))
+}
+
+func (s *routingServer) SubscribeRoutingStats(request *SubscribeRoutingStatsRequest, stream RoutingService_SubscribeRoutingStatsServer) error {
+	return nil
 }
 
 func (s *routingServer) TestRoute(ctx context.Context, request *TestRouteRequest) (*RoutingContext, error) {
@@ -29,22 +45,6 @@ func (s *routingServer) TestRoute(ctx context.Context, request *TestRouteRequest
 		return nil, err
 	}
 	return AsProtobufMessage(request.FieldSelectors)(route), nil
-}
-
-func (s *routingServer) SubscribeRoutingStats(request *SubscribeRoutingStatsRequest, stream RoutingService_SubscribeRoutingStatsServer) error {
-	return nil
-}
-
-func (s *routingServer) mustEmbedUnimplementedRoutingServiceServer() {}
-
-type service struct {
-	v *core.Instance
-}
-
-func (s *service) Register(server *grpc.Server) {
-	common.Must(s.v.RequireFeatures(func(router routing.Router) {
-		RegisterRoutingServiceServer(server, NewRoutingServer(router))
-	}))
 }
 
 func init() {
