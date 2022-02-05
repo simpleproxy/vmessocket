@@ -6,11 +6,38 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 )
 
+var globalGeoIPContainer GeoIPMatcherContainer
+
 type GeoIPMatcher struct {
 	countryCode  string
 	reverseMatch bool
 	ip4          *netaddr.IPSet
 	ip6          *netaddr.IPSet
+}
+
+type GeoIPMatcherContainer struct {
+	matchers []*GeoIPMatcher
+}
+
+func (c *GeoIPMatcherContainer) Add(geoip *GeoIP) (*GeoIPMatcher, error) {
+	if geoip.CountryCode != "" {
+		for _, m := range c.matchers {
+			if m.countryCode == geoip.CountryCode && m.reverseMatch == geoip.ReverseMatch {
+				return m, nil
+			}
+		}
+	}
+	m := &GeoIPMatcher{
+		countryCode:  geoip.CountryCode,
+		reverseMatch: geoip.ReverseMatch,
+	}
+	if err := m.Init(geoip.Cidr); err != nil {
+		return nil, err
+	}
+	if geoip.CountryCode != "" {
+		c.matchers = append(c.matchers, m)
+	}
+	return m, nil
 }
 
 func (m *GeoIPMatcher) Init(cidrs []*CIDR) error {
@@ -28,7 +55,6 @@ func (m *GeoIPMatcher) Init(cidrs []*CIDR) error {
 			builder6.AddPrefix(ipPrefix)
 		}
 	}
-
 	var err error
 	m.ip4, err = builder4.IPSet()
 	if err != nil {
@@ -38,12 +64,21 @@ func (m *GeoIPMatcher) Init(cidrs []*CIDR) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
-func (m *GeoIPMatcher) SetReverseMatch(isReverseMatch bool) {
-	m.reverseMatch = isReverseMatch
+func (m *GeoIPMatcher) Match(ip net.IP) bool {
+	isMatched := false
+	switch len(ip) {
+	case net.IPv4len:
+		isMatched = m.match4(ip)
+	case net.IPv6len:
+		isMatched = m.match6(ip)
+	}
+	if m.reverseMatch {
+		return !isMatched
+	}
+	return isMatched
 }
 
 func (m *GeoIPMatcher) match4(ip net.IP) bool {
@@ -62,44 +97,6 @@ func (m *GeoIPMatcher) match6(ip net.IP) bool {
 	return m.ip6.Contains(nip)
 }
 
-func (m *GeoIPMatcher) Match(ip net.IP) bool {
-	isMatched := false
-	switch len(ip) {
-	case net.IPv4len:
-		isMatched = m.match4(ip)
-	case net.IPv6len:
-		isMatched = m.match6(ip)
-	}
-	if m.reverseMatch {
-		return !isMatched
-	}
-	return isMatched
+func (m *GeoIPMatcher) SetReverseMatch(isReverseMatch bool) {
+	m.reverseMatch = isReverseMatch
 }
-
-type GeoIPMatcherContainer struct {
-	matchers []*GeoIPMatcher
-}
-
-func (c *GeoIPMatcherContainer) Add(geoip *GeoIP) (*GeoIPMatcher, error) {
-	if geoip.CountryCode != "" {
-		for _, m := range c.matchers {
-			if m.countryCode == geoip.CountryCode && m.reverseMatch == geoip.ReverseMatch {
-				return m, nil
-			}
-		}
-	}
-
-	m := &GeoIPMatcher{
-		countryCode:  geoip.CountryCode,
-		reverseMatch: geoip.ReverseMatch,
-	}
-	if err := m.Init(geoip.Cidr); err != nil {
-		return nil, err
-	}
-	if geoip.CountryCode != "" {
-		c.matchers = append(c.matchers, m)
-	}
-	return m, nil
-}
-
-var globalGeoIPContainer GeoIPMatcherContainer
