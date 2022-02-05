@@ -166,7 +166,7 @@ func (s *DoHNameServer) dohHTTPSContext(ctx context.Context, b []byte) ([]byte, 
 	return io.ReadAll(resp.Body)
 }
 
-func (s *DoHNameServer) findIPsForDomain(domain string, option dns.IPOption) ([]net.IP, error) {
+func (s *DoHNameServer) findIPsForDomain(domain string, option dns_feature.IPOption) ([]net.IP, error) {
 	s.RLock()
 	record, found := s.ips[domain]
 	s.RUnlock()
@@ -202,7 +202,7 @@ func (s *DoHNameServer) findIPsForDomain(domain string, option dns.IPOption) ([]
 	}
 
 	if (option.IPv4Enable && record.A != nil) || (option.IPv6Enable && record.AAAA != nil) {
-		return nil, dns.ErrEmptyResponse
+		return nil, dns_feature.ErrEmptyResponse
 	}
 
 	return nil, errRecordNotFound
