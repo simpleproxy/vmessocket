@@ -10,7 +10,7 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/net"
-	dns "github.com/vmessocket/vmessocket/features/dns"
+	"github.com/vmessocket/vmessocket/features/dns"
 )
 
 
