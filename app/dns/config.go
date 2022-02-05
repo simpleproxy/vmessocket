@@ -7,7 +7,7 @@ import (
 )
 
 var localTLDsAndDotlessDomains = []*NameServer_PriorityDomain{
-	{Type: DomainMatchingType_Regex, Domain: "^[^.]+$"}, // This will only match domains without any dot
+	{Type: DomainMatchingType_Regex, Domain: "^[^.]+$"},
 	{Type: DomainMatchingType_Subdomain, Domain: "local"},
 	{Type: DomainMatchingType_Subdomain, Domain: "localdomain"},
 	{Type: DomainMatchingType_Subdomain, Domain: "localhost"},
