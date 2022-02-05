@@ -13,6 +13,16 @@ type StaticHosts struct {
 	matchers *strmatcher.MatcherGroup
 }
 
+func filterIP(ips []net.Address, option dns.IPOption) []net.Address {
+	filtered := make([]net.Address, 0, len(ips))
+	for _, ip := range ips {
+		if (ip.Family().IsIPv4() && option.IPv4Enable) || (ip.Family().IsIPv6() && option.IPv6Enable) {
+			filtered = append(filtered, ip)
+		}
+	}
+	return filtered
+}
+
 func NewStaticHosts(hosts []*Config_HostMapping, legacy map[string]*net.IPOrDomain) (*StaticHosts, error) {
 	g := new(strmatcher.MatcherGroup)
 	sh := &StaticHosts{
@@ -65,22 +75,8 @@ func NewStaticHosts(hosts []*Config_HostMapping, legacy map[string]*net.IPOrDoma
 	return sh, nil
 }
 
-func filterIP(ips []net.Address, option dns.IPOption) []net.Address {
-	filtered := make([]net.Address, 0, len(ips))
-	for _, ip := range ips {
-		if (ip.Family().IsIPv4() && option.IPv4Enable) || (ip.Family().IsIPv6() && option.IPv6Enable) {
-			filtered = append(filtered, ip)
-		}
-	}
-	return filtered
-}
-
-func (h *StaticHosts) lookupInternal(domain string) []net.Address {
-	var ips []net.Address
-	for _, id := range h.matchers.Match(domain) {
-		ips = append(ips, h.ips[id]...)
-	}
-	return ips
+func (h *StaticHosts) Lookup(domain string, option dns.IPOption) []net.Address {
+	return h.lookup(domain, option, 5)
 }
 
 func (h *StaticHosts) lookup(domain string, option dns.IPOption, maxDepth int) []net.Address {
@@ -101,6 +97,10 @@ func (h *StaticHosts) lookup(domain string, option dns.IPOption, maxDepth int) [
 	}
 }
 
-func (h *StaticHosts) Lookup(domain string, option dns.IPOption) []net.Address {
-	return h.lookup(domain, option, 5)
+func (h *StaticHosts) lookupInternal(domain string) []net.Address {
+	var ips []net.Address
+	for _, id := range h.matchers.Match(domain) {
+		ips = append(ips, h.ips[id]...)
+	}
+	return ips
 }
