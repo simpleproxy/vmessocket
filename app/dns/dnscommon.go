@@ -13,7 +13,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/dns"
 )
 
-
 var errRecordNotFound = errors.New("record not found")
 
 type dnsRequest struct {
