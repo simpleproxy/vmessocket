@@ -77,17 +77,14 @@ func (s *Sniffer) Sniff(c context.Context, payload []byte) (SniffResult, error) 
 			pendingSniffer = append(pendingSniffer, si)
 			continue
 		}
-
 		if err == nil && result != nil {
 			return result, nil
 		}
 	}
-
 	if len(pendingSniffer) > 0 {
 		s.sniffer = pendingSniffer
 		return nil, common.ErrNoClue
 	}
-
 	return nil, errUnknownContent
 }
 
@@ -104,16 +101,13 @@ func (s *Sniffer) SniffMetadata(c context.Context) (SniffResult, error) {
 			pendingSniffer = append(pendingSniffer, si)
 			continue
 		}
-
 		if err == nil && result != nil {
 			return result, nil
 		}
 	}
-
 	if len(pendingSniffer) > 0 {
 		s.sniffer = pendingSniffer
 		return nil, common.ErrNoClue
 	}
-
 	return nil, errUnknownContent
 }

@@ -22,44 +22,34 @@ func New(ctx context.Context, config *Config) (*Instance, error) {
 		active: false,
 	}
 	log.RegisterHandler(g)
-
 	if err := g.startInternal(); err != nil {
 		return nil, err
 	}
-
 	newError("Logger started").AtDebug().WriteToLog()
 	return g, nil
 }
 
 func (g *Instance) Close() error {
 	newError("Logger closing").AtDebug().WriteToLog()
-
 	g.Lock()
 	defer g.Unlock()
-
 	if !g.active {
 		return nil
 	}
-
 	g.active = false
-
 	common.Close(g.accessLogger)
 	g.accessLogger = nil
-
 	common.Close(g.errorLogger)
 	g.errorLogger = nil
-
 	return nil
 }
 
 func (g *Instance) Handle(msg log.Message) {
 	g.RLock()
 	defer g.RUnlock()
-
 	if !g.active {
 		return
 	}
-
 	switch msg := msg.(type) {
 	case *log.AccessMessage:
 		if g.accessLogger != nil {
@@ -102,20 +92,16 @@ func (g *Instance) Start() error {
 func (g *Instance) startInternal() error {
 	g.Lock()
 	defer g.Unlock()
-
 	if g.active {
 		return nil
 	}
-
 	g.active = true
-
 	if err := g.initAccessLogger(); err != nil {
 		return newError("failed to initialize access logger").Base(err).AtWarning()
 	}
 	if err := g.initErrorLogger(); err != nil {
 		return newError("failed to initialize error logger").Base(err).AtWarning()
 	}
-
 	return nil
 }
 

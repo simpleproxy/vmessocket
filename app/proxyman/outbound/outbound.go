@@ -27,53 +27,41 @@ func New(ctx context.Context, config *proxyman.OutboundConfig) (*Manager, error)
 	return m, nil
 }
 
-func (m *Manager) Type() interface{} {
-	return outbound.ManagerType()
-}
-
-func (m *Manager) Start() error {
+func (m *Manager) AddHandler(ctx context.Context, handler outbound.Handler) error {
 	m.access.Lock()
 	defer m.access.Unlock()
-
-	m.running = true
-
-	for _, h := range m.taggedHandler {
-		if err := h.Start(); err != nil {
-			return err
-		}
+	if m.defaultHandler == nil {
+		m.defaultHandler = handler
 	}
-
-	for _, h := range m.untaggedHandlers {
-		if err := h.Start(); err != nil {
-			return err
-		}
+	tag := handler.Tag()
+	if len(tag) > 0 {
+		m.taggedHandler[tag] = handler
+	} else {
+		m.untaggedHandlers = append(m.untaggedHandlers, handler)
 	}
-
+	if m.running {
+		return handler.Start()
+	}
 	return nil
 }
 
 func (m *Manager) Close() error {
 	m.access.Lock()
 	defer m.access.Unlock()
-
 	m.running = false
-
 	var errs []error
 	for _, h := range m.taggedHandler {
 		errs = append(errs, h.Close())
 	}
-
 	for _, h := range m.untaggedHandlers {
 		errs = append(errs, h.Close())
 	}
-
 	return errors.Combine(errs...)
 }
 
 func (m *Manager) GetDefaultHandler() outbound.Handler {
 	m.access.RLock()
 	defer m.access.RUnlock()
-
 	if m.defaultHandler == nil {
 		return nil
 	}
@@ -89,49 +77,23 @@ func (m *Manager) GetHandler(tag string) outbound.Handler {
 	return nil
 }
 
-func (m *Manager) AddHandler(ctx context.Context, handler outbound.Handler) error {
-	m.access.Lock()
-	defer m.access.Unlock()
-
-	if m.defaultHandler == nil {
-		m.defaultHandler = handler
-	}
-
-	tag := handler.Tag()
-	if len(tag) > 0 {
-		m.taggedHandler[tag] = handler
-	} else {
-		m.untaggedHandlers = append(m.untaggedHandlers, handler)
-	}
-
-	if m.running {
-		return handler.Start()
-	}
-
-	return nil
-}
-
 func (m *Manager) RemoveHandler(ctx context.Context, tag string) error {
 	if tag == "" {
 		return common.ErrNoClue
 	}
 	m.access.Lock()
 	defer m.access.Unlock()
-
 	delete(m.taggedHandler, tag)
 	if m.defaultHandler != nil && m.defaultHandler.Tag() == tag {
 		m.defaultHandler = nil
 	}
-
 	return nil
 }
 
 func (m *Manager) Select(selectors []string) []string {
 	m.access.RLock()
 	defer m.access.RUnlock()
-
 	tags := make([]string, 0, len(selectors))
-
 	for tag := range m.taggedHandler {
 		match := false
 		for _, selector := range selectors {
@@ -144,8 +106,28 @@ func (m *Manager) Select(selectors []string) []string {
 			tags = append(tags, tag)
 		}
 	}
-
 	return tags
+}
+
+func (m *Manager) Start() error {
+	m.access.Lock()
+	defer m.access.Unlock()
+	m.running = true
+	for _, h := range m.taggedHandler {
+		if err := h.Start(); err != nil {
+			return err
+		}
+	}
+	for _, h := range m.untaggedHandlers {
+		if err := h.Start(); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *Manager) Type() interface{} {
+	return outbound.ManagerType()
 }
 
 func init() {

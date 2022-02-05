@@ -29,25 +29,21 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	if !ok {
 		return nil, newError("not an inbound proxy.")
 	}
-
 	h := &AlwaysOnInboundHandler{
 		proxy: p,
 		mux:   mux.NewServer(ctx),
 		tag:   tag,
 	}
-
 	nl := p.Network()
 	pr := receiverConfig.PortRange
 	address := receiverConfig.Listen.AsAddress()
 	if address == nil {
 		address = net.AnyIP
 	}
-
 	mss, err := internet.ToMemoryStreamConfig(receiverConfig.StreamSettings)
 	if err != nil {
 		return nil, newError("failed to parse stream config").Base(err).AtWarning()
 	}
-
 	if receiverConfig.ReceiveOriginalDestination {
 		if mss.SocketSettings == nil {
 			mss.SocketSettings = &internet.SocketConfig{}
@@ -60,7 +56,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	if pr == nil {
 		if net.HasNetwork(nl, net.Network_UNIX) {
 			newError("creating unix domain socket worker on ", address).AtDebug().WriteToLog()
-
 			worker := &dsWorker{
 				address:        address,
 				proxy:          p,
@@ -77,7 +72,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 		for port := pr.From; port <= pr.To; port++ {
 			if net.HasNetwork(nl, net.Network_TCP) {
 				newError("creating stream worker on ", address, ":", port).AtDebug().WriteToLog()
-
 				worker := &tcpWorker{
 					address:        address,
 					port:           net.Port(port),
@@ -91,7 +85,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 				}
 				h.workers = append(h.workers, worker)
 			}
-
 			if net.HasNetwork(nl, net.Network_UDP) {
 				worker := &udpWorker{
 					ctx:            ctx,
@@ -107,17 +100,7 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 			}
 		}
 	}
-
 	return h, nil
-}
-
-func (h *AlwaysOnInboundHandler) Start() error {
-	for _, worker := range h.workers {
-		if err := worker.Start(); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 func (h *AlwaysOnInboundHandler) Close() error {
@@ -132,6 +115,10 @@ func (h *AlwaysOnInboundHandler) Close() error {
 	return nil
 }
 
+func (h *AlwaysOnInboundHandler) GetInbound() proxy.Inbound {
+	return h.proxy
+}
+
 func (h *AlwaysOnInboundHandler) GetRandomInboundProxy() (interface{}, net.Port, int) {
 	if len(h.workers) == 0 {
 		return nil, 0, 0
@@ -140,10 +127,15 @@ func (h *AlwaysOnInboundHandler) GetRandomInboundProxy() (interface{}, net.Port,
 	return w.Proxy(), w.Port(), 9999
 }
 
-func (h *AlwaysOnInboundHandler) Tag() string {
-	return h.tag
+func (h *AlwaysOnInboundHandler) Start() error {
+	for _, worker := range h.workers {
+		if err := worker.Start(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
-func (h *AlwaysOnInboundHandler) GetInbound() proxy.Inbound {
-	return h.proxy
+func (h *AlwaysOnInboundHandler) Tag() string {
+	return h.tag
 }

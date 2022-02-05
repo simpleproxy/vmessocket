@@ -71,22 +71,18 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 			IPv6Enable: true,
 		}
 	}
-
 	hosts, err := NewStaticHosts(config.StaticHosts, config.Hosts)
 	if err != nil {
 		return nil, newError("failed to create hosts").Base(err)
 	}
-
 	clients := []*Client{}
 	domainRuleCount := 0
 	for _, ns := range config.NameServer {
 		domainRuleCount += len(ns.PrioritizedDomain)
 	}
-
 	matcherInfos := make([]*DomainMatcherInfo, domainRuleCount+1)
 	domainMatcher := &strmatcher.MatcherGroup{}
 	geoipContainer := router.GeoIPMatcherContainer{}
-
 	for _, endpoint := range config.NameServers {
 		features.PrintDeprecatedFeatureWarning("simple DNS server")
 		client, err := NewSimpleClient(ctx, endpoint, clientIP)
@@ -95,7 +91,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		}
 		clients = append(clients, client)
 	}
-
 	for _, ns := range config.NameServer {
 		clientIdx := len(clients)
 		updateDomain := func(domainRule strmatcher.Matcher, originalRuleIdx int, matcherInfos []*DomainMatcherInfo) error {
@@ -106,7 +101,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 			}
 			return nil
 		}
-
 		myClientIP := clientIP
 		switch len(ns.ClientIp) {
 		case net.IPv4len, net.IPv6len:
@@ -118,11 +112,9 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		}
 		clients = append(clients, client)
 	}
-
 	if len(clients) == 0 {
 		clients = append(clients, NewLocalDNSClient())
 	}
-
 	return &DNS{
 		tag:                    tag,
 		hosts:                  hosts,
@@ -158,9 +150,7 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 	if domain == "" {
 		return nil, newError("empty domain name")
 	}
-
 	domain = strings.TrimSuffix(domain, ".")
-
 	switch addrs := s.hosts.Lookup(domain, option); {
 	case addrs == nil:
 		break
@@ -173,7 +163,6 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 		newError("returning ", len(addrs), " IP(s) for domain ", domain, " -> ", addrs).WriteToLog()
 		return toNetIP(addrs)
 	}
-
 	errs := []error{}
 	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{Tag: s.tag})
 	for _, client := range s.sortClients(domain) {
@@ -189,7 +178,6 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 			return nil, err
 		}
 	}
-
 	return nil, newError("returning nil for domain ", domain).Base(errors.Combine(errs...))
 }
 
@@ -221,7 +209,6 @@ func (s *DNS) sortClients(domain string) []*Client {
 	clientUsed := make([]bool, len(s.clients))
 	clientNames := make([]string, 0, len(s.clients))
 	domainRules := []string{}
-
 	hasMatch := false
 	for _, match := range s.domainMatcher.Match(domain) {
 		info := s.matcherInfos[match]
@@ -236,7 +223,6 @@ func (s *DNS) sortClients(domain string) []*Client {
 		clientNames = append(clientNames, client.Name())
 		hasMatch = true
 	}
-
 	if !(s.disableFallback || s.disableFallbackIfMatch && hasMatch) {
 		for idx, client := range s.clients {
 			if clientUsed[idx] || client.skipFallback {
@@ -247,20 +233,17 @@ func (s *DNS) sortClients(domain string) []*Client {
 			clientNames = append(clientNames, client.Name())
 		}
 	}
-
 	if len(domainRules) > 0 {
 		newError("domain ", domain, " matches following rules: ", domainRules).AtDebug().WriteToLog()
 	}
 	if len(clientNames) > 0 {
 		newError("domain ", domain, " will use DNS in order: ", clientNames).AtDebug().WriteToLog()
 	}
-
 	if len(clients) == 0 {
 		clients = append(clients, s.clients[0])
 		clientNames = append(clientNames, s.clients[0].Name())
 		newError("domain ", domain, " will use the first DNS: ", clientNames).AtDebug().WriteToLog()
 	}
-
 	return clients
 }
 

@@ -42,16 +42,13 @@ func buildReqMsgs(domain string, option dns.IPOption, reqIDGen func() uint16, re
 		Type:  dnsmessage.TypeA,
 		Class: dnsmessage.ClassINET,
 	}
-
 	qAAAA := dnsmessage.Question{
 		Name:  dnsmessage.MustNewName(domain),
 		Type:  dnsmessage.TypeAAAA,
 		Class: dnsmessage.ClassINET,
 	}
-
 	var reqs []*dnsRequest
 	now := time.Now()
-
 	if option.IPv4Enable {
 		msg := new(dnsmessage.Message)
 		msg.Header.ID = reqIDGen()
@@ -67,7 +64,6 @@ func buildReqMsgs(domain string, option dns.IPOption, reqIDGen func() uint16, re
 			msg:     msg,
 		})
 	}
-
 	if option.IPv6Enable {
 		msg := new(dnsmessage.Message)
 		msg.Header.ID = reqIDGen()
@@ -83,7 +79,6 @@ func buildReqMsgs(domain string, option dns.IPOption, reqIDGen func() uint16, re
 			msg:     msg,
 		})
 	}
-
 	return reqs
 }
 
@@ -98,10 +93,8 @@ func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
 	if len(clientIP) == 0 {
 		return nil
 	}
-
 	var netmask int
 	var family uint16
-
 	if len(clientIP) == 4 {
 		family = 1
 		netmask = 24
@@ -109,7 +102,6 @@ func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
 		family = 2
 		netmask = 96
 	}
-
 	b := make([]byte, 4)
 	binary.BigEndian.PutUint16(b[0:], family)
 	b[2] = byte(netmask)
@@ -124,12 +116,9 @@ func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
 		needLength := (netmask + 8 - 1) / 8
 		b = append(b, ip[:needLength]...)
 	}
-
 	const EDNS0SUBNET = 0x08
-
 	opt := new(dnsmessage.Resource)
 	common.Must(opt.Header.SetEDNS0(1350, 0xfe00, true))
-
 	opt.Body = &dnsmessage.OPTResource{
 		Options: []dnsmessage.Option{
 			{
@@ -138,7 +127,6 @@ func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
 			},
 		},
 	}
-
 	return opt
 }
 
@@ -161,14 +149,12 @@ func parseResponse(payload []byte) (*IPRecord, error) {
 	if err := parser.SkipAllQuestions(); err != nil {
 		return nil, newError("failed to skip questions in DNS response").Base(err).AtWarning()
 	}
-
 	now := time.Now()
 	ipRecord := &IPRecord{
 		ReqID:  h.ID,
 		RCode:  h.RCode,
 		Expire: now.Add(time.Second * 600),
 	}
-
 L:
 	for {
 		ah, err := parser.AnswerHeader()
@@ -178,7 +164,6 @@ L:
 			}
 			break
 		}
-
 		ttl := ah.TTL
 		if ttl == 0 {
 			ttl = 600
@@ -187,7 +172,6 @@ L:
 		if ipRecord.Expire.After(expire) {
 			ipRecord.Expire = expire
 		}
-
 		switch ah.Type {
 		case dnsmessage.TypeA:
 			ans, err := parser.AResource()
@@ -211,7 +195,6 @@ L:
 			continue
 		}
 	}
-
 	return ipRecord, nil
 }
 

@@ -71,14 +71,12 @@ L:
 
 func (co *Outbound) Dispatch(ctx context.Context, link *transport.Link) {
 	co.access.RLock()
-
 	if co.closed {
 		common.Interrupt(link.Reader)
 		common.Interrupt(link.Writer)
 		co.access.RUnlock()
 		return
 	}
-
 	closeSignal := done.New()
 	c := net.NewConnection(net.ConnectionInputMulti(link.Writer), net.ConnectionOutputMulti(link.Reader), net.ConnectionOnClose(closeSignal))
 	co.listener.add(c)

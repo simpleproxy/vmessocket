@@ -29,24 +29,19 @@ func NewStaticHosts(hosts []*Config_HostMapping, legacy map[string]*net.IPOrDoma
 		ips:      make([][]net.Address, len(hosts)+len(legacy)+16),
 		matchers: g,
 	}
-
 	if legacy != nil {
 		features.PrintDeprecatedFeatureWarning("simple host mapping")
-
 		for domain, ip := range legacy {
 			matcher, err := strmatcher.Full.New(domain)
 			common.Must(err)
 			id := g.Add(matcher)
-
 			address := ip.AsAddress()
 			if address.Family().IsDomain() {
 				return nil, newError("invalid domain address in static hosts: ", address.Domain()).AtWarning()
 			}
-
 			sh.ips[id] = []net.Address{address}
 		}
 	}
-
 	for _, mapping := range hosts {
 		matcher, err := toStrMatcher(mapping.Type, mapping.Domain)
 		if err != nil {
@@ -68,10 +63,8 @@ func NewStaticHosts(hosts []*Config_HostMapping, legacy map[string]*net.IPOrDoma
 		default:
 			return nil, newError("neither IP address nor proxied domain specified for domain: ", mapping.Domain).AtWarning()
 		}
-
 		sh.ips[id] = ips
 	}
-
 	return sh, nil
 }
 

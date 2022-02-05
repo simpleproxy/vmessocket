@@ -32,13 +32,11 @@ type Server interface {
 
 func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container router.GeoIPMatcherContainer, matcherInfos *[]*DomainMatcherInfo, updateDomainRule func(strmatcher.Matcher, int, []*DomainMatcherInfo) error) (*Client, error) {
 	client := &Client{}
-
 	err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher) error {
 		server, err := NewServer(ns.Address.AsDestination(), dispatcher)
 		if err != nil {
 			return newError("failed to create nameserver").Base(err).AtWarning()
 		}
-
 		if _, isLocalDNS := server.(*LocalNameServer); isLocalDNS {
 			ns.PrioritizedDomain = append(ns.PrioritizedDomain, localTLDsAndDotlessDomains...)
 			ns.OriginalRules = append(ns.OriginalRules, localTLDsAndDotlessDomainsRule)
@@ -49,7 +47,6 @@ func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container r
 				})
 			}
 		}
-
 		var rules []string
 		ruleCurr := 0
 		ruleIter := 0
@@ -78,7 +75,6 @@ func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container r
 				return newError("failed to create prioritized domain").Base(err).AtWarning()
 			}
 		}
-
 		var matchers []*router.GeoIPMatcher
 		for _, geoip := range ns.Geoip {
 			matcher, err := container.Add(geoip)
@@ -87,7 +83,6 @@ func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container r
 			}
 			matchers = append(matchers, matcher)
 		}
-
 		if len(clientIP) > 0 {
 			switch ns.Address.Address.GetAddress().(type) {
 			case *net.IPOrDomain_Domain:
@@ -96,7 +91,6 @@ func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container r
 				newError("DNS: client ", ns.Address.Address.GetIp(), " uses clientIP ", clientIP.String()).AtInfo().WriteToLog()
 			}
 		}
-
 		client.server = server
 		client.clientIP = clientIP
 		client.skipFallback = ns.SkipFallback
@@ -187,7 +181,6 @@ func (c *Client) QueryIP(ctx context.Context, domain string, option dns.IPOption
 	ctx, cancel := context.WithTimeout(ctx, 4*time.Second)
 	ips, err := c.server.QueryIP(ctx, domain, c.clientIP, option, disableCache)
 	cancel()
-
 	if err != nil {
 		return ips, err
 	}

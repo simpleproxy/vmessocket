@@ -30,7 +30,6 @@ func (s *LocalNameServer) Name() string {
 func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, option dns.IPOption, _ bool) ([]net.IP, error) {
 	var ips []net.IP
 	var err error
-
 	switch {
 	case option.IPv4Enable && option.IPv6Enable:
 		ips, err = s.client.LookupIP(domain)
@@ -39,10 +38,8 @@ func (s *LocalNameServer) QueryIP(_ context.Context, domain string, _ net.IP, op
 	case option.IPv6Enable:
 		ips, err = s.client.LookupIPv6(domain)
 	}
-
 	if len(ips) > 0 {
 		newError("Localhost got answer: ", domain, " -> ", ips).AtInfo().WriteToLog()
 	}
-
 	return ips, err
 }
