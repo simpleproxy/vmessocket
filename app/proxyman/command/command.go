@@ -61,12 +61,10 @@ func (s *handlerServer) AlterInbound(ctx context.Context, request *AlterInboundR
 	if !ok {
 		return nil, newError("not an inbound operation")
 	}
-
 	handler, err := s.ihm.GetHandler(ctx, request.Tag)
 	if err != nil {
 		return nil, newError("failed to get handler: ", request.Tag).Base(err)
 	}
-
 	return &AlterInboundResponse{}, operation.ApplyInbound(ctx, handler)
 }
 
