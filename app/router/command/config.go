@@ -7,38 +7,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/routing"
 )
 
-type routingContext struct {
-	*RoutingContext
-}
-
-func (c routingContext) GetSourceIPs() []net.IP {
-	return mapBytesToIPs(c.RoutingContext.GetSourceIPs())
-}
-
-func (c routingContext) GetSourcePort() net.Port {
-	return net.Port(c.RoutingContext.GetSourcePort())
-}
-
-func (c routingContext) GetTargetIPs() []net.IP {
-	return mapBytesToIPs(c.RoutingContext.GetTargetIPs())
-}
-
-func (c routingContext) GetTargetPort() net.Port {
-	return net.Port(c.RoutingContext.GetTargetPort())
-}
-
-func (c routingContext) GetSkipDNSResolve() bool {
-	return false
-}
-
-func AsRoutingContext(r *RoutingContext) routing.Context {
-	return routingContext{r}
-}
-
-func AsRoutingRoute(r *RoutingContext) routing.Route {
-	return routingContext{r}
-}
-
 var fieldMap = map[string]func(*RoutingContext, routing.Route){
 	"inbound":        func(s *RoutingContext, r routing.Route) { s.InboundTag = r.GetInboundTag() },
 	"network":        func(s *RoutingContext, r routing.Route) { s.Network = r.GetNetwork() },
@@ -54,10 +22,14 @@ var fieldMap = map[string]func(*RoutingContext, routing.Route){
 	"outbound":       func(s *RoutingContext, r routing.Route) { s.OutboundTag = r.GetOutboundTag() },
 }
 
+type routingContext struct {
+	*RoutingContext
+}
+
 func AsProtobufMessage(fieldSelectors []string) func(routing.Route) *RoutingContext {
 	initializers := []func(*RoutingContext, routing.Route){}
 	for field, init := range fieldMap {
-		if len(fieldSelectors) == 0 { // If selectors not set, retrieve all fields
+		if len(fieldSelectors) == 0 {
 			initializers = append(initializers, init)
 			continue
 		}
@@ -77,6 +49,14 @@ func AsProtobufMessage(fieldSelectors []string) func(routing.Route) *RoutingCont
 	}
 }
 
+func AsRoutingContext(r *RoutingContext) routing.Context {
+	return routingContext{r}
+}
+
+func AsRoutingRoute(r *RoutingContext) routing.Route {
+	return routingContext{r}
+}
+
 func mapBytesToIPs(bytes [][]byte) []net.IP {
 	var ips []net.IP
 	for _, rawIP := range bytes {
@@ -91,4 +71,24 @@ func mapIPsToBytes(ips []net.IP) [][]byte {
 		bytes = append(bytes, []byte(ip))
 	}
 	return bytes
+}
+
+func (c routingContext) GetSkipDNSResolve() bool {
+	return false
+}
+
+func (c routingContext) GetSourceIPs() []net.IP {
+	return mapBytesToIPs(c.RoutingContext.GetSourceIPs())
+}
+
+func (c routingContext) GetSourcePort() net.Port {
+	return net.Port(c.RoutingContext.GetSourcePort())
+}
+
+func (c routingContext) GetTargetIPs() []net.IP {
+	return mapBytesToIPs(c.RoutingContext.GetTargetIPs())
+}
+
+func (c routingContext) GetTargetPort() net.Port {
+	return net.Port(c.RoutingContext.GetTargetPort())
 }
