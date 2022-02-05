@@ -1,7 +1,5 @@
 package dns
 
-//go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
-
 import (
 	"context"
 	"fmt"
@@ -44,7 +42,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 	} else {
 		tag = generateRandomTag()
 	}
-
 	var clientIP net.IP
 	switch len(config.ClientIp) {
 	case 0, net.IPv4len, net.IPv6len:
@@ -52,7 +49,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 	default:
 		return nil, newError("unexpected client IP length ", len(config.ClientIp))
 	}
-
 	var ipOption *dns.IPOption
 	switch config.QueryStrategy {
 	case QueryStrategy_USE_IP:
