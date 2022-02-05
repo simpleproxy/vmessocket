@@ -270,7 +270,7 @@ func (s *DoHNameServer) QueryIP(ctx context.Context, domain string, clientIP net
 	}
 }
 
-func (s *DoHNameServer) sendQuery(ctx context.Context, domain string, clientIP net.IP, option dns.IPOption) {
+func (s *DoHNameServer) sendQuery(ctx context.Context, domain string, clientIP net.IP, option dns_feature.IPOption) {
 	newError(s.name, " querying: ", domain).AtInfo().WriteToLog(session.ExportIDToError(ctx))
 
 	reqs := buildReqMsgs(domain, option, s.newReqID, genEDNS0Options(clientIP))
@@ -301,7 +301,7 @@ func (s *DoHNameServer) sendQuery(ctx context.Context, domain string, clientIP n
 			dnsCtx, cancel = context.WithDeadline(dnsCtx, deadline)
 			defer cancel()
 
-			b, err := dns.PackMessage(r.msg)
+			b, err := dns_feature.PackMessage(r.msg)
 			if err != nil {
 				newError("failed to pack dns query").Base(err).AtError().WriteToLog()
 				return
