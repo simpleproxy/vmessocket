@@ -34,8 +34,8 @@ type dsWorker struct {
 	tag            string
 	dispatcher     routing.Dispatcher
 	sniffingConfig *proxyman.SniffingConfig
-	hub internet.Listener
-	ctx context.Context
+	hub            internet.Listener
+	ctx            context.Context
 }
 
 type tcpWorker struct {
@@ -47,8 +47,8 @@ type tcpWorker struct {
 	tag            string
 	dispatcher     routing.Dispatcher
 	sniffingConfig *proxyman.SniffingConfig
-	hub internet.Listener
-	ctx context.Context
+	hub            internet.Listener
+	ctx            context.Context
 }
 
 type udpConn struct {
@@ -72,9 +72,9 @@ type udpWorker struct {
 	stream         *internet.MemoryStreamConfig
 	dispatcher     routing.Dispatcher
 	sniffingConfig *proxyman.SniffingConfig
-	checker    *task.Periodic
-	activeConn map[connID]*udpConn
-	ctx context.Context
+	checker        *task.Periodic
+	activeConn     map[connID]*udpConn
+	ctx            context.Context
 }
 
 type worker interface {
