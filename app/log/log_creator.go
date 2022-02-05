@@ -7,15 +7,27 @@ import (
 	"github.com/vmessocket/vmessocket/common/log"
 )
 
+type HandlerCreator func(LogType, HandlerCreatorOptions) (log.Handler, error)
+
 type HandlerCreatorOptions struct {
 	Path string
 }
 
-type HandlerCreator func(LogType, HandlerCreatorOptions) (log.Handler, error)
+var (
+	handlerCreatorMap = make(map[LogType]HandlerCreator)
+	handlerCreatorMapLock = &sync.RWMutex{}
+)
 
-var handlerCreatorMap = make(map[LogType]HandlerCreator)
+func createHandler(logType LogType, options HandlerCreatorOptions) (log.Handler, error) {
+	handlerCreatorMapLock.RLock()
+	defer handlerCreatorMapLock.RUnlock()
 
-var handlerCreatorMapLock = &sync.RWMutex{}
+	creator, found := handlerCreatorMap[logType]
+	if !found {
+		return nil, newError("unable to create log handler for ", logType)
+	}
+	return creator(logType, options)
+}
 
 func RegisterHandlerCreator(logType LogType, f HandlerCreator) error {
 	if f == nil {
@@ -27,17 +39,6 @@ func RegisterHandlerCreator(logType LogType, f HandlerCreator) error {
 
 	handlerCreatorMap[logType] = f
 	return nil
-}
-
-func createHandler(logType LogType, options HandlerCreatorOptions) (log.Handler, error) {
-	handlerCreatorMapLock.RLock()
-	defer handlerCreatorMapLock.RUnlock()
-
-	creator, found := handlerCreatorMap[logType]
-	if !found {
-		return nil, newError("unable to create log handler for ", logType)
-	}
-	return creator(logType, options)
 }
 
 func init() {
