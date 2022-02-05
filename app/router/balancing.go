@@ -5,26 +5,17 @@ import (
 	"github.com/vmessocket/vmessocket/features/outbound"
 )
 
-type BalancingStrategy interface {
-	PickOutbound([]string) string
-}
-
-type RandomStrategy struct{}
-
-func (s *RandomStrategy) PickOutbound(tags []string) string {
-	n := len(tags)
-	if n == 0 {
-		panic("0 tags")
-	}
-
-	return tags[dice.Roll(n)]
-}
-
 type Balancer struct {
 	selectors []string
 	strategy  BalancingStrategy
 	ohm       outbound.Manager
 }
+
+type BalancingStrategy interface {
+	PickOutbound([]string) string
+}
+
+type RandomStrategy struct{}
 
 func (b *Balancer) PickOutbound() (string, error) {
 	hs, ok := b.ohm.(outbound.HandlerSelector)
@@ -40,4 +31,12 @@ func (b *Balancer) PickOutbound() (string, error) {
 		return "", newError("balancing strategy returns empty tag")
 	}
 	return tag, nil
+}
+
+func (s *RandomStrategy) PickOutbound(tags []string) string {
+	n := len(tags)
+	if n == 0 {
+		panic("0 tags")
+	}
+	return tags[dice.Roll(n)]
 }
