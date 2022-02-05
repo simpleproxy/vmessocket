@@ -1,4 +1,4 @@
-package router
+lpackage router
 
 import (
 	"context"
@@ -11,6 +11,12 @@ import (
 	routing_dns "github.com/vmessocket/vmessocket/features/routing/dns"
 )
 
+type Route struct {
+	routing.Context
+	outboundGroupTags []string
+	outboundTag       string
+}
+
 type Router struct {
 	domainStrategy Config_DomainStrategy
 	rules          []*Rule
@@ -18,16 +24,21 @@ type Router struct {
 	dns            dns.Client
 }
 
-type Route struct {
-	routing.Context
-	outboundGroupTags []string
-	outboundTag       string
+func (*Router) Close() error {
+	return nil
+}
+
+func (r *Route) GetOutboundGroupTags() []string {
+	return r.outboundGroupTags
+}
+
+func (r *Route) GetOutboundTag() string {
+	return r.outboundTag
 }
 
 func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm outbound.Manager) error {
 	r.domainStrategy = config.DomainStrategy
 	r.dns = d
-
 	r.balancers = make(map[string]*Balancer, len(config.BalancingRule))
 	for _, rule := range config.BalancingRule {
 		balancer, err := rule.Build(ohm)
@@ -36,7 +47,6 @@ func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm out
 		}
 		r.balancers[rule.Tag] = balancer
 	}
-
 	r.rules = make([]*Rule, 0, len(config.Rule))
 	for _, rule := range config.Rule {
 		cond, err := rule.BuildCondition()
@@ -57,7 +67,6 @@ func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm out
 		}
 		r.rules = append(r.rules, rr)
 	}
-
 	return nil
 }
 
@@ -75,29 +84,23 @@ func (r *Router) PickRoute(ctx routing.Context) (routing.Route, error) {
 
 func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context, error) {
 	skipDNSResolve := ctx.GetSkipDNSResolve()
-
 	if r.domainStrategy == Config_IpOnDemand && !skipDNSResolve {
 		ctx = routing_dns.ContextWithDNSClient(ctx, r.dns)
 	}
-
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
 		}
 	}
-
 	if r.domainStrategy != Config_IpIfNonMatch || len(ctx.GetTargetDomain()) == 0 || skipDNSResolve {
 		return nil, ctx, common.ErrNoClue
 	}
-
 	ctx = routing_dns.ContextWithDNSClient(ctx, r.dns)
-
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
 		}
 	}
-
 	return nil, ctx, common.ErrNoClue
 }
 
@@ -105,20 +108,8 @@ func (*Router) Start() error {
 	return nil
 }
 
-func (*Router) Close() error {
-	return nil
-}
-
 func (*Router) Type() interface{} {
 	return routing.RouterType()
-}
-
-func (r *Route) GetOutboundGroupTags() []string {
-	return r.outboundGroupTags
-}
-
-func (r *Route) GetOutboundTag() string {
-	return r.outboundTag
 }
 
 func init() {
