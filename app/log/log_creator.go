@@ -21,7 +21,6 @@ var (
 func createHandler(logType LogType, options HandlerCreatorOptions) (log.Handler, error) {
 	handlerCreatorMapLock.RLock()
 	defer handlerCreatorMapLock.RUnlock()
-
 	creator, found := handlerCreatorMap[logType]
 	if !found {
 		return nil, newError("unable to create log handler for ", logType)
@@ -33,10 +32,8 @@ func RegisterHandlerCreator(logType LogType, f HandlerCreator) error {
 	if f == nil {
 		return newError("nil HandlerCreator")
 	}
-
 	handlerCreatorMapLock.Lock()
 	defer handlerCreatorMapLock.Unlock()
-
 	handlerCreatorMap[logType] = f
 	return nil
 }
@@ -45,7 +42,6 @@ func init() {
 	common.Must(RegisterHandlerCreator(LogType_Console, func(lt LogType, options HandlerCreatorOptions) (log.Handler, error) {
 		return log.NewLogger(log.CreateStdoutLogWriter()), nil
 	}))
-
 	common.Must(RegisterHandlerCreator(LogType_File, func(lt LogType, options HandlerCreatorOptions) (log.Handler, error) {
 		creator, err := log.CreateFileLogWriter(options.Path)
 		if err != nil {
@@ -53,7 +49,6 @@ func init() {
 		}
 		return log.NewLogger(creator), nil
 	}))
-
 	common.Must(RegisterHandlerCreator(LogType_None, func(lt LogType, options HandlerCreatorOptions) (log.Handler, error) {
 		return nil, nil
 	}))
