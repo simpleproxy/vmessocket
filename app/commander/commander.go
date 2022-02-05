@@ -25,11 +25,9 @@ func NewCommander(ctx context.Context, config *Config) (*Commander, error) {
 	c := &Commander{
 		tag: config.Tag,
 	}
-
 	common.Must(core.RequireFeatures(ctx, func(om outbound.Manager) {
 		c.ohm = om
 	}))
-
 	for _, rawConfig := range config.Service {
 		config, err := rawConfig.GetInstance()
 		if err != nil {
@@ -45,19 +43,16 @@ func NewCommander(ctx context.Context, config *Config) (*Commander, error) {
 		}
 		c.services = append(c.services, service)
 	}
-
 	return c, nil
 }
 
 func (c *Commander) Close() error {
 	c.Lock()
 	defer c.Unlock()
-
 	if c.server != nil {
 		c.server.Stop()
 		c.server = nil
 	}
-
 	return nil
 }
 
@@ -68,22 +63,18 @@ func (c *Commander) Start() error {
 		service.Register(c.server)
 	}
 	c.Unlock()
-
 	listener := &OutboundListener{
 		buffer: make(chan net.Conn, 4),
 		done:   done.New(),
 	}
-
 	go func() {
 		if err := c.server.Serve(listener); err != nil {
 			newError("failed to start grpc server").Base(err).AtError().WriteToLog()
 		}
 	}()
-
 	if err := c.ohm.RemoveHandler(context.Background(), c.tag); err != nil {
 		newError("failed to remove existing handler").WriteToLog()
 	}
-
 	return c.ohm.AddHandler(context.Background(), &Outbound{
 		tag:      c.tag,
 		listener: listener,
