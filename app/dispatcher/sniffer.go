@@ -8,9 +8,11 @@ import (
 	"github.com/vmessocket/vmessocket/common/protocol/tls"
 )
 
-type SniffResult interface {
-	Protocol() string
-	Domain() string
+var errUnknownContent = newError("unknown content")
+
+type compositeResult struct {
+	domainResult   SniffResult
+	protocolResult SniffResult
 }
 
 type protocolSniffer func(context.Context, []byte) (SniffResult, error)
@@ -24,6 +26,23 @@ type Sniffer struct {
 	sniffer []protocolSnifferWithMetadata
 }
 
+type SnifferIsProtoSubsetOf interface {
+	IsProtoSubsetOf(protocolName string) bool
+}
+
+type SnifferResultComposite interface {
+	ProtocolForDomainResult() string
+}
+
+type SniffResult interface {
+	Protocol() string
+	Domain() string
+}
+
+func CompositeResult(domainResult SniffResult, protocolResult SniffResult) SniffResult {
+	return &compositeResult{domainResult: domainResult, protocolResult: protocolResult}
+}
+
 func NewSniffer(ctx context.Context) *Sniffer {
 	ret := &Sniffer{
 		sniffer: []protocolSnifferWithMetadata{
@@ -34,7 +53,17 @@ func NewSniffer(ctx context.Context) *Sniffer {
 	return ret
 }
 
-var errUnknownContent = newError("unknown content")
+func (c compositeResult) Domain() string {
+	return c.domainResult.Domain()
+}
+
+func (c compositeResult) Protocol() string {
+	return c.protocolResult.Protocol()
+}
+
+func (c compositeResult) ProtocolForDomainResult() string {
+	return c.domainResult.Protocol()
+}
 
 func (s *Sniffer) Sniff(c context.Context, payload []byte) (SniffResult, error) {
 	var pendingSniffer []protocolSnifferWithMetadata
@@ -87,33 +116,4 @@ func (s *Sniffer) SniffMetadata(c context.Context) (SniffResult, error) {
 	}
 
 	return nil, errUnknownContent
-}
-
-func CompositeResult(domainResult SniffResult, protocolResult SniffResult) SniffResult {
-	return &compositeResult{domainResult: domainResult, protocolResult: protocolResult}
-}
-
-type compositeResult struct {
-	domainResult   SniffResult
-	protocolResult SniffResult
-}
-
-func (c compositeResult) Protocol() string {
-	return c.protocolResult.Protocol()
-}
-
-func (c compositeResult) Domain() string {
-	return c.domainResult.Domain()
-}
-
-func (c compositeResult) ProtocolForDomainResult() string {
-	return c.domainResult.Protocol()
-}
-
-type SnifferResultComposite interface {
-	ProtocolForDomainResult() string
-}
-
-type SnifferIsProtoSubsetOf interface {
-	IsProtoSubsetOf(protocolName string) bool
 }

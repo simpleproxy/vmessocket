@@ -18,6 +18,11 @@ import (
 	"github.com/vmessocket/vmessocket/features/dns"
 )
 
+type DomainMatcherInfo struct {
+	clientIdx     uint16
+	domainRuleIdx uint16
+}
+
 type DNS struct {
 	sync.Mutex
 	tag                    string
@@ -30,11 +35,6 @@ type DNS struct {
 	ctx                    context.Context
 	domainMatcher          strmatcher.IndexMatcher
 	matcherInfos           []*DomainMatcherInfo
-}
-
-type DomainMatcherInfo struct {
-	clientIdx     uint16
-	domainRuleIdx uint16
 }
 
 func New(ctx context.Context, config *Config) (*DNS, error) {
@@ -137,16 +137,12 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 	}, nil
 }
 
-func (*DNS) Type() interface{} {
-	return dns.ClientType()
-}
-
-func (s *DNS) Start() error {
-	return nil
-}
-
 func (s *DNS) Close() error {
 	return nil
+}
+
+func (s *DNS) GetIPOption() *dns.IPOption {
+	return s.ipOption
 }
 
 func (s *DNS) IsOwnLink(ctx context.Context) bool {
@@ -156,24 +152,6 @@ func (s *DNS) IsOwnLink(ctx context.Context) bool {
 
 func (s *DNS) LookupIP(domain string) ([]net.IP, error) {
 	return s.lookupIPInternal(domain, *s.ipOption)
-}
-
-func (s *DNS) LookupIPv4(domain string) ([]net.IP, error) {
-	if !s.ipOption.IPv4Enable {
-		return nil, dns.ErrEmptyResponse
-	}
-	o := *s.ipOption
-	o.IPv6Enable = false
-	return s.lookupIPInternal(domain, o)
-}
-
-func (s *DNS) LookupIPv6(domain string) ([]net.IP, error) {
-	if !s.ipOption.IPv6Enable {
-		return nil, dns.ErrEmptyResponse
-	}
-	o := *s.ipOption
-	o.IPv4Enable = false
-	return s.lookupIPInternal(domain, o)
 }
 
 func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, error) {
@@ -215,8 +193,22 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 	return nil, newError("returning nil for domain ", domain).Base(errors.Combine(errs...))
 }
 
-func (s *DNS) GetIPOption() *dns.IPOption {
-	return s.ipOption
+func (s *DNS) LookupIPv4(domain string) ([]net.IP, error) {
+	if !s.ipOption.IPv4Enable {
+		return nil, dns.ErrEmptyResponse
+	}
+	o := *s.ipOption
+	o.IPv6Enable = false
+	return s.lookupIPInternal(domain, o)
+}
+
+func (s *DNS) LookupIPv6(domain string) ([]net.IP, error) {
+	if !s.ipOption.IPv6Enable {
+		return nil, dns.ErrEmptyResponse
+	}
+	o := *s.ipOption
+	o.IPv4Enable = false
+	return s.lookupIPInternal(domain, o)
 }
 
 func (s *DNS) SetQueryOption(isIPv4Enable, isIPv6Enable bool) {
@@ -270,6 +262,14 @@ func (s *DNS) sortClients(domain string) []*Client {
 	}
 
 	return clients
+}
+
+func (s *DNS) Start() error {
+	return nil
+}
+
+func (*DNS) Type() interface{} {
+	return dns.ClientType()
 }
 
 func init() {

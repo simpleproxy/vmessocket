@@ -13,46 +13,8 @@ import (
 	"github.com/vmessocket/vmessocket/features/dns"
 )
 
+
 var errRecordNotFound = errors.New("record not found")
-
-func Fqdn(domain string) string {
-	if len(domain) > 0 && strings.HasSuffix(domain, ".") {
-		return domain
-	}
-	return domain + "."
-}
-
-type record struct {
-	A    *IPRecord
-	AAAA *IPRecord
-}
-
-type IPRecord struct {
-	ReqID  uint16
-	IP     []net.Address
-	Expire time.Time
-	RCode  dnsmessage.RCode
-}
-
-func (r *IPRecord) getIPs() ([]net.Address, error) {
-	if r == nil || r.Expire.Before(time.Now()) {
-		return nil, errRecordNotFound
-	}
-	if r.RCode != dnsmessage.RCodeSuccess {
-		return nil, dns.RCodeError(r.RCode)
-	}
-	return r.IP, nil
-}
-
-func isNewer(baseRec *IPRecord, newRec *IPRecord) bool {
-	if newRec == nil {
-		return false
-	}
-	if baseRec == nil {
-		return true
-	}
-	return baseRec.Expire.Before(newRec.Expire)
-}
 
 type dnsRequest struct {
 	reqType dnsmessage.Type
@@ -62,52 +24,16 @@ type dnsRequest struct {
 	msg     *dnsmessage.Message
 }
 
-func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
-	if len(clientIP) == 0 {
-		return nil
-	}
+type IPRecord struct {
+	ReqID  uint16
+	IP     []net.Address
+	Expire time.Time
+	RCode  dnsmessage.RCode
+}
 
-	var netmask int
-	var family uint16
-
-	if len(clientIP) == 4 {
-		family = 1
-		netmask = 24
-	} else {
-		family = 2
-		netmask = 96
-	}
-
-	b := make([]byte, 4)
-	binary.BigEndian.PutUint16(b[0:], family)
-	b[2] = byte(netmask)
-	b[3] = 0
-	switch family {
-	case 1:
-		ip := clientIP.To4().Mask(net.CIDRMask(netmask, net.IPv4len*8))
-		needLength := (netmask + 8 - 1) / 8
-		b = append(b, ip[:needLength]...)
-	case 2:
-		ip := clientIP.Mask(net.CIDRMask(netmask, net.IPv6len*8))
-		needLength := (netmask + 8 - 1) / 8
-		b = append(b, ip[:needLength]...)
-	}
-
-	const EDNS0SUBNET = 0x08
-
-	opt := new(dnsmessage.Resource)
-	common.Must(opt.Header.SetEDNS0(1350, 0xfe00, true))
-
-	opt.Body = &dnsmessage.OPTResource{
-		Options: []dnsmessage.Option{
-			{
-				Code: EDNS0SUBNET,
-				Data: b,
-			},
-		},
-	}
-
-	return opt
+type record struct {
+	A    *IPRecord
+	AAAA *IPRecord
 }
 
 func buildReqMsgs(domain string, option dns.IPOption, reqIDGen func() uint16, reqOpts *dnsmessage.Resource) []*dnsRequest {
@@ -159,6 +85,71 @@ func buildReqMsgs(domain string, option dns.IPOption, reqIDGen func() uint16, re
 	}
 
 	return reqs
+}
+
+func Fqdn(domain string) string {
+	if len(domain) > 0 && strings.HasSuffix(domain, ".") {
+		return domain
+	}
+	return domain + "."
+}
+
+func genEDNS0Options(clientIP net.IP) *dnsmessage.Resource {
+	if len(clientIP) == 0 {
+		return nil
+	}
+
+	var netmask int
+	var family uint16
+
+	if len(clientIP) == 4 {
+		family = 1
+		netmask = 24
+	} else {
+		family = 2
+		netmask = 96
+	}
+
+	b := make([]byte, 4)
+	binary.BigEndian.PutUint16(b[0:], family)
+	b[2] = byte(netmask)
+	b[3] = 0
+	switch family {
+	case 1:
+		ip := clientIP.To4().Mask(net.CIDRMask(netmask, net.IPv4len*8))
+		needLength := (netmask + 8 - 1) / 8
+		b = append(b, ip[:needLength]...)
+	case 2:
+		ip := clientIP.Mask(net.CIDRMask(netmask, net.IPv6len*8))
+		needLength := (netmask + 8 - 1) / 8
+		b = append(b, ip[:needLength]...)
+	}
+
+	const EDNS0SUBNET = 0x08
+
+	opt := new(dnsmessage.Resource)
+	common.Must(opt.Header.SetEDNS0(1350, 0xfe00, true))
+
+	opt.Body = &dnsmessage.OPTResource{
+		Options: []dnsmessage.Option{
+			{
+				Code: EDNS0SUBNET,
+				Data: b,
+			},
+		},
+	}
+
+	return opt
+}
+
+func isNewer(baseRec *IPRecord, newRec *IPRecord) bool {
+	if newRec == nil {
+		return false
+	}
+	if baseRec == nil {
+		return true
+	}
+	return baseRec.Expire.Before(newRec.Expire)
 }
 
 func parseResponse(payload []byte) (*IPRecord, error) {
@@ -222,4 +213,14 @@ L:
 	}
 
 	return ipRecord, nil
+}
+
+func (r *IPRecord) getIPs() ([]net.Address, error) {
+	if r == nil || r.Expire.Before(time.Now()) {
+		return nil, errRecordNotFound
+	}
+	if r.RCode != dnsmessage.RCodeSuccess {
+		return nil, dns.RCodeError(r.RCode)
+	}
+	return r.IP, nil
 }
