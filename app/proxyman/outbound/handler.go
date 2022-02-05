@@ -85,36 +85,16 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 	return h, nil
 }
 
-func (h *Handler) Tag() string {
-	return h.tag
-}
-
-func (h *Handler) Dispatch(ctx context.Context, link *transport.Link) {
-	if h.mux != nil && (h.mux.Enabled || session.MuxPreferedFromContext(ctx)) {
-		if err := h.mux.Dispatch(ctx, link); err != nil {
-			err := newError("failed to process mux outbound traffic").Base(err)
-			session.SubmitOutboundErrorToOriginator(ctx, err)
-			err.WriteToLog(session.ExportIDToError(ctx))
-			common.Interrupt(link.Writer)
-		}
-	} else {
-		if err := h.proxy.Process(ctx, link, h); err != nil {
-			err := newError("failed to process outbound traffic").Base(err)
-			session.SubmitOutboundErrorToOriginator(ctx, err)
-			err.WriteToLog(session.ExportIDToError(ctx))
-			common.Interrupt(link.Writer)
-		} else {
-			common.Must(common.Close(link.Writer))
-		}
-		common.Interrupt(link.Reader)
-	}
-}
-
 func (h *Handler) Address() net.Address {
 	if h.senderSettings == nil || h.senderSettings.Via == nil {
 		return nil
 	}
 	return h.senderSettings.Via.AsAddress()
+}
+
+func (h *Handler) Close() error {
+	common.Close(h.mux)
+	return nil
 }
 
 func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Connection, error) {
@@ -127,14 +107,11 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 				ctx = session.ContextWithOutbound(ctx, &session.Outbound{
 					Target: dest,
 				})
-
 				opts := pipe.OptionsFromContext(ctx)
 				uplinkReader, uplinkWriter := pipe.New(opts...)
 				downlinkReader, downlinkWriter := pipe.New(opts...)
-
 				go handler.Dispatch(ctx, &transport.Link{Reader: uplinkReader, Writer: downlinkWriter})
 				conn := net.NewConnection(net.ConnectionInputMulti(uplinkWriter), net.ConnectionOutputMulti(downlinkReader))
-
 				if config := tls.ConfigFromStreamSettings(h.streamSettings); config != nil {
 					tlsConfig := config.GetTLSConfig(tls.WithDestination(dest))
 					conn = tls.Client(conn, tlsConfig)
@@ -161,6 +138,27 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 	return conn, err
 }
 
+func (h *Handler) Dispatch(ctx context.Context, link *transport.Link) {
+	if h.mux != nil && (h.mux.Enabled || session.MuxPreferedFromContext(ctx)) {
+		if err := h.mux.Dispatch(ctx, link); err != nil {
+			err := newError("failed to process mux outbound traffic").Base(err)
+			session.SubmitOutboundErrorToOriginator(ctx, err)
+			err.WriteToLog(session.ExportIDToError(ctx))
+			common.Interrupt(link.Writer)
+		}
+	} else {
+		if err := h.proxy.Process(ctx, link, h); err != nil {
+			err := newError("failed to process outbound traffic").Base(err)
+			session.SubmitOutboundErrorToOriginator(ctx, err)
+			err.WriteToLog(session.ExportIDToError(ctx))
+			common.Interrupt(link.Writer)
+		} else {
+			common.Must(common.Close(link.Writer))
+		}
+		common.Interrupt(link.Reader)
+	}
+}
+
 func (h *Handler) GetOutbound() proxy.Outbound {
 	return h.proxy
 }
@@ -169,7 +167,6 @@ func (h *Handler) Start() error {
 	return nil
 }
 
-func (h *Handler) Close() error {
-	common.Close(h.mux)
-	return nil
+func (h *Handler) Tag() string {
+	return h.tag
 }
