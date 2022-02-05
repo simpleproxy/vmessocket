@@ -31,54 +31,25 @@ func New(ctx context.Context, config *Config) (*Instance, error) {
 	return g, nil
 }
 
-func (g *Instance) initAccessLogger() error {
-	handler, err := createHandler(g.config.AccessLogType, HandlerCreatorOptions{
-		Path: g.config.AccessLogPath,
-	})
-	if err != nil {
-		return err
-	}
-	g.accessLogger = handler
-	return nil
-}
+func (g *Instance) Close() error {
+	newError("Logger closing").AtDebug().WriteToLog()
 
-func (g *Instance) initErrorLogger() error {
-	handler, err := createHandler(g.config.ErrorLogType, HandlerCreatorOptions{
-		Path: g.config.ErrorLogPath,
-	})
-	if err != nil {
-		return err
-	}
-	g.errorLogger = handler
-	return nil
-}
-
-func (*Instance) Type() interface{} {
-	return (*Instance)(nil)
-}
-
-func (g *Instance) startInternal() error {
 	g.Lock()
 	defer g.Unlock()
 
-	if g.active {
+	if !g.active {
 		return nil
 	}
 
-	g.active = true
+	g.active = false
 
-	if err := g.initAccessLogger(); err != nil {
-		return newError("failed to initialize access logger").Base(err).AtWarning()
-	}
-	if err := g.initErrorLogger(); err != nil {
-		return newError("failed to initialize error logger").Base(err).AtWarning()
-	}
+	common.Close(g.accessLogger)
+	g.accessLogger = nil
+
+	common.Close(g.errorLogger)
+	g.errorLogger = nil
 
 	return nil
-}
-
-func (g *Instance) Start() error {
-	return g.startInternal()
 }
 
 func (g *Instance) Handle(msg log.Message) {
@@ -102,25 +73,54 @@ func (g *Instance) Handle(msg log.Message) {
 	}
 }
 
-func (g *Instance) Close() error {
-	newError("Logger closing").AtDebug().WriteToLog()
+func (g *Instance) initAccessLogger() error {
+	handler, err := createHandler(g.config.AccessLogType, HandlerCreatorOptions{
+		Path: g.config.AccessLogPath,
+	})
+	if err != nil {
+		return err
+	}
+	g.accessLogger = handler
+	return nil
+}
 
+func (g *Instance) initErrorLogger() error {
+	handler, err := createHandler(g.config.ErrorLogType, HandlerCreatorOptions{
+		Path: g.config.ErrorLogPath,
+	})
+	if err != nil {
+		return err
+	}
+	g.errorLogger = handler
+	return nil
+}
+
+func (g *Instance) Start() error {
+	return g.startInternal()
+}
+
+func (g *Instance) startInternal() error {
 	g.Lock()
 	defer g.Unlock()
 
-	if !g.active {
+	if g.active {
 		return nil
 	}
 
-	g.active = false
+	g.active = true
 
-	common.Close(g.accessLogger)
-	g.accessLogger = nil
-
-	common.Close(g.errorLogger)
-	g.errorLogger = nil
+	if err := g.initAccessLogger(); err != nil {
+		return newError("failed to initialize access logger").Base(err).AtWarning()
+	}
+	if err := g.initErrorLogger(); err != nil {
+		return newError("failed to initialize error logger").Base(err).AtWarning()
+	}
 
 	return nil
+}
+
+func (*Instance) Type() interface{} {
+	return (*Instance)(nil)
 }
 
 func init() {
