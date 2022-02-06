@@ -28,16 +28,13 @@ func (r *PacketReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	if r.eof {
 		return nil, io.EOF
 	}
-
 	size, err := serial.ReadUint16(r.reader)
 	if err != nil {
 		return nil, err
 	}
-
 	if size > buf.Size {
 		return nil, newError("packet size too large: ", size)
 	}
-
 	b := buf.New()
 	if _, err := b.ReadFullFrom(r.reader, int32(size)); err != nil {
 		b.Release()
