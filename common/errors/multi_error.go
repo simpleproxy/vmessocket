@@ -1,20 +1,8 @@
 package errors
 
-import (
-	"strings"
-)
+import "strings"
 
 type multiError []error
-
-func (e multiError) Error() string {
-	var r strings.Builder
-	r.WriteString("multierr: ")
-	for _, err := range e {
-		r.WriteString(err.Error())
-		r.WriteString(" | ")
-	}
-	return r.String()
-}
 
 func Combine(maybeError ...error) error {
 	var errs multiError
@@ -27,4 +15,14 @@ func Combine(maybeError ...error) error {
 		return nil
 	}
 	return errs
+}
+
+func (e multiError) Error() string {
+	var r strings.Builder
+	r.WriteString("multierr: ")
+	for _, err := range e {
+		r.WriteString(err.Error())
+		r.WriteString(" | ")
+	}
+	return r.String()
 }
