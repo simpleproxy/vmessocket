@@ -9,6 +9,14 @@ type unixReader struct {
 	iovs [][]byte
 }
 
+func newMultiReader() multiReader {
+	return &unixReader{}
+}
+
+func (r *unixReader) Clear() {
+	r.iovs = r.iovs[:0]
+}
+
 func (r *unixReader) Init(bs []*Buffer) {
 	iovs := r.iovs
 	if iovs == nil {
@@ -26,12 +34,4 @@ func (r *unixReader) Read(fd uintptr) int32 {
 		return -1
 	}
 	return int32(n)
-}
-
-func (r *unixReader) Clear() {
-	r.iovs = r.iovs[:0]
-}
-
-func newMultiReader() multiReader {
-	return &unixReader{}
 }

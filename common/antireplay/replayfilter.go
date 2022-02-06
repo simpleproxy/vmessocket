@@ -24,21 +24,15 @@ func NewReplayFilter(interval int64) *ReplayFilter {
 	return filter
 }
 
-func (filter *ReplayFilter) Interval() int64 {
-	return filter.interval
-}
-
 func (filter *ReplayFilter) Check(sum []byte) bool {
 	filter.lock.Lock()
 	defer filter.lock.Unlock()
-
 	now := time.Now().Unix()
 	if filter.lastSwap == 0 {
 		filter.lastSwap = now
 		filter.poolA = cuckoo.NewFilter(replayFilterCapacity)
 		filter.poolB = cuckoo.NewFilter(replayFilterCapacity)
 	}
-
 	elapsed := now - filter.lastSwap
 	if elapsed >= filter.Interval() {
 		if filter.poolSwap {
@@ -49,6 +43,9 @@ func (filter *ReplayFilter) Check(sum []byte) bool {
 		filter.poolSwap = !filter.poolSwap
 		filter.lastSwap = now
 	}
-
 	return filter.poolA.InsertUnique(sum) && filter.poolB.InsertUnique(sum)
+}
+
+func (filter *ReplayFilter) Interval() int64 {
+	return filter.interval
 }

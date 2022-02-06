@@ -8,6 +8,32 @@ import (
 	"github.com/vmessocket/vmessocket/common/serial"
 )
 
+type MultiBuffer []*Buffer
+
+type MultiBufferContainer struct {
+	MultiBuffer
+}
+
+func Compact(mb MultiBuffer) MultiBuffer {
+	if len(mb) == 0 {
+		return mb
+	}
+	mb2 := make(MultiBuffer, 0, len(mb))
+	last := mb[0]
+	for i := 1; i < len(mb); i++ {
+		curr := mb[i]
+		if last.Len()+curr.Len() > Size {
+			mb2 = append(mb2, last)
+			last = curr
+		} else {
+			common.Must2(last.ReadFrom(curr))
+			curr.Release()
+		}
+	}
+	mb2 = append(mb2, last)
+	return mb2
+}
+
 func ReadAllToBytes(reader io.Reader) ([]byte, error) {
 	mb, err := ReadFrom(reader)
 	if err != nil {
@@ -22,7 +48,20 @@ func ReadAllToBytes(reader io.Reader) ([]byte, error) {
 	return b, nil
 }
 
-type MultiBuffer []*Buffer
+func MergeBytes(dest MultiBuffer, src []byte) MultiBuffer {
+	n := len(dest)
+	if n > 0 && !(dest)[n-1].IsFull() {
+		nBytes, _ := (dest)[n-1].Write(src)
+		src = src[nBytes:]
+	}
+	for len(src) > 0 {
+		b := New()
+		nBytes, _ := b.Write(src)
+		src = src[nBytes:]
+		dest = append(dest, b)
+	}
+	return dest
+}
 
 func MergeMulti(dest MultiBuffer, src MultiBuffer) (MultiBuffer, MultiBuffer) {
 	dest = append(dest, src...)
@@ -30,43 +69,6 @@ func MergeMulti(dest MultiBuffer, src MultiBuffer) (MultiBuffer, MultiBuffer) {
 		src[idx] = nil
 	}
 	return dest, src[:0]
-}
-
-func MergeBytes(dest MultiBuffer, src []byte) MultiBuffer {
-	n := len(dest)
-	if n > 0 && !(dest)[n-1].IsFull() {
-		nBytes, _ := (dest)[n-1].Write(src)
-		src = src[nBytes:]
-	}
-
-	for len(src) > 0 {
-		b := New()
-		nBytes, _ := b.Write(src)
-		src = src[nBytes:]
-		dest = append(dest, b)
-	}
-
-	return dest
-}
-
-func ReleaseMulti(mb MultiBuffer) MultiBuffer {
-	for i := range mb {
-		mb[i].Release()
-		mb[i] = nil
-	}
-	return mb[:0]
-}
-
-func (mb MultiBuffer) Copy(b []byte) int {
-	total := 0
-	for _, bb := range mb {
-		nBytes := copy(b[total:], bb.Bytes())
-		total += nBytes
-		if int32(nBytes) < bb.Len() {
-			break
-		}
-	}
-	return total
 }
 
 func ReadFrom(reader io.Reader) (MultiBuffer, error) {
@@ -88,6 +90,14 @@ func ReadFrom(reader io.Reader) (MultiBuffer, error) {
 	}
 }
 
+func ReleaseMulti(mb MultiBuffer) MultiBuffer {
+	for i := range mb {
+		mb[i].Release()
+		mb[i] = nil
+	}
+	return mb[:0]
+}
+
 func SplitBytes(mb MultiBuffer, b []byte) (MultiBuffer, int) {
 	totalBytes := 0
 	endIndex := -1
@@ -103,14 +113,22 @@ func SplitBytes(mb MultiBuffer, b []byte) (MultiBuffer, int) {
 		pBuffer.Release()
 		mb[i] = nil
 	}
-
 	if endIndex == -1 {
 		mb = mb[:0]
 	} else {
 		mb = mb[endIndex:]
 	}
-
 	return mb, totalBytes
+}
+
+func SplitFirst(mb MultiBuffer) (MultiBuffer, *Buffer) {
+	if len(mb) == 0 {
+		return mb, nil
+	}
+	b := mb[0]
+	mb[0] = nil
+	mb = mb[1:]
+	return mb, b
 }
 
 func SplitFirstBytes(mb MultiBuffer, p []byte) (MultiBuffer, int) {
@@ -123,52 +141,16 @@ func SplitFirstBytes(mb MultiBuffer, p []byte) (MultiBuffer, int) {
 	return mb, n
 }
 
-func Compact(mb MultiBuffer) MultiBuffer {
-	if len(mb) == 0 {
-		return mb
-	}
-
-	mb2 := make(MultiBuffer, 0, len(mb))
-	last := mb[0]
-
-	for i := 1; i < len(mb); i++ {
-		curr := mb[i]
-		if last.Len()+curr.Len() > Size {
-			mb2 = append(mb2, last)
-			last = curr
-		} else {
-			common.Must2(last.ReadFrom(curr))
-			curr.Release()
-		}
-	}
-
-	mb2 = append(mb2, last)
-	return mb2
-}
-
-func SplitFirst(mb MultiBuffer) (MultiBuffer, *Buffer) {
-	if len(mb) == 0 {
-		return mb, nil
-	}
-
-	b := mb[0]
-	mb[0] = nil
-	mb = mb[1:]
-	return mb, b
-}
-
 func SplitSize(mb MultiBuffer, size int32) (MultiBuffer, MultiBuffer) {
 	if len(mb) == 0 {
 		return mb, nil
 	}
-
 	if mb[0].Len() > size {
 		b := New()
 		copy(b.Extend(size), mb[0].BytesTo(size))
 		mb[0].Advance(size)
 		return mb, MultiBuffer{b}
 	}
-
 	totalBytes := int32(0)
 	var r MultiBuffer
 	endIndex := -1
@@ -196,27 +178,30 @@ func WriteMultiBuffer(writer io.Writer, mb MultiBuffer) (MultiBuffer, error) {
 		if b == nil {
 			break
 		}
-
 		_, err := writer.Write(b.Bytes())
 		b.Release()
 		if err != nil {
 			return mb, err
 		}
 	}
-
 	return nil, nil
 }
 
-func (mb MultiBuffer) Len() int32 {
-	if mb == nil {
-		return 0
-	}
+func (c *MultiBufferContainer) Close() error {
+	c.MultiBuffer = ReleaseMulti(c.MultiBuffer)
+	return nil
+}
 
-	size := int32(0)
-	for _, b := range mb {
-		size += b.Len()
+func (mb MultiBuffer) Copy(b []byte) int {
+	total := 0
+	for _, bb := range mb {
+		nBytes := copy(b[total:], bb.Bytes())
+		total += nBytes
+		if int32(nBytes) < bb.Len() {
+			break
+		}
 	}
-	return size
+	return total
 }
 
 func (mb MultiBuffer) IsEmpty() bool {
@@ -228,23 +213,21 @@ func (mb MultiBuffer) IsEmpty() bool {
 	return true
 }
 
-func (mb MultiBuffer) String() string {
-	v := make([]interface{}, len(mb))
-	for i, b := range mb {
-		v[i] = b
+func (mb MultiBuffer) Len() int32 {
+	if mb == nil {
+		return 0
 	}
-	return serial.Concat(v...)
-}
-
-type MultiBufferContainer struct {
-	MultiBuffer
+	size := int32(0)
+	for _, b := range mb {
+		size += b.Len()
+	}
+	return size
 }
 
 func (c *MultiBufferContainer) Read(b []byte) (int, error) {
 	if c.MultiBuffer.IsEmpty() {
 		return 0, io.EOF
 	}
-
 	mb, nBytes := SplitBytes(c.MultiBuffer, b)
 	c.MultiBuffer = mb
 	return nBytes, nil
@@ -256,6 +239,14 @@ func (c *MultiBufferContainer) ReadMultiBuffer() (MultiBuffer, error) {
 	return mb, nil
 }
 
+func (mb MultiBuffer) String() string {
+	v := make([]interface{}, len(mb))
+	for i, b := range mb {
+		v[i] = b
+	}
+	return serial.Concat(v...)
+}
+
 func (c *MultiBufferContainer) Write(b []byte) (int, error) {
 	c.MultiBuffer = MergeBytes(c.MultiBuffer, b)
 	return len(b), nil
@@ -264,10 +255,5 @@ func (c *MultiBufferContainer) Write(b []byte) (int, error) {
 func (c *MultiBufferContainer) WriteMultiBuffer(b MultiBuffer) error {
 	mb, _ := MergeMulti(c.MultiBuffer, b)
 	c.MultiBuffer = mb
-	return nil
-}
-
-func (c *MultiBufferContainer) Close() error {
-	c.MultiBuffer = ReleaseMulti(c.MultiBuffer)
 	return nil
 }

@@ -8,13 +8,8 @@ type windowsReader struct {
 	bufs []syscall.WSABuf
 }
 
-func (r *windowsReader) Init(bs []*Buffer) {
-	if r.bufs == nil {
-		r.bufs = make([]syscall.WSABuf, 0, len(bs))
-	}
-	for _, b := range bs {
-		r.bufs = append(r.bufs, syscall.WSABuf{Len: uint32(Size), Buf: &b.v[0]})
-	}
+func newMultiReader() multiReader {
+	return new(windowsReader)
 }
 
 func (r *windowsReader) Clear() {
@@ -22,6 +17,15 @@ func (r *windowsReader) Clear() {
 		r.bufs[idx].Buf = nil
 	}
 	r.bufs = r.bufs[:0]
+}
+
+func (r *windowsReader) Init(bs []*Buffer) {
+	if r.bufs == nil {
+		r.bufs = make([]syscall.WSABuf, 0, len(bs))
+	}
+	for _, b := range bs {
+		r.bufs = append(r.bufs, syscall.WSABuf{Len: uint32(Size), Buf: &b.v[0]})
+	}
 }
 
 func (r *windowsReader) Read(fd uintptr) int32 {
@@ -32,8 +36,4 @@ func (r *windowsReader) Read(fd uintptr) int32 {
 		return -1
 	}
 	return int32(nBytes)
-}
-
-func newMultiReader() multiReader {
-	return new(windowsReader)
 }
