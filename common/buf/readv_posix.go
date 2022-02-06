@@ -12,6 +12,17 @@ type posixReader struct {
 	iovecs []syscall.Iovec
 }
 
+func newMultiReader() multiReader {
+	return &posixReader{}
+}
+
+func (r *posixReader) Clear() {
+	for idx := range r.iovecs {
+		r.iovecs[idx].Base = nil
+	}
+	r.iovecs = r.iovecs[:0]
+}
+
 func (r *posixReader) Init(bs []*Buffer) {
 	iovecs := r.iovecs
 	if iovecs == nil {
@@ -32,15 +43,4 @@ func (r *posixReader) Read(fd uintptr) int32 {
 		return -1
 	}
 	return int32(n)
-}
-
-func (r *posixReader) Clear() {
-	for idx := range r.iovecs {
-		r.iovecs[idx].Base = nil
-	}
-	r.iovecs = r.iovecs[:0]
-}
-
-func newMultiReader() multiReader {
-	return &posixReader{}
 }
