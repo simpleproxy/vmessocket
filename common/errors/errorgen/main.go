@@ -16,14 +16,12 @@ func main() {
 	if pkg == "vmessocket" {
 		pkg = "core"
 	}
-
 	file, err := os.OpenFile("errors.generated.go", os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o644)
 	if err != nil {
 		fmt.Printf("Failed to generate errors.generated.go: %v", err)
 		os.Exit(1)
 	}
 	defer file.Close()
-
 	fmt.Fprintf(file, `package %s
 
 import "github.com/vmessocket/vmessocket/common/errors"

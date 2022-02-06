@@ -21,50 +21,28 @@ type Server struct {
 	dispatcher routing.Dispatcher
 }
 
+type ServerWorker struct {
+	dispatcher     routing.Dispatcher
+	link           *transport.Link
+	sessionManager *SessionManager
+}
+
+func handle(ctx context.Context, s *Session, output buf.Writer) {
+	writer := NewResponseWriter(s.ID, output, s.transferType)
+	if err := buf.Copy(s.input, writer); err != nil {
+		newError("session ", s.ID, " ends.").Base(err).WriteToLog(session.ExportIDToError(ctx))
+		writer.hasError = true
+	}
+	writer.Close()
+	s.Close()
+}
+
 func NewServer(ctx context.Context) *Server {
 	s := &Server{}
 	core.RequireFeatures(ctx, func(d routing.Dispatcher) {
 		s.dispatcher = d
 	})
 	return s
-}
-
-func (s *Server) Type() interface{} {
-	return s.dispatcher.Type()
-}
-
-func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport.Link, error) {
-	if dest.Address != muxCoolAddress {
-		return s.dispatcher.Dispatch(ctx, dest)
-	}
-
-	opts := pipe.OptionsFromContext(ctx)
-	uplinkReader, uplinkWriter := pipe.New(opts...)
-	downlinkReader, downlinkWriter := pipe.New(opts...)
-
-	_, err := NewServerWorker(ctx, s.dispatcher, &transport.Link{
-		Reader: uplinkReader,
-		Writer: downlinkWriter,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	return &transport.Link{Reader: downlinkReader, Writer: uplinkWriter}, nil
-}
-
-func (s *Server) Start() error {
-	return nil
-}
-
-func (s *Server) Close() error {
-	return nil
-}
-
-type ServerWorker struct {
-	dispatcher     routing.Dispatcher
-	link           *transport.Link
-	sessionManager *SessionManager
 }
 
 func NewServerWorker(ctx context.Context, d routing.Dispatcher, link *transport.Link) (*ServerWorker, error) {
@@ -77,23 +55,97 @@ func NewServerWorker(ctx context.Context, d routing.Dispatcher, link *transport.
 	return worker, nil
 }
 
-func handle(ctx context.Context, s *Session, output buf.Writer) {
-	writer := NewResponseWriter(s.ID, output, s.transferType)
-	if err := buf.Copy(s.input, writer); err != nil {
-		newError("session ", s.ID, " ends.").Base(err).WriteToLog(session.ExportIDToError(ctx))
-		writer.hasError = true
-	}
+func (s *Server) Close() error {
+	return nil
+}
 
-	writer.Close()
-	s.Close()
+func (w *ServerWorker) Closed() bool {
+	return w.sessionManager.Closed()
 }
 
 func (w *ServerWorker) ActiveConnections() uint32 {
 	return uint32(w.sessionManager.Size())
 }
 
-func (w *ServerWorker) Closed() bool {
-	return w.sessionManager.Closed()
+func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport.Link, error) {
+	if dest.Address != muxCoolAddress {
+		return s.dispatcher.Dispatch(ctx, dest)
+	}
+	opts := pipe.OptionsFromContext(ctx)
+	uplinkReader, uplinkWriter := pipe.New(opts...)
+	downlinkReader, downlinkWriter := pipe.New(opts...)
+	_, err := NewServerWorker(ctx, s.dispatcher, &transport.Link{
+		Reader: uplinkReader,
+		Writer: downlinkWriter,
+	})
+	if err != nil {
+		return nil, err
+	}
+	return &transport.Link{Reader: downlinkReader, Writer: uplinkWriter}, nil
+}
+
+func (w *ServerWorker) handleFrame(ctx context.Context, reader *buf.BufferedReader) error {
+	var meta FrameMetadata
+	err := meta.Unmarshal(reader)
+	if err != nil {
+		return newError("failed to read metadata").Base(err)
+	}
+	switch meta.SessionStatus {
+	case SessionStatusKeepAlive:
+		err = w.handleStatusKeepAlive(&meta, reader)
+	case SessionStatusEnd:
+		err = w.handleStatusEnd(&meta, reader)
+	case SessionStatusNew:
+		err = w.handleStatusNew(ctx, &meta, reader)
+	case SessionStatusKeep:
+		err = w.handleStatusKeep(&meta, reader)
+	default:
+		status := meta.SessionStatus
+		return newError("unknown status: ", status).AtError()
+	}
+	if err != nil {
+		return newError("failed to process data").Base(err)
+	}
+	return nil
+}
+
+func (w *ServerWorker) handleStatusEnd(meta *FrameMetadata, reader *buf.BufferedReader) error {
+	if s, found := w.sessionManager.Get(meta.SessionID); found {
+		if meta.Option.Has(OptionError) {
+			common.Interrupt(s.input)
+			common.Interrupt(s.output)
+		}
+		s.Close()
+	}
+	if meta.Option.Has(OptionData) {
+		return buf.Copy(NewStreamReader(reader), buf.Discard)
+	}
+	return nil
+}
+
+func (w *ServerWorker) handleStatusKeep(meta *FrameMetadata, reader *buf.BufferedReader) error {
+	if !meta.Option.Has(OptionData) {
+		return nil
+	}
+	s, found := w.sessionManager.Get(meta.SessionID)
+	if !found {
+		closingWriter := NewResponseWriter(meta.SessionID, w.link.Writer, protocol.TransferTypeStream)
+		closingWriter.Close()
+
+		return buf.Copy(NewStreamReader(reader), buf.Discard)
+	}
+	rr := s.NewReader(reader)
+	err := buf.Copy(rr, s.output)
+	if err != nil && buf.IsWriteError(err) {
+		newError("failed to write to downstream writer. closing session ", s.ID).Base(err).WriteToLog()
+		closingWriter := NewResponseWriter(meta.SessionID, w.link.Writer, protocol.TransferTypeStream)
+		closingWriter.Close()
+		drainErr := buf.Copy(rr, buf.Discard)
+		common.Interrupt(s.input)
+		s.Close()
+		return drainErr
+	}
+	return err
 }
 
 func (w *ServerWorker) handleStatusKeepAlive(meta *FrameMetadata, reader *buf.BufferedReader) error {
@@ -139,7 +191,6 @@ func (w *ServerWorker) handleStatusNew(ctx context.Context, meta *FrameMetadata,
 	if !meta.Option.Has(OptionData) {
 		return nil
 	}
-
 	rr := s.NewReader(reader)
 	if err := buf.Copy(rr, s.output); err != nil {
 		buf.Copy(rr, buf.Discard)
@@ -149,84 +200,10 @@ func (w *ServerWorker) handleStatusNew(ctx context.Context, meta *FrameMetadata,
 	return nil
 }
 
-func (w *ServerWorker) handleStatusKeep(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if !meta.Option.Has(OptionData) {
-		return nil
-	}
-
-	s, found := w.sessionManager.Get(meta.SessionID)
-	if !found {
-		closingWriter := NewResponseWriter(meta.SessionID, w.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-
-	rr := s.NewReader(reader)
-	err := buf.Copy(rr, s.output)
-
-	if err != nil && buf.IsWriteError(err) {
-		newError("failed to write to downstream writer. closing session ", s.ID).Base(err).WriteToLog()
-
-		closingWriter := NewResponseWriter(meta.SessionID, w.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-
-		drainErr := buf.Copy(rr, buf.Discard)
-		common.Interrupt(s.input)
-		s.Close()
-		return drainErr
-	}
-
-	return err
-}
-
-func (w *ServerWorker) handleStatusEnd(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if s, found := w.sessionManager.Get(meta.SessionID); found {
-		if meta.Option.Has(OptionError) {
-			common.Interrupt(s.input)
-			common.Interrupt(s.output)
-		}
-		s.Close()
-	}
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
-}
-
-func (w *ServerWorker) handleFrame(ctx context.Context, reader *buf.BufferedReader) error {
-	var meta FrameMetadata
-	err := meta.Unmarshal(reader)
-	if err != nil {
-		return newError("failed to read metadata").Base(err)
-	}
-
-	switch meta.SessionStatus {
-	case SessionStatusKeepAlive:
-		err = w.handleStatusKeepAlive(&meta, reader)
-	case SessionStatusEnd:
-		err = w.handleStatusEnd(&meta, reader)
-	case SessionStatusNew:
-		err = w.handleStatusNew(ctx, &meta, reader)
-	case SessionStatusKeep:
-		err = w.handleStatusKeep(&meta, reader)
-	default:
-		status := meta.SessionStatus
-		return newError("unknown status: ", status).AtError()
-	}
-
-	if err != nil {
-		return newError("failed to process data").Base(err)
-	}
-	return nil
-}
-
 func (w *ServerWorker) run(ctx context.Context) {
 	input := w.link.Reader
 	reader := &buf.BufferedReader{Reader: input}
-
 	defer w.sessionManager.Close()
-
 	for {
 		select {
 		case <-ctx.Done():
@@ -242,4 +219,12 @@ func (w *ServerWorker) run(ctx context.Context) {
 			}
 		}
 	}
+}
+
+func (s *Server) Start() error {
+	return nil
+}
+
+func (s *Server) Type() interface{} {
+	return s.dispatcher.Type()
 }

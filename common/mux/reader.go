@@ -20,20 +20,21 @@ func NewPacketReader(reader io.Reader) *PacketReader {
 	}
 }
 
+func NewStreamReader(reader *buf.BufferedReader) buf.Reader {
+	return crypto.NewChunkStreamReaderWithChunkCount(crypto.PlainChunkSizeParser{}, reader, 1)
+}
+
 func (r *PacketReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	if r.eof {
 		return nil, io.EOF
 	}
-
 	size, err := serial.ReadUint16(r.reader)
 	if err != nil {
 		return nil, err
 	}
-
 	if size > buf.Size {
 		return nil, newError("packet size too large: ", size)
 	}
-
 	b := buf.New()
 	if _, err := b.ReadFullFrom(r.reader, int32(size)); err != nil {
 		b.Release()
@@ -41,8 +42,4 @@ func (r *PacketReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	}
 	r.eof = true
 	return buf.MultiBuffer{b}, nil
-}
-
-func NewStreamReader(reader *buf.BufferedReader) buf.Reader {
-	return crypto.NewChunkStreamReaderWithChunkCount(crypto.PlainChunkSizeParser{}, reader, 1)
 }

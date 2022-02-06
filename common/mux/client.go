@@ -20,157 +20,14 @@ import (
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
+var (
+	muxCoolAddress = net.DomainAddress("v1.mux.cool")
+	muxCoolPort    = net.Port(9527)
+)
+
 type ClientManager struct {
 	Enabled bool
 	Picker  WorkerPicker
-}
-
-func (m *ClientManager) Dispatch(ctx context.Context, link *transport.Link) error {
-	for i := 0; i < 16; i++ {
-		worker, err := m.Picker.PickAvailable()
-		if err != nil {
-			return err
-		}
-		if worker.Dispatch(ctx, link) {
-			return nil
-		}
-	}
-
-	return newError("unable to find an available mux client").AtWarning()
-}
-
-type WorkerPicker interface {
-	PickAvailable() (*ClientWorker, error)
-}
-
-type IncrementalWorkerPicker struct {
-	Factory ClientWorkerFactory
-
-	access      sync.Mutex
-	workers     []*ClientWorker
-	cleanupTask *task.Periodic
-}
-
-func (p *IncrementalWorkerPicker) cleanupFunc() error {
-	p.access.Lock()
-	defer p.access.Unlock()
-
-	if len(p.workers) == 0 {
-		return newError("no worker")
-	}
-
-	p.cleanup()
-	return nil
-}
-
-func (p *IncrementalWorkerPicker) cleanup() {
-	var activeWorkers []*ClientWorker
-	for _, w := range p.workers {
-		if !w.Closed() {
-			activeWorkers = append(activeWorkers, w)
-		}
-	}
-	p.workers = activeWorkers
-}
-
-func (p *IncrementalWorkerPicker) findAvailable() int {
-	for idx, w := range p.workers {
-		if !w.IsFull() {
-			return idx
-		}
-	}
-
-	return -1
-}
-
-func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, bool, error) {
-	p.access.Lock()
-	defer p.access.Unlock()
-
-	idx := p.findAvailable()
-	if idx >= 0 {
-		n := len(p.workers)
-		if n > 1 && idx != n-1 {
-			p.workers[n-1], p.workers[idx] = p.workers[idx], p.workers[n-1]
-		}
-		return p.workers[idx], false, nil
-	}
-
-	p.cleanup()
-
-	worker, err := p.Factory.Create()
-	if err != nil {
-		return nil, false, err
-	}
-	p.workers = append(p.workers, worker)
-
-	if p.cleanupTask == nil {
-		p.cleanupTask = &task.Periodic{
-			Interval: time.Second * 30,
-			Execute:  p.cleanupFunc,
-		}
-	}
-
-	return worker, true, nil
-}
-
-func (p *IncrementalWorkerPicker) PickAvailable() (*ClientWorker, error) {
-	worker, start, err := p.pickInternal()
-	if start {
-		common.Must(p.cleanupTask.Start())
-	}
-
-	return worker, err
-}
-
-type ClientWorkerFactory interface {
-	Create() (*ClientWorker, error)
-}
-
-type DialingWorkerFactory struct {
-	Proxy    proxy.Outbound
-	Dialer   internet.Dialer
-	Strategy ClientStrategy
-
-	ctx context.Context
-}
-
-func NewDialingWorkerFactory(ctx context.Context, proxy proxy.Outbound, dialer internet.Dialer, strategy ClientStrategy) *DialingWorkerFactory {
-	return &DialingWorkerFactory{
-		Proxy:    proxy,
-		Dialer:   dialer,
-		Strategy: strategy,
-		ctx:      ctx,
-	}
-}
-
-func (f *DialingWorkerFactory) Create() (*ClientWorker, error) {
-	opts := []pipe.Option{pipe.WithSizeLimit(64 * 1024)}
-	uplinkReader, upLinkWriter := pipe.New(opts...)
-	downlinkReader, downlinkWriter := pipe.New(opts...)
-
-	c, err := NewClientWorker(transport.Link{
-		Reader: downlinkReader,
-		Writer: upLinkWriter,
-	}, f.Strategy)
-	if err != nil {
-		return nil, err
-	}
-
-	go func(p proxy.Outbound, d internet.Dialer, c common.Closable) {
-		ctx := session.ContextWithOutbound(f.ctx, &session.Outbound{
-			Target: net.TCPDestination(muxCoolAddress, muxCoolPort),
-		})
-		ctx, cancel := context.WithCancel(ctx)
-
-		if err := p.Process(ctx, &transport.Link{Reader: uplinkReader, Writer: downlinkWriter}, d); err != nil {
-			errors.New("failed to handler mux client connection").Base(err).WriteToLog()
-		}
-		common.Must(c.Close())
-		cancel()
-	}(f.Proxy, f.Dialer, c.done)
-
-	return c, nil
 }
 
 type ClientStrategy struct {
@@ -185,68 +42,26 @@ type ClientWorker struct {
 	strategy       ClientStrategy
 }
 
-var (
-	muxCoolAddress = net.DomainAddress("v1.mux.cool")
-	muxCoolPort    = net.Port(9527)
-)
-
-func NewClientWorker(stream transport.Link, s ClientStrategy) (*ClientWorker, error) {
-	c := &ClientWorker{
-		sessionManager: NewSessionManager(),
-		link:           stream,
-		done:           done.New(),
-		strategy:       s,
-	}
-
-	go c.fetchOutput()
-	go c.monitor()
-
-	return c, nil
+type ClientWorkerFactory interface {
+	Create() (*ClientWorker, error)
 }
 
-func (m *ClientWorker) TotalConnections() uint32 {
-	return uint32(m.sessionManager.Count())
+type DialingWorkerFactory struct {
+	Proxy    proxy.Outbound
+	Dialer   internet.Dialer
+	Strategy ClientStrategy
+	ctx context.Context
 }
 
-func (m *ClientWorker) ActiveConnections() uint32 {
-	return uint32(m.sessionManager.Size())
+type IncrementalWorkerPicker struct {
+	Factory ClientWorkerFactory
+	access      sync.Mutex
+	workers     []*ClientWorker
+	cleanupTask *task.Periodic
 }
 
-func (m *ClientWorker) Closed() bool {
-	return m.done.Done()
-}
-
-func (m *ClientWorker) monitor() {
-	timer := time.NewTicker(time.Second * 16)
-	defer timer.Stop()
-
-	for {
-		select {
-		case <-m.done.Wait():
-			m.sessionManager.Close()
-			common.Close(m.link.Writer)
-			common.Interrupt(m.link.Reader)
-			return
-		case <-timer.C:
-			size := m.sessionManager.Size()
-			if size == 0 && m.sessionManager.CloseIfNoSession() {
-				common.Must(m.done.Close())
-			}
-		}
-	}
-}
-
-func writeFirstPayload(reader buf.Reader, writer *Writer) error {
-	err := buf.CopyOnceTimeout(reader, writer, time.Millisecond*100)
-	if err == buf.ErrNotTimeoutReader || err == buf.ErrReadTimeout {
-		return writer.WriteMultiBuffer(buf.MultiBuffer{})
-	}
-
-	if err != nil {
-		return err
-	}
-
-	return nil
+type WorkerPicker interface {
+	PickAvailable() (*ClientWorker, error)
 }
 
 func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
@@ -259,7 +74,6 @@ func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
 	writer := NewWriter(s.ID, dest, output, transferType)
 	defer s.Close()
 	defer writer.Close()
-
 	newError("dispatching request to ", dest).WriteToLog(session.ExportIDToError(ctx))
 	if err := writeFirstPayload(s.input, writer); err != nil {
 		newError("failed to write first payload").Base(err).WriteToLog(session.ExportIDToError(ctx))
@@ -267,7 +81,6 @@ func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
 		common.Interrupt(s.input)
 		return
 	}
-
 	if err := buf.Copy(s.input, writer); err != nil {
 		newError("failed to fetch all input").Base(err).WriteToLog(session.ExportIDToError(ctx))
 		writer.hasError = true
@@ -276,31 +89,108 @@ func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
 	}
 }
 
-func (m *ClientWorker) IsClosing() bool {
-	sm := m.sessionManager
-	if m.strategy.MaxConnection > 0 && sm.Count() >= int(m.strategy.MaxConnection) {
-		return true
+func NewClientWorker(stream transport.Link, s ClientStrategy) (*ClientWorker, error) {
+	c := &ClientWorker{
+		sessionManager: NewSessionManager(),
+		link:           stream,
+		done:           done.New(),
+		strategy:       s,
 	}
-	return false
+	go c.fetchOutput()
+	go c.monitor()
+	return c, nil
 }
 
-func (m *ClientWorker) IsFull() bool {
-	if m.IsClosing() || m.Closed() {
-		return true
+func NewDialingWorkerFactory(ctx context.Context, proxy proxy.Outbound, dialer internet.Dialer, strategy ClientStrategy) *DialingWorkerFactory {
+	return &DialingWorkerFactory{
+		Proxy:    proxy,
+		Dialer:   dialer,
+		Strategy: strategy,
+		ctx:      ctx,
 	}
+}
 
-	sm := m.sessionManager
-	if m.strategy.MaxConcurrency > 0 && sm.Size() >= int(m.strategy.MaxConcurrency) {
-		return true
+func writeFirstPayload(reader buf.Reader, writer *Writer) error {
+	err := buf.CopyOnceTimeout(reader, writer, time.Millisecond*100)
+	if err == buf.ErrNotTimeoutReader || err == buf.ErrReadTimeout {
+		return writer.WriteMultiBuffer(buf.MultiBuffer{})
 	}
-	return false
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *ClientWorker) ActiveConnections() uint32 {
+	return uint32(m.sessionManager.Size())
+}
+
+func (p *IncrementalWorkerPicker) cleanup() {
+	var activeWorkers []*ClientWorker
+	for _, w := range p.workers {
+		if !w.Closed() {
+			activeWorkers = append(activeWorkers, w)
+		}
+	}
+	p.workers = activeWorkers
+}
+
+func (p *IncrementalWorkerPicker) cleanupFunc() error {
+	p.access.Lock()
+	defer p.access.Unlock()
+	if len(p.workers) == 0 {
+		return newError("no worker")
+	}
+	p.cleanup()
+	return nil
+}
+
+func (m *ClientWorker) Closed() bool {
+	return m.done.Done()
+}
+
+func (f *DialingWorkerFactory) Create() (*ClientWorker, error) {
+	opts := []pipe.Option{pipe.WithSizeLimit(64 * 1024)}
+	uplinkReader, upLinkWriter := pipe.New(opts...)
+	downlinkReader, downlinkWriter := pipe.New(opts...)
+	c, err := NewClientWorker(transport.Link{
+		Reader: downlinkReader,
+		Writer: upLinkWriter,
+	}, f.Strategy)
+	if err != nil {
+		return nil, err
+	}
+	go func(p proxy.Outbound, d internet.Dialer, c common.Closable) {
+		ctx := session.ContextWithOutbound(f.ctx, &session.Outbound{
+			Target: net.TCPDestination(muxCoolAddress, muxCoolPort),
+		})
+		ctx, cancel := context.WithCancel(ctx)
+		if err := p.Process(ctx, &transport.Link{Reader: uplinkReader, Writer: downlinkWriter}, d); err != nil {
+			errors.New("failed to handler mux client connection").Base(err).WriteToLog()
+		}
+		common.Must(c.Close())
+		cancel()
+	}(f.Proxy, f.Dialer, c.done)
+	return c, nil
+}
+
+func (m *ClientManager) Dispatch(ctx context.Context, link *transport.Link) error {
+	for i := 0; i < 16; i++ {
+		worker, err := m.Picker.PickAvailable()
+		if err != nil {
+			return err
+		}
+		if worker.Dispatch(ctx, link) {
+			return nil
+		}
+	}
+	return newError("unable to find an available mux client").AtWarning()
 }
 
 func (m *ClientWorker) Dispatch(ctx context.Context, link *transport.Link) bool {
 	if m.IsFull() || m.Closed() {
 		return false
 	}
-
 	sm := m.sessionManager
 	s := sm.Allocate()
 	if s == nil {
@@ -312,48 +202,55 @@ func (m *ClientWorker) Dispatch(ctx context.Context, link *transport.Link) bool 
 	return true
 }
 
+func (m *ClientWorker) fetchOutput() {
+	defer func() {
+		common.Must(m.done.Close())
+	}()
+	reader := &buf.BufferedReader{Reader: m.link.Reader}
+	var meta FrameMetadata
+	for {
+		err := meta.Unmarshal(reader)
+		if err != nil {
+			if errors.Cause(err) != io.EOF {
+				newError("failed to read metadata").Base(err).WriteToLog()
+			}
+			break
+		}
+		switch meta.SessionStatus {
+		case SessionStatusKeepAlive:
+			err = m.handleStatueKeepAlive(&meta, reader)
+		case SessionStatusEnd:
+			err = m.handleStatusEnd(&meta, reader)
+		case SessionStatusNew:
+			err = m.handleStatusNew(&meta, reader)
+		case SessionStatusKeep:
+			err = m.handleStatusKeep(&meta, reader)
+		default:
+			status := meta.SessionStatus
+			newError("unknown status: ", status).AtError().WriteToLog()
+			return
+		}
+		if err != nil {
+			newError("failed to process data").Base(err).WriteToLog()
+			return
+		}
+	}
+}
+
+func (p *IncrementalWorkerPicker) findAvailable() int {
+	for idx, w := range p.workers {
+		if !w.IsFull() {
+			return idx
+		}
+	}
+	return -1
+}
+
 func (m *ClientWorker) handleStatueKeepAlive(meta *FrameMetadata, reader *buf.BufferedReader) error {
 	if meta.Option.Has(OptionData) {
 		return buf.Copy(NewStreamReader(reader), buf.Discard)
 	}
 	return nil
-}
-
-func (m *ClientWorker) handleStatusNew(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
-}
-
-func (m *ClientWorker) handleStatusKeep(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if !meta.Option.Has(OptionData) {
-		return nil
-	}
-
-	s, found := m.sessionManager.Get(meta.SessionID)
-	if !found {
-		closingWriter := NewResponseWriter(meta.SessionID, m.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-
-	rr := s.NewReader(reader)
-	err := buf.Copy(rr, s.output)
-	if err != nil && buf.IsWriteError(err) {
-		newError("failed to write to downstream. closing session ", s.ID).Base(err).WriteToLog()
-
-		closingWriter := NewResponseWriter(meta.SessionID, m.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-
-		drainErr := buf.Copy(rr, buf.Discard)
-		common.Interrupt(s.input)
-		s.Close()
-		return drainErr
-	}
-
-	return err
 }
 
 func (m *ClientWorker) handleStatusEnd(meta *FrameMetadata, reader *buf.BufferedReader) error {
@@ -370,41 +267,110 @@ func (m *ClientWorker) handleStatusEnd(meta *FrameMetadata, reader *buf.Buffered
 	return nil
 }
 
-func (m *ClientWorker) fetchOutput() {
-	defer func() {
-		common.Must(m.done.Close())
-	}()
+func (m *ClientWorker) handleStatusKeep(meta *FrameMetadata, reader *buf.BufferedReader) error {
+	if !meta.Option.Has(OptionData) {
+		return nil
+	}
+	s, found := m.sessionManager.Get(meta.SessionID)
+	if !found {
+		closingWriter := NewResponseWriter(meta.SessionID, m.link.Writer, protocol.TransferTypeStream)
+		closingWriter.Close()
 
-	reader := &buf.BufferedReader{Reader: m.link.Reader}
+		return buf.Copy(NewStreamReader(reader), buf.Discard)
+	}
+	rr := s.NewReader(reader)
+	err := buf.Copy(rr, s.output)
+	if err != nil && buf.IsWriteError(err) {
+		newError("failed to write to downstream. closing session ", s.ID).Base(err).WriteToLog()
+		closingWriter := NewResponseWriter(meta.SessionID, m.link.Writer, protocol.TransferTypeStream)
+		closingWriter.Close()
+		drainErr := buf.Copy(rr, buf.Discard)
+		common.Interrupt(s.input)
+		s.Close()
+		return drainErr
+	}
+	return err
+}
 
-	var meta FrameMetadata
+func (m *ClientWorker) handleStatusNew(meta *FrameMetadata, reader *buf.BufferedReader) error {
+	if meta.Option.Has(OptionData) {
+		return buf.Copy(NewStreamReader(reader), buf.Discard)
+	}
+	return nil
+}
+
+func (m *ClientWorker) IsClosing() bool {
+	sm := m.sessionManager
+	if m.strategy.MaxConnection > 0 && sm.Count() >= int(m.strategy.MaxConnection) {
+		return true
+	}
+	return false
+}
+
+func (m *ClientWorker) IsFull() bool {
+	if m.IsClosing() || m.Closed() {
+		return true
+	}
+	sm := m.sessionManager
+	if m.strategy.MaxConcurrency > 0 && sm.Size() >= int(m.strategy.MaxConcurrency) {
+		return true
+	}
+	return false
+}
+
+func (m *ClientWorker) monitor() {
+	timer := time.NewTicker(time.Second * 16)
+	defer timer.Stop()
 	for {
-		err := meta.Unmarshal(reader)
-		if err != nil {
-			if errors.Cause(err) != io.EOF {
-				newError("failed to read metadata").Base(err).WriteToLog()
+		select {
+		case <-m.done.Wait():
+			m.sessionManager.Close()
+			common.Close(m.link.Writer)
+			common.Interrupt(m.link.Reader)
+			return
+		case <-timer.C:
+			size := m.sessionManager.Size()
+			if size == 0 && m.sessionManager.CloseIfNoSession() {
+				common.Must(m.done.Close())
 			}
-			break
-		}
-
-		switch meta.SessionStatus {
-		case SessionStatusKeepAlive:
-			err = m.handleStatueKeepAlive(&meta, reader)
-		case SessionStatusEnd:
-			err = m.handleStatusEnd(&meta, reader)
-		case SessionStatusNew:
-			err = m.handleStatusNew(&meta, reader)
-		case SessionStatusKeep:
-			err = m.handleStatusKeep(&meta, reader)
-		default:
-			status := meta.SessionStatus
-			newError("unknown status: ", status).AtError().WriteToLog()
-			return
-		}
-
-		if err != nil {
-			newError("failed to process data").Base(err).WriteToLog()
-			return
 		}
 	}
+}
+
+func (p *IncrementalWorkerPicker) PickAvailable() (*ClientWorker, error) {
+	worker, start, err := p.pickInternal()
+	if start {
+		common.Must(p.cleanupTask.Start())
+	}
+	return worker, err
+}
+
+func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, bool, error) {
+	p.access.Lock()
+	defer p.access.Unlock()
+	idx := p.findAvailable()
+	if idx >= 0 {
+		n := len(p.workers)
+		if n > 1 && idx != n-1 {
+			p.workers[n-1], p.workers[idx] = p.workers[idx], p.workers[n-1]
+		}
+		return p.workers[idx], false, nil
+	}
+	p.cleanup()
+	worker, err := p.Factory.Create()
+	if err != nil {
+		return nil, false, err
+	}
+	p.workers = append(p.workers, worker)
+	if p.cleanupTask == nil {
+		p.cleanupTask = &task.Periodic{
+			Interval: time.Second * 30,
+			Execute:  p.cleanupFunc,
+		}
+	}
+	return worker, true, nil
+}
+
+func (m *ClientWorker) TotalConnections() uint32 {
+	return uint32(m.sessionManager.Count())
 }

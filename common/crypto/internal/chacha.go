@@ -2,9 +2,7 @@ package internal
 
 //go:generate go run chacha_core_gen.go
 
-import (
-	"encoding/binary"
-)
+import "encoding/binary"
 
 const (
 	wordSize  = 4
