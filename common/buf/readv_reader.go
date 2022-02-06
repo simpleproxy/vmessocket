@@ -11,36 +11,10 @@ import (
 	"github.com/vmessocket/vmessocket/common/platform"
 )
 
+var useReadv = false
+
 type allocStrategy struct {
 	current uint32
-}
-
-func (s *allocStrategy) Current() uint32 {
-	return s.current
-}
-
-func (s *allocStrategy) Adjust(n uint32) {
-	if n >= s.current {
-		s.current *= 4
-	} else {
-		s.current = n
-	}
-
-	if s.current > 32 {
-		s.current = 32
-	}
-
-	if s.current == 0 {
-		s.current = 1
-	}
-}
-
-func (s *allocStrategy) Alloc() []*Buffer {
-	bs := make([]*Buffer, s.current)
-	for i := range bs {
-		bs[i] = New()
-	}
-	return bs
 }
 
 type multiReader interface {
@@ -67,9 +41,34 @@ func NewReadVReader(reader io.Reader, rawConn syscall.RawConn) *ReadVReader {
 	}
 }
 
+func (s *allocStrategy) Adjust(n uint32) {
+	if n >= s.current {
+		s.current *= 4
+	} else {
+		s.current = n
+	}
+	if s.current > 32 {
+		s.current = 32
+	}
+	if s.current == 0 {
+		s.current = 1
+	}
+}
+
+func (s *allocStrategy) Alloc() []*Buffer {
+	bs := make([]*Buffer, s.current)
+	for i := range bs {
+		bs[i] = New()
+	}
+	return bs
+}
+
+func (s *allocStrategy) Current() uint32 {
+	return s.current
+}
+
 func (r *ReadVReader) readMulti() (MultiBuffer, error) {
 	bs := r.alloc.Alloc()
-
 	r.mr.Init(bs)
 	var nBytes int32
 	err := r.rawConn.Read(func(fd uintptr) bool {
@@ -82,17 +81,14 @@ func (r *ReadVReader) readMulti() (MultiBuffer, error) {
 		return true
 	})
 	r.mr.Clear()
-
 	if err != nil {
 		ReleaseMulti(MultiBuffer(bs))
 		return nil, err
 	}
-
 	if nBytes == 0 {
 		ReleaseMulti(MultiBuffer(bs))
 		return nil, io.EOF
 	}
-
 	nBuf := 0
 	for nBuf < len(bs) {
 		if nBytes <= 0 {
@@ -106,12 +102,10 @@ func (r *ReadVReader) readMulti() (MultiBuffer, error) {
 		nBytes -= end
 		nBuf++
 	}
-
 	for i := nBuf; i < len(bs); i++ {
 		bs[i].Release()
 		bs[i] = nil
 	}
-
 	return MultiBuffer(bs[:nBuf]), nil
 }
 
@@ -123,7 +117,6 @@ func (r *ReadVReader) ReadMultiBuffer() (MultiBuffer, error) {
 		}
 		return MultiBuffer{b}, err
 	}
-
 	mb, err := r.readMulti()
 	if err != nil {
 		return nil, err
@@ -131,8 +124,6 @@ func (r *ReadVReader) ReadMultiBuffer() (MultiBuffer, error) {
 	r.alloc.Adjust(uint32(len(mb)))
 	return mb, nil
 }
-
-var useReadv = false
 
 func init() {
 	const defaultFlagValue = "NOT_DEFINED_AT_ALL"
