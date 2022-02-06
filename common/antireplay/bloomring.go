@@ -3,7 +3,7 @@ package antireplay
 import (
 	"sync"
 
-	ss_bloomring "github.com/v2fly/ss-bloomring"
+	"github.com/v2fly/ss-bloomring"
 )
 
 type BloomRing struct {
@@ -11,8 +11,13 @@ type BloomRing struct {
 	lock *sync.Mutex
 }
 
-func (b BloomRing) Interval() int64 {
-	return 9999999
+func NewBloomRing() BloomRing {
+	const (
+		DefaultSFCapacity = 1e6
+		DefaultSFFPR  = 1e-6
+		DefaultSFSlot = 10
+	)
+	return BloomRing{ss_bloomring.NewBloomRing(DefaultSFSlot, DefaultSFCapacity, DefaultSFFPR), &sync.Mutex{}}
 }
 
 func (b BloomRing) Check(sum []byte) bool {
@@ -25,11 +30,6 @@ func (b BloomRing) Check(sum []byte) bool {
 	return true
 }
 
-func NewBloomRing() BloomRing {
-	const (
-		DefaultSFCapacity = 1e6
-		DefaultSFFPR  = 1e-6
-		DefaultSFSlot = 10
-	)
-	return BloomRing{ss_bloomring.NewBloomRing(DefaultSFSlot, DefaultSFCapacity, DefaultSFFPR), &sync.Mutex{}}
+func (b BloomRing) Interval() int64 {
+	return 9999999
 }
