@@ -9,28 +9,6 @@ import (
 	"os"
 )
 
-func writeQuarterRound(file *os.File, a, b, c, d int) {
-	add := "x%d+=x%d\n"
-	xor := "x=x%d^x%d\n"
-	rotate := "x%d=(x << %d) | (x >> (32 - %d))\n"
-
-	fmt.Fprintf(file, add, a, b)
-	fmt.Fprintf(file, xor, d, a)
-	fmt.Fprintf(file, rotate, d, 16, 16)
-
-	fmt.Fprintf(file, add, c, d)
-	fmt.Fprintf(file, xor, b, c)
-	fmt.Fprintf(file, rotate, b, 12, 12)
-
-	fmt.Fprintf(file, add, a, b)
-	fmt.Fprintf(file, xor, d, a)
-	fmt.Fprintf(file, rotate, d, 8, 8)
-
-	fmt.Fprintf(file, add, c, d)
-	fmt.Fprintf(file, xor, b, c)
-	fmt.Fprintf(file, rotate, b, 7, 7)
-}
-
 func writeChacha20Block(file *os.File) {
 	fmt.Fprintln(file, `
 func ChaCha20Block(s *[16]uint32, out []byte, rounds int) {
@@ -38,7 +16,6 @@ func ChaCha20Block(s *[16]uint32, out []byte, rounds int) {
 	for i := 0; i < rounds; i+=2 {
     var x uint32
     `)
-
 	writeQuarterRound(file, 0, 4, 8, 12)
 	writeQuarterRound(file, 1, 5, 9, 13)
 	writeQuarterRound(file, 2, 6, 10, 14)
@@ -55,13 +32,30 @@ func ChaCha20Block(s *[16]uint32, out []byte, rounds int) {
 	fmt.Fprintln(file)
 }
 
+func writeQuarterRound(file *os.File, a, b, c, d int) {
+	add := "x%d+=x%d\n"
+	xor := "x=x%d^x%d\n"
+	rotate := "x%d=(x << %d) | (x >> (32 - %d))\n"
+	fmt.Fprintf(file, add, a, b)
+	fmt.Fprintf(file, xor, d, a)
+	fmt.Fprintf(file, rotate, d, 16, 16)
+	fmt.Fprintf(file, add, c, d)
+	fmt.Fprintf(file, xor, b, c)
+	fmt.Fprintf(file, rotate, b, 12, 12)
+	fmt.Fprintf(file, add, a, b)
+	fmt.Fprintf(file, xor, d, a)
+	fmt.Fprintf(file, rotate, d, 8, 8)
+	fmt.Fprintf(file, add, c, d)
+	fmt.Fprintf(file, xor, b, c)
+	fmt.Fprintf(file, rotate, b, 7, 7)
+}
+
 func main() {
 	file, err := os.OpenFile("chacha_core.generated.go", os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0o644)
 	if err != nil {
 		log.Fatalf("Failed to generate chacha_core.go: %v", err)
 	}
 	defer file.Close()
-
 	fmt.Fprintln(file, "package internal")
 	fmt.Fprintln(file)
 	fmt.Fprintln(file, "import \"encoding/binary\"")
