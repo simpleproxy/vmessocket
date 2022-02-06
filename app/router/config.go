@@ -12,20 +12,30 @@ type Rule struct {
 	Condition Condition
 }
 
-func (r *Rule) GetTag() (string, error) {
-	if r.Balancer != nil {
-		return r.Balancer.PickOutbound()
-	}
-	return r.Tag, nil
-}
-
 func (r *Rule) Apply(ctx routing.Context) bool {
 	return r.Condition.Apply(ctx)
 }
 
+func (br *BalancingRule) Build(ohm outbound.Manager) (*Balancer, error) {
+	switch br.Strategy {
+	case "leastPing":
+		return &Balancer{
+			selectors: br.OutboundSelector,
+			ohm:       ohm,
+		}, nil
+	case "random":
+		fallthrough
+	default:
+		return &Balancer{
+			selectors: br.OutboundSelector,
+			strategy:  &RandomStrategy{},
+			ohm:       ohm,
+		}, nil
+	}
+}
+
 func (rr *RoutingRule) BuildCondition() (Condition, error) {
 	conds := NewConditionChan()
-
 	if len(rr.Domain) > 0 {
 		switch rr.DomainMatcher {
 		case "mph", "hybrid":
@@ -45,31 +55,25 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 			conds.Add(matcher)
 		}
 	}
-
 	if len(rr.UserEmail) > 0 {
 		conds.Add(NewUserMatcher(rr.UserEmail))
 	}
-
 	if len(rr.InboundTag) > 0 {
 		conds.Add(NewInboundTagMatcher(rr.InboundTag))
 	}
-
 	if rr.PortList != nil {
 		conds.Add(NewPortMatcher(rr.PortList, false))
 	} else if rr.PortRange != nil {
 		conds.Add(NewPortMatcher(&net.PortList{Range: []*net.PortRange{rr.PortRange}}, false))
 	}
-
 	if rr.SourcePortList != nil {
 		conds.Add(NewPortMatcher(rr.SourcePortList, true))
 	}
-
 	if len(rr.Networks) > 0 {
 		conds.Add(NewNetworkMatcher(rr.Networks))
 	} else if rr.NetworkList != nil {
 		conds.Add(NewNetworkMatcher(rr.NetworkList.Network))
 	}
-
 	if len(rr.Geoip) > 0 {
 		cond, err := NewMultiGeoIPMatcher(rr.Geoip, false)
 		if err != nil {
@@ -83,7 +87,6 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 		}
 		conds.Add(cond)
 	}
-
 	if len(rr.SourceGeoip) > 0 {
 		cond, err := NewMultiGeoIPMatcher(rr.SourceGeoip, true)
 		if err != nil {
@@ -97,11 +100,9 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 		}
 		conds.Add(cond)
 	}
-
 	if len(rr.Protocol) > 0 {
 		conds.Add(NewProtocolMatcher(rr.Protocol))
 	}
-
 	if len(rr.Attributes) > 0 {
 		cond, err := NewAttributeMatcher(rr.Attributes)
 		if err != nil {
@@ -109,28 +110,15 @@ func (rr *RoutingRule) BuildCondition() (Condition, error) {
 		}
 		conds.Add(cond)
 	}
-
 	if conds.Len() == 0 {
 		return nil, newError("this rule has no effective fields").AtWarning()
 	}
-
 	return conds, nil
 }
 
-func (br *BalancingRule) Build(ohm outbound.Manager) (*Balancer, error) {
-	switch br.Strategy {
-	case "leastPing":
-		return &Balancer{
-			selectors: br.OutboundSelector,
-			ohm:       ohm,
-		}, nil
-	case "random":
-		fallthrough
-	default:
-		return &Balancer{
-			selectors: br.OutboundSelector,
-			strategy:  &RandomStrategy{},
-			ohm:       ohm,
-		}, nil
+func (r *Rule) GetTag() (string, error) {
+	if r.Balancer != nil {
+		return r.Balancer.PickOutbound()
 	}
+	return r.Tag, nil
 }
