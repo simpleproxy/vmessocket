@@ -6,9 +6,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/bytespool"
 )
 
-const (
-	Size = 2048
-)
+const Size = 2048
 
 var pool = bytespool.GetPool(Size)
 
@@ -41,31 +39,26 @@ func (b *Buffer) Release() {
 	pool.Put(p)
 }
 
-func (b *Buffer) Clear() {
-	b.start = 0
-	b.end = 0
+func (b *Buffer) Advance(from int32) {
+	if from < 0 {
+		from += b.Len()
+	}
+	b.start += from
 }
 
 func (b *Buffer) Byte(index int32) byte {
 	return b.v[b.start+index]
 }
 
-func (b *Buffer) SetByte(index int32, value byte) {
-	b.v[b.start+index] = value
-}
-
 func (b *Buffer) Bytes() []byte {
 	return b.v[b.start:b.end]
 }
 
-func (b *Buffer) Extend(n int32) []byte {
-	end := b.end + n
-	if end > int32(len(b.v)) {
-		panic("extending out of bound")
+func (b *Buffer) BytesFrom(from int32) []byte {
+	if from < 0 {
+		from += b.Len()
 	}
-	ext := b.v[b.end:end]
-	b.end = end
-	return ext
+	return b.v[b.start+from : b.end]
 }
 
 func (b *Buffer) BytesRange(from, to int32) []byte {
@@ -78,13 +71,6 @@ func (b *Buffer) BytesRange(from, to int32) []byte {
 	return b.v[b.start+from : b.start+to]
 }
 
-func (b *Buffer) BytesFrom(from int32) []byte {
-	if from < 0 {
-		from += b.Len()
-	}
-	return b.v[b.start+from : b.end]
-}
-
 func (b *Buffer) BytesTo(to int32) []byte {
 	if to < 0 {
 		to += b.Len()
@@ -92,32 +78,19 @@ func (b *Buffer) BytesTo(to int32) []byte {
 	return b.v[b.start : b.start+to]
 }
 
-func (b *Buffer) Resize(from, to int32) {
-	if from < 0 {
-		from += b.Len()
-	}
-	if to < 0 {
-		to += b.Len()
-	}
-	if to < from {
-		panic("Invalid slice")
-	}
-	b.end = b.start + to
-	b.start += from
+func (b *Buffer) Clear() {
+	b.start = 0
+	b.end = 0
 }
 
-func (b *Buffer) Advance(from int32) {
-	if from < 0 {
-		from += b.Len()
+func (b *Buffer) Extend(n int32) []byte {
+	end := b.end + n
+	if end > int32(len(b.v)) {
+		panic("extending out of bound")
 	}
-	b.start += from
-}
-
-func (b *Buffer) Len() int32 {
-	if b == nil {
-		return 0
-	}
-	return b.end - b.start
+	ext := b.v[b.end:end]
+	b.end = end
+	return ext
 }
 
 func (b *Buffer) IsEmpty() bool {
@@ -128,23 +101,11 @@ func (b *Buffer) IsFull() bool {
 	return b != nil && b.end == int32(len(b.v))
 }
 
-func (b *Buffer) Write(data []byte) (int, error) {
-	nBytes := copy(b.v[b.end:], data)
-	b.end += int32(nBytes)
-	return nBytes, nil
-}
-
-func (b *Buffer) WriteByte(v byte) error {
-	if b.IsFull() {
-		return newError("buffer full")
+func (b *Buffer) Len() int32 {
+	if b == nil {
+		return 0
 	}
-	b.v[b.end] = v
-	b.end++
-	return nil
-}
-
-func (b *Buffer) WriteString(s string) (int, error) {
-	return b.Write([]byte(s))
+	return b.end - b.start
 }
 
 func (b *Buffer) Read(data []byte) (int, error) {
@@ -177,6 +138,43 @@ func (b *Buffer) ReadFullFrom(reader io.Reader, size int32) (int64, error) {
 	return int64(n), err
 }
 
+func (b *Buffer) Resize(from, to int32) {
+	if from < 0 {
+		from += b.Len()
+	}
+	if to < 0 {
+		to += b.Len()
+	}
+	if to < from {
+		panic("Invalid slice")
+	}
+	b.end = b.start + to
+	b.start += from
+}
+
+func (b *Buffer) SetByte(index int32, value byte) {
+	b.v[b.start+index] = value
+}
+
 func (b *Buffer) String() string {
 	return string(b.Bytes())
+}
+
+func (b *Buffer) Write(data []byte) (int, error) {
+	nBytes := copy(b.v[b.end:], data)
+	b.end += int32(nBytes)
+	return nBytes, nil
+}
+
+func (b *Buffer) WriteByte(v byte) error {
+	if b.IsFull() {
+		return newError("buffer full")
+	}
+	b.v[b.end] = v
+	b.end++
+	return nil
+}
+
+func (b *Buffer) WriteString(s string) (int, error) {
+	return b.Write([]byte(s))
 }
