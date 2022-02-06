@@ -16,3 +16,4 @@ go build -o vmessocket.exe -trimpath -ldflags "-s -w -buildid=" ./main
 ```bash
 go build -o vmessocket -trimpath -ldflags "-s -w -buildid=" ./main
 ```
+![Go](https://img.shields.io:/github/go-mod/go-version/vmessocket/vmessocket)
