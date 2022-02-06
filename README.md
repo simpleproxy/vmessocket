@@ -3,6 +3,8 @@
 - generated from the source code [v4.44.0](https://github.com/v2fly)
 - a stable implementation of vmess and websocket which is mostly used by network providers
 
+![Go](https://img.shields.io:/github/go-mod/go-version/vmessocket/vmessocket)
+
 ## Compilation
 
 ### Windows
@@ -16,4 +18,3 @@ go build -o vmessocket.exe -trimpath -ldflags "-s -w -buildid=" ./main
 ```bash
 go build -o vmessocket -trimpath -ldflags "-s -w -buildid=" ./main
 ```
-![Go](https://img.shields.io:/github/go-mod/go-version/vmessocket/vmessocket)
