@@ -28,17 +28,6 @@ func StackNew() Buffer {
 	}
 }
 
-func (b *Buffer) Release() {
-	if b == nil || b.v == nil {
-		return
-	}
-
-	p := b.v
-	b.v = nil
-	b.Clear()
-	pool.Put(p)
-}
-
 func (b *Buffer) Advance(from int32) {
 	if from < 0 {
 		from += b.Len()
@@ -136,6 +125,16 @@ func (b *Buffer) ReadFullFrom(reader io.Reader, size int32) (int64, error) {
 	n, err := io.ReadFull(reader, b.v[b.end:end])
 	b.end += int32(n)
 	return int64(n), err
+}
+
+func (b *Buffer) Release() {
+	if b == nil || b.v == nil {
+		return
+	}
+	p := b.v
+	b.v = nil
+	b.Clear()
+	pool.Put(p)
 }
 
 func (b *Buffer) Resize(from, to int32) {
