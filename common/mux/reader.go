@@ -20,6 +20,10 @@ func NewPacketReader(reader io.Reader) *PacketReader {
 	}
 }
 
+func NewStreamReader(reader *buf.BufferedReader) buf.Reader {
+	return crypto.NewChunkStreamReaderWithChunkCount(crypto.PlainChunkSizeParser{}, reader, 1)
+}
+
 func (r *PacketReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	if r.eof {
 		return nil, io.EOF
@@ -41,8 +45,4 @@ func (r *PacketReader) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	}
 	r.eof = true
 	return buf.MultiBuffer{b}, nil
-}
-
-func NewStreamReader(reader *buf.BufferedReader) buf.Reader {
-	return crypto.NewChunkStreamReaderWithChunkCount(crypto.PlainChunkSizeParser{}, reader, 1)
 }
