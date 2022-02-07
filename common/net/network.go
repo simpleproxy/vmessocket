@@ -1,5 +1,14 @@
 package net
 
+func HasNetwork(list []Network, network Network) bool {
+	for _, value := range list {
+		if value == network {
+			return true
+		}
+	}
+	return false
+}
+
 func (n Network) SystemString() string {
 	switch n {
 	case Network_TCP:
@@ -11,13 +20,4 @@ func (n Network) SystemString() string {
 	default:
 		return "unknown"
 	}
-}
-
-func HasNetwork(list []Network, network Network) bool {
-	for _, value := range list {
-		if value == network {
-			return true
-		}
-	}
-	return false
 }
