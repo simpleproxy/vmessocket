@@ -62,6 +62,10 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Get release preparation files
+        run: 
+          git clone https://github.com/vmessocket/release.git release
+
       - name: Show workflow information
         id: get_filename
         run: |
