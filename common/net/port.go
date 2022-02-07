@@ -5,6 +5,13 @@ import (
 	"strconv"
 )
 
+type MemoryPortList []MemoryPortRange
+
+type MemoryPortRange struct {
+	From Port
+	To   Port
+}
+
 type Port uint16
 
 func PortFromBytes(port []byte) Port {
@@ -26,24 +33,12 @@ func PortFromString(s string) (Port, error) {
 	return PortFromInt(uint32(val))
 }
 
-func (p Port) Value() uint16 {
-	return uint16(p)
-}
-
-func (p Port) String() string {
-	return strconv.Itoa(int(p))
-}
-
-func (p *PortRange) FromPort() Port {
-	return Port(p.From)
-}
-
-func (p *PortRange) ToPort() Port {
-	return Port(p.To)
-}
-
-func (p *PortRange) Contains(port Port) bool {
-	return p.FromPort() <= port && port <= p.ToPort()
+func PortListFromProto(l *PortList) MemoryPortList {
+	mpl := make(MemoryPortList, 0, len(l.Range))
+	for _, r := range l.Range {
+		mpl = append(mpl, MemoryPortRange{From: Port(r.From), To: Port(r.To)})
+	}
+	return mpl
 }
 
 func SinglePortRange(p Port) *PortRange {
@@ -53,25 +48,6 @@ func SinglePortRange(p Port) *PortRange {
 	}
 }
 
-type MemoryPortRange struct {
-	From Port
-	To   Port
-}
-
-func (r MemoryPortRange) Contains(port Port) bool {
-	return r.From <= port && port <= r.To
-}
-
-type MemoryPortList []MemoryPortRange
-
-func PortListFromProto(l *PortList) MemoryPortList {
-	mpl := make(MemoryPortList, 0, len(l.Range))
-	for _, r := range l.Range {
-		mpl = append(mpl, MemoryPortRange{From: Port(r.From), To: Port(r.To)})
-	}
-	return mpl
-}
-
 func (mpl MemoryPortList) Contains(port Port) bool {
 	for _, pr := range mpl {
 		if pr.Contains(port) {
@@ -79,4 +55,28 @@ func (mpl MemoryPortList) Contains(port Port) bool {
 		}
 	}
 	return false
+}
+
+func (r MemoryPortRange) Contains(port Port) bool {
+	return r.From <= port && port <= r.To
+}
+
+func (p *PortRange) Contains(port Port) bool {
+	return p.FromPort() <= port && port <= p.ToPort()
+}
+
+func (p *PortRange) FromPort() Port {
+	return Port(p.From)
+}
+
+func (p Port) String() string {
+	return strconv.Itoa(int(p))
+}
+
+func (p *PortRange) ToPort() Port {
+	return Port(p.To)
+}
+
+func (p Port) Value() uint16 {
+	return uint16(p)
 }
