@@ -64,11 +64,11 @@ jobs:
 
       - name: Get release preparation files
         run: 
-          git clone https://github.com/vmessocket/release.git release
+          git clone https://github.com/vmessocket/release.git
 
       - name: Show workflow information
         id: get_filename
-        run: |
+        run:
           export _NAME=$(jq ".[\"$GOOS-$GOARCH$GOARM\"].friendlyName" -r < release/friendly-filenames.json)
           echo "GOOS: $GOOS, GOARCH: $GOARCH, GOARM: $GOARM, RELEASE_NAME: $_NAME"
           echo "::set-output name=ASSET_NAME::$_NAME"
