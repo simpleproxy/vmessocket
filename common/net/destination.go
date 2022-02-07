@@ -29,7 +29,6 @@ func ParseDestination(dest string) (Destination, error) {
 		Address: AnyIP,
 		Port:    Port(0),
 	}
-
 	switch {
 	case strings.HasPrefix(dest, "tcp:"):
 		d.Network = Network_TCP
@@ -41,7 +40,6 @@ func ParseDestination(dest string) (Destination, error) {
 		d = UnixDestination(DomainAddress(dest[5:]))
 		return d, nil
 	}
-
 	hstr, pstr, err := SplitHostPort(dest)
 	if err != nil {
 		return d, err
@@ -82,6 +80,18 @@ func UnixDestination(address Address) Destination {
 	}
 }
 
+func (p *Endpoint) AsDestination() Destination {
+	return Destination{
+		Network: p.Network,
+		Address: p.Address.AsAddress(),
+		Port:    Port(p.Port),
+	}
+}
+
+func (d Destination) IsValid() bool {
+	return d.Network != Network_Unknown
+}
+
 func (d Destination) NetAddr() string {
 	addr := ""
 	if d.Network == Network_TCP || d.Network == Network_UDP {
@@ -103,16 +113,4 @@ func (d Destination) String() string {
 		prefix = "unix:"
 	}
 	return prefix + d.NetAddr()
-}
-
-func (d Destination) IsValid() bool {
-	return d.Network != Network_Unknown
-}
-
-func (p *Endpoint) AsDestination() Destination {
-	return Destination{
-		Network: p.Network,
-		Address: p.Address.AsAddress(),
-		Port:    Port(p.Port),
-	}
 }
