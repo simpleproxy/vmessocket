@@ -1,12 +1,15 @@
 package core
 
-import (
-	"context"
-)
-
-type vmessocketKeyType int
+import "context"
 
 const vmessocketKey vmessocketKeyType = 1
+
+type temporaryValueDelegationFix struct {
+	context.Context
+	value context.Context
+}
+
+type vmessocketKeyType int
 
 func FromContext(ctx context.Context) *Instance {
 	if s, ok := ctx.Value(vmessocketKey).(*Instance); ok {
@@ -23,20 +26,15 @@ func MustFromContext(ctx context.Context) *Instance {
 	return v
 }
 
+func ToBackgroundDetachedContext(ctx context.Context) context.Context {
+	return &temporaryValueDelegationFix{context.Background(), ctx}
+}
+
 func toContext(ctx context.Context, v *Instance) context.Context {
 	if FromContext(ctx) != v {
 		ctx = context.WithValue(ctx, vmessocketKey, v)
 	}
 	return ctx
-}
-
-func ToBackgroundDetachedContext(ctx context.Context) context.Context {
-	return &temporaryValueDelegationFix{context.Background(), ctx}
-}
-
-type temporaryValueDelegationFix struct {
-	context.Context
-	value context.Context
 }
 
 func (t *temporaryValueDelegationFix) Value(key interface{}) interface{} {
