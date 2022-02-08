@@ -245,16 +245,6 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection i
 		return newError("client is using insecure encryption: ", request.Security)
 	}
 
-	if request.Command != protocol.RequestCommandMux {
-		ctx = log.ContextWithAccessMessage(ctx, &log.AccessMessage{
-			From:   connection.RemoteAddr(),
-			To:     request.Destination(),
-			Status: log.AccessAccepted,
-			Reason: "",
-			Email:  request.User.Email,
-		})
-	}
-
 	newError("received request for ", request.Destination()).WriteToLog(session.ExportIDToError(ctx))
 
 	if err := connection.SetReadDeadline(time.Time{}); err != nil {
