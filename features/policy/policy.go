@@ -9,15 +9,30 @@ import (
 	"github.com/vmessocket/vmessocket/features"
 )
 
-type Timeout struct {
-	Handshake      time.Duration
-	ConnectionIdle time.Duration
-	UplinkOnly     time.Duration
-	DownlinkOnly   time.Duration
-}
+const bufferPolicyKey policyKey = 0
+
+var defaultBufferSize int32
 
 type Buffer struct {
 	PerConnection int32
+}
+
+type Manager interface {
+	features.Feature
+	ForLevel(level uint32) Session
+	ForSystem() System
+}
+
+type policyKey int32
+
+type Session struct {
+	Timeouts Timeout
+	Buffer   Buffer
+}
+
+type System struct {
+	Stats  SystemStats
+	Buffer Buffer
 }
 
 type SystemStats struct {
@@ -27,27 +42,46 @@ type SystemStats struct {
 	OutboundDownlink bool
 }
 
-type System struct {
-	Stats  SystemStats
-	Buffer Buffer
+type Timeout struct {
+	Handshake      time.Duration
+	ConnectionIdle time.Duration
+	UplinkOnly     time.Duration
+	DownlinkOnly   time.Duration
 }
 
-type Session struct {
-	Timeouts Timeout
-	Buffer   Buffer
+func BufferPolicyFromContext(ctx context.Context) Buffer {
+	pPolicy := ctx.Value(bufferPolicyKey)
+	if pPolicy == nil {
+		return defaultBufferPolicy()
+	}
+	return pPolicy.(Buffer)
 }
 
-type Manager interface {
-	features.Feature
-	ForLevel(level uint32) Session
-	ForSystem() System
+func ContextWithBufferPolicy(ctx context.Context, p Buffer) context.Context {
+	return context.WithValue(ctx, bufferPolicyKey, p)
+}
+
+func defaultBufferPolicy() Buffer {
+	return Buffer{
+		PerConnection: defaultBufferSize,
+	}
 }
 
 func ManagerType() interface{} {
 	return (*Manager)(nil)
 }
 
-var defaultBufferSize int32
+func SessionDefault() Session {
+	return Session{
+		Timeouts: Timeout{
+			Handshake:      time.Second * 60,
+			ConnectionIdle: time.Second * 300,
+			UplinkOnly:     time.Second * 1,
+			DownlinkOnly:   time.Second * 1,
+		},
+		Buffer: defaultBufferPolicy(),
+	}
+}
 
 func init() {
 	const key = "vmessocket.buffer.size"
@@ -56,7 +90,6 @@ func init() {
 		Name:    key,
 		AltName: platform.NormalizeEnvName(key),
 	}.GetValueAsInt(defaultValue)
-
 	switch size {
 	case 0:
 		defaultBufferSize = -1
@@ -72,40 +105,4 @@ func init() {
 	default:
 		defaultBufferSize = int32(size) * 1024 * 1024
 	}
-}
-
-func defaultBufferPolicy() Buffer {
-	return Buffer{
-		PerConnection: defaultBufferSize,
-	}
-}
-
-func SessionDefault() Session {
-	return Session{
-		Timeouts: Timeout{
-			Handshake:      time.Second * 60,
-			ConnectionIdle: time.Second * 300,
-			UplinkOnly:     time.Second * 1,
-			DownlinkOnly:   time.Second * 1,
-		},
-		Buffer: defaultBufferPolicy(),
-	}
-}
-
-type policyKey int32
-
-const (
-	bufferPolicyKey policyKey = 0
-)
-
-func ContextWithBufferPolicy(ctx context.Context, p Buffer) context.Context {
-	return context.WithValue(ctx, bufferPolicyKey, p)
-}
-
-func BufferPolicyFromContext(ctx context.Context) Buffer {
-	pPolicy := ctx.Value(bufferPolicyKey)
-	if pPolicy == nil {
-		return defaultBufferPolicy()
-	}
-	return pPolicy.(Buffer)
 }
