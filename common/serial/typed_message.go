@@ -7,6 +7,18 @@ import (
 	"github.com/golang/protobuf/proto"
 )
 
+func GetInstance(messageType string) (interface{}, error) {
+	mType := proto.MessageType(messageType)
+	if mType == nil || mType.Elem() == nil {
+		return nil, errors.New("Serial: Unknown type: " + messageType)
+	}
+	return reflect.New(mType.Elem()).Interface(), nil
+}
+
+func GetMessageType(message proto.Message) string {
+	return proto.MessageName(message)
+}
+
 func ToTypedMessage(message proto.Message) *TypedMessage {
 	if message == nil {
 		return nil
@@ -16,18 +28,6 @@ func ToTypedMessage(message proto.Message) *TypedMessage {
 		Type:  GetMessageType(message),
 		Value: settings,
 	}
-}
-
-func GetMessageType(message proto.Message) string {
-	return proto.MessageName(message)
-}
-
-func GetInstance(messageType string) (interface{}, error) {
-	mType := proto.MessageType(messageType)
-	if mType == nil || mType.Elem() == nil {
-		return nil, errors.New("Serial: Unknown type: " + messageType)
-	}
-	return reflect.New(mType.Elem()).Interface(), nil
 }
 
 func (v *TypedMessage) GetInstance() (proto.Message, error) {
