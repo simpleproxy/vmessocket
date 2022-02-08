@@ -14,6 +14,10 @@ type memConservativeLoader struct {
 	geositecache GeoSiteCache
 }
 
+func newMemConservativeLoader() geodata.LoaderImplementation {
+	return &memConservativeLoader{make(map[string]*router.GeoIP), make(map[string]*router.GeoSite)}
+}
+
 func (m *memConservativeLoader) LoadIP(filename, country string) ([]*router.CIDR, error) {
 	defer runtime.GC()
 	geoip, err := m.geoipcache.Unmarshal(filename, country)
@@ -30,10 +34,6 @@ func (m *memConservativeLoader) LoadSite(filename, list string) ([]*router.Domai
 		return nil, newError("failed to decode geodata file: ", filename).Base(err)
 	}
 	return geosite.Domain, nil
-}
-
-func newMemConservativeLoader() geodata.LoaderImplementation {
-	return &memConservativeLoader{make(map[string]*router.GeoIP), make(map[string]*router.GeoSite)}
 }
 
 func init() {
