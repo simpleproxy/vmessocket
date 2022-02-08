@@ -2,8 +2,8 @@ package strmatcher
 
 import "strings"
 
-func breakDomain(domain string) []string {
-	return strings.Split(domain, ".")
+type DomainMatcherGroup struct {
+	root *node
 }
 
 type node struct {
@@ -11,15 +11,14 @@ type node struct {
 	sub    map[string]*node
 }
 
-type DomainMatcherGroup struct {
-	root *node
+func breakDomain(domain string) []string {
+	return strings.Split(domain, ".")
 }
 
 func (g *DomainMatcherGroup) Add(domain string, value uint32) {
 	if g.root == nil {
 		g.root = new(node)
 	}
-
 	current := g.root
 	parts := breakDomain(domain)
 	for i := len(parts) - 1; i >= 0; i-- {
@@ -34,7 +33,6 @@ func (g *DomainMatcherGroup) Add(domain string, value uint32) {
 		}
 		current = next
 	}
-
 	current.values = append(current.values, value)
 }
 
@@ -46,12 +44,10 @@ func (g *DomainMatcherGroup) Match(domain string) []uint32 {
 	if domain == "" {
 		return nil
 	}
-
 	current := g.root
 	if current == nil {
 		return nil
 	}
-
 	nextPart := func(idx int) int {
 		for i := idx - 1; i >= 0; i-- {
 			if domain[i] == '.' {
@@ -60,14 +56,12 @@ func (g *DomainMatcherGroup) Match(domain string) []uint32 {
 		}
 		return -1
 	}
-
 	matches := [][]uint32{}
 	idx := len(domain)
 	for {
 		if idx == -1 || current.sub == nil {
 			break
 		}
-
 		nidx := nextPart(idx)
 		part := domain[nidx+1 : idx]
 		next := current.sub[part]
