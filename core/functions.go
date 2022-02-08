@@ -18,29 +18,12 @@ func CreateObject(v *Instance, config interface{}) (interface{}, error) {
 	return common.CreateObject(ctx, config)
 }
 
-func StartInstance(configFormat string, configBytes []byte) (*Instance, error) {
-	config, err := LoadConfig(configFormat, "", bytes.NewReader(configBytes))
-	if err != nil {
-		return nil, err
-	}
-	instance, err := New(config)
-	if err != nil {
-		return nil, err
-	}
-	if err := instance.Start(); err != nil {
-		return nil, err
-	}
-	return instance, nil
-}
-
 func Dial(ctx context.Context, v *Instance, dest net.Destination) (net.Conn, error) {
 	ctx = toContext(ctx, v)
-
 	dispatcher := v.GetFeature(routing.DispatcherType())
 	if dispatcher == nil {
 		return nil, newError("routing.Dispatcher is not registered in vmessocket")
 	}
-
 	r, err := dispatcher.(routing.Dispatcher).Dispatch(ctx, dest)
 	if err != nil {
 		return nil, err
@@ -56,10 +39,24 @@ func Dial(ctx context.Context, v *Instance, dest net.Destination) (net.Conn, err
 
 func DialUDP(ctx context.Context, v *Instance) (net.PacketConn, error) {
 	ctx = toContext(ctx, v)
-
 	dispatcher := v.GetFeature(routing.DispatcherType())
 	if dispatcher == nil {
 		return nil, newError("routing.Dispatcher is not registered in vmessocket")
 	}
 	return udp.DialDispatcher(ctx, dispatcher.(routing.Dispatcher))
+}
+
+func StartInstance(configFormat string, configBytes []byte) (*Instance, error) {
+	config, err := LoadConfig(configFormat, "", bytes.NewReader(configBytes))
+	if err != nil {
+		return nil, err
+	}
+	instance, err := New(config)
+	if err != nil {
+		return nil, err
+	}
+	if err := instance.Start(); err != nil {
+		return nil, err
+	}
+	return instance, nil
 }
