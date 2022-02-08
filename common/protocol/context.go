@@ -4,11 +4,9 @@ import (
 	"context"
 )
 
-type key int
+const requestKey key = iota
 
-const (
-	requestKey key = iota
-)
+type key int
 
 func ContextWithRequestHeader(ctx context.Context, request *RequestHeader) context.Context {
 	return context.WithValue(ctx, requestKey, request)
