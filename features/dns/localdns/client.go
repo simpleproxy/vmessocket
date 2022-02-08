@@ -7,13 +7,13 @@ import (
 
 type Client struct{}
 
-func (*Client) Type() interface{} {
-	return dns.ClientType()
+func New() *Client {
+	return &Client{}
 }
 
-func (*Client) Start() error { return nil }
-
-func (*Client) Close() error { return nil }
+func (*Client) Close() error {
+	return nil
+}
 
 func (*Client) LookupIP(host string) ([]net.IP, error) {
 	ips, err := net.LookupIP(host)
@@ -67,6 +67,10 @@ func (c *Client) LookupIPv6(host string) ([]net.IP, error) {
 	return ipv6, nil
 }
 
-func New() *Client {
-	return &Client{}
+func (*Client) Start() error {
+	return nil
+}
+
+func (*Client) Type() interface{} {
+	return dns.ClientType()
 }
