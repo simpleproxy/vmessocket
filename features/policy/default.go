@@ -1,13 +1,11 @@
 package policy
 
-import (
-	"time"
-)
+import "time"
 
 type DefaultManager struct{}
 
-func (DefaultManager) Type() interface{} {
-	return ManagerType()
+func (DefaultManager) Close() error {
+	return nil
 }
 
 func (DefaultManager) ForLevel(level uint32) Session {
@@ -26,6 +24,6 @@ func (DefaultManager) Start() error {
 	return nil
 }
 
-func (DefaultManager) Close() error {
-	return nil
+func (DefaultManager) Type() interface{} {
+	return ManagerType()
 }

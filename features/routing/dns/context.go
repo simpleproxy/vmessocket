@@ -14,28 +14,28 @@ type ResolvableContext struct {
 	resolvedIPs []net.IP
 }
 
+func ContextWithDNSClient(ctx routing.Context, client dns.Client) routing.Context {
+	return &ResolvableContext{Context: ctx, dnsClient: client}
+}
+
 func (ctx *ResolvableContext) GetTargetIPs() []net.IP {
 	if ips := ctx.Context.GetTargetIPs(); len(ips) != 0 {
 		return ips
 	}
-
 	if len(ctx.resolvedIPs) > 0 {
 		return ctx.resolvedIPs
 	}
-
 	if domain := ctx.GetTargetDomain(); len(domain) != 0 {
 		lookupFunc := ctx.dnsClient.LookupIP
 		ipOption := &dns.IPOption{
 			IPv4Enable: true,
 			IPv6Enable: true,
 		}
-
 		if c, ok := ctx.dnsClient.(dns.ClientWithIPOption); ok {
 			ipOption = c.GetIPOption()
 		} else {
 			newError("ctx.dnsClient doesn't implement ClientWithIPOption").AtDebug().WriteToLog()
 		}
-
 		switch {
 		case ipOption.IPv4Enable && !ipOption.IPv6Enable:
 			if lookupIPv4, ok := ctx.dnsClient.(dns.IPv4Lookup); ok {
@@ -50,7 +50,6 @@ func (ctx *ResolvableContext) GetTargetIPs() []net.IP {
 				newError("ctx.dnsClient doesn't implement IPv6Lookup. Use LookupIP instead.").AtDebug().WriteToLog()
 			}
 		}
-
 		ips, err := lookupFunc(domain)
 		if err == nil {
 			ctx.resolvedIPs = ips
@@ -58,10 +57,5 @@ func (ctx *ResolvableContext) GetTargetIPs() []net.IP {
 		}
 		newError("resolve ip for ", domain).Base(err).WriteToLog()
 	}
-
 	return nil
-}
-
-func ContextWithDNSClient(ctx routing.Context, client dns.Client) routing.Context {
-	return &ResolvableContext{Context: ctx, dnsClient: client}
 }

@@ -5,10 +5,7 @@ import (
 	"github.com/vmessocket/vmessocket/features"
 )
 
-type Router interface {
-	features.Feature
-	PickRoute(ctx Context) (Route, error)
-}
+type DefaultRouter struct{}
 
 type Route interface {
 	Context
@@ -16,14 +13,17 @@ type Route interface {
 	GetOutboundTag() string
 }
 
+type Router interface {
+	features.Feature
+	PickRoute(ctx Context) (Route, error)
+}
+
 func RouterType() interface{} {
 	return (*Router)(nil)
 }
 
-type DefaultRouter struct{}
-
-func (DefaultRouter) Type() interface{} {
-	return RouterType()
+func (DefaultRouter) Close() error {
+	return nil
 }
 
 func (DefaultRouter) PickRoute(ctx Context) (Route, error) {
@@ -34,6 +34,6 @@ func (DefaultRouter) Start() error {
 	return nil
 }
 
-func (DefaultRouter) Close() error {
-	return nil
+func (DefaultRouter) Type() interface{} {
+	return RouterType()
 }
