@@ -12,6 +12,11 @@ import (
 	"github.com/vmessocket/vmessocket/main/confloader"
 )
 
+var (
+	configLoaderByName = make(map[string]*ConfigFormat)
+	configLoaderByExt  = make(map[string]*ConfigFormat)
+)
+
 type ConfigFormat struct {
 	Name      string
 	Extension []string
@@ -19,29 +24,6 @@ type ConfigFormat struct {
 }
 
 type ConfigLoader func(input interface{}) (*Config, error)
-
-var (
-	configLoaderByName = make(map[string]*ConfigFormat)
-	configLoaderByExt  = make(map[string]*ConfigFormat)
-)
-
-func RegisterConfigLoader(format *ConfigFormat) error {
-	name := strings.ToLower(format.Name)
-	if _, found := configLoaderByName[name]; found {
-		return newError(format.Name, " already registered.")
-	}
-	configLoaderByName[name] = format
-
-	for _, ext := range format.Extension {
-		lext := strings.ToLower(ext)
-		if f, found := configLoaderByExt[lext]; found {
-			return newError(ext, " already registered to ", f.Name)
-		}
-		configLoaderByExt[lext] = format
-	}
-
-	return nil
-}
 
 func getExtension(filename string) string {
 	idx := strings.LastIndexByte(filename, '.')
@@ -58,11 +40,9 @@ func LoadConfig(formatName string, filename string, input interface{}) (*Config,
 			return f.Loader(input)
 		}
 	}
-
 	if f, found := configLoaderByName[formatName]; found {
 		return f.Loader(input)
 	}
-
 	return nil, newError("Unable to load config in ", formatName).AtWarning()
 }
 
@@ -72,6 +52,22 @@ func loadProtobufConfig(data []byte) (*Config, error) {
 		return nil, err
 	}
 	return config, nil
+}
+
+func RegisterConfigLoader(format *ConfigFormat) error {
+	name := strings.ToLower(format.Name)
+	if _, found := configLoaderByName[name]; found {
+		return newError(format.Name, " already registered.")
+	}
+	configLoaderByName[name] = format
+	for _, ext := range format.Extension {
+		lext := strings.ToLower(ext)
+		if f, found := configLoaderByExt[lext]; found {
+			return newError(ext, " already registered to ", f.Name)
+		}
+		configLoaderByExt[lext] = format
+	}
+	return nil
 }
 
 func init() {
