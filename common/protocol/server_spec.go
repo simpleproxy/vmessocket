@@ -8,46 +8,32 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 )
 
-type ValidationStrategy interface {
-	IsValid() bool
-	Invalidate()
-}
-
 type alwaysValidStrategy struct{}
-
-func AlwaysValid() ValidationStrategy {
-	return alwaysValidStrategy{}
-}
-
-func (alwaysValidStrategy) IsValid() bool {
-	return true
-}
-
-func (alwaysValidStrategy) Invalidate() {}
-
-type timeoutValidStrategy struct {
-	until time.Time
-}
-
-func BeforeTime(t time.Time) ValidationStrategy {
-	return &timeoutValidStrategy{
-		until: t,
-	}
-}
-
-func (s *timeoutValidStrategy) IsValid() bool {
-	return s.until.After(time.Now())
-}
-
-func (s *timeoutValidStrategy) Invalidate() {
-	s.until = time.Time{}
-}
 
 type ServerSpec struct {
 	sync.RWMutex
 	dest  net.Destination
 	users []*MemoryUser
 	valid ValidationStrategy
+}
+
+type timeoutValidStrategy struct {
+	until time.Time
+}
+
+type ValidationStrategy interface {
+	IsValid() bool
+	Invalidate()
+}
+
+func AlwaysValid() ValidationStrategy {
+	return alwaysValidStrategy{}
+}
+
+func BeforeTime(t time.Time) ValidationStrategy {
+	return &timeoutValidStrategy{
+		until: t,
+	}
 }
 
 func NewServerSpec(dest net.Destination, valid ValidationStrategy, users ...*MemoryUser) *ServerSpec {
@@ -71,6 +57,15 @@ func NewServerSpecFromPB(spec *ServerEndpoint) (*ServerSpec, error) {
 	return NewServerSpec(dest, AlwaysValid(), mUsers...), nil
 }
 
+func (s *ServerSpec) AddUser(user *MemoryUser) {
+	if s.HasUser(user) {
+		return
+	}
+	s.Lock()
+	defer s.Unlock()
+	s.users = append(s.users, user)
+}
+
 func (s *ServerSpec) Destination() net.Destination {
 	return s.dest
 }
@@ -87,21 +82,31 @@ func (s *ServerSpec) HasUser(user *MemoryUser) bool {
 	return false
 }
 
-func (s *ServerSpec) AddUser(user *MemoryUser) {
-	if s.HasUser(user) {
-		return
-	}
+func (alwaysValidStrategy) Invalidate() {}
 
-	s.Lock()
-	defer s.Unlock()
+func (alwaysValidStrategy) IsValid() bool {
+	return true
+}
 
-	s.users = append(s.users, user)
+func (s *ServerSpec) IsValid() bool {
+	return s.valid.IsValid()
+}
+
+func (s *timeoutValidStrategy) IsValid() bool {
+	return s.until.After(time.Now())
+}
+
+func (s *ServerSpec) Invalidate() {
+	s.valid.Invalidate()
+}
+
+func (s *timeoutValidStrategy) Invalidate() {
+	s.until = time.Time{}
 }
 
 func (s *ServerSpec) PickUser() *MemoryUser {
 	s.RLock()
 	defer s.RUnlock()
-
 	userCount := len(s.users)
 	switch userCount {
 	case 0:
@@ -111,12 +116,4 @@ func (s *ServerSpec) PickUser() *MemoryUser {
 	default:
 		return s.users[dice.Roll(userCount)]
 	}
-}
-
-func (s *ServerSpec) IsValid() bool {
-	return s.valid.IsValid()
-}
-
-func (s *ServerSpec) Invalidate() {
-	s.valid.Invalidate()
 }
