@@ -18,6 +18,15 @@ type EmbeddedHashProtectedLoader struct {
 	checkedFile map[string]string
 }
 
+func NewEmbeddedHashProtectedLoader() *EmbeddedHashProtectedLoader {
+	instructions := insmgr.ReadAllIns(bytes.NewReader([]byte(allowedHashes)))
+	checkedFile, _, ok := signerVerify.CheckAsClient(instructions, "v2fly", true)
+	if !ok {
+		panic("Embedded Hash data is invalid")
+	}
+	return &EmbeddedHashProtectedLoader{checkedFile: checkedFile}
+}
+
 func (e EmbeddedHashProtectedLoader) VerifyAndLoad(filename string) ([]byte, error) {
 	platformFileName := filepath.FromSlash(filename)
 	fileContent, err := filesystem.ReadFile(platform.GetAssetLocation(platformFileName))
@@ -34,15 +43,6 @@ func (e EmbeddedHashProtectedLoader) VerifyAndLoad(filename string) ([]byte, err
 		}
 	}
 	return nil, newError("Unrecognized file at ", filename, " can not be loaded for execution")
-}
-
-func NewEmbeddedHashProtectedLoader() *EmbeddedHashProtectedLoader {
-	instructions := insmgr.ReadAllIns(bytes.NewReader([]byte(allowedHashes)))
-	checkedFile, _, ok := signerVerify.CheckAsClient(instructions, "v2fly", true)
-	if !ok {
-		panic("Embedded Hash data is invalid")
-	}
-	return &EmbeddedHashProtectedLoader{checkedFile: checkedFile}
 }
 
 func init() {
