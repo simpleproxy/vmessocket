@@ -11,22 +11,34 @@ import (
 )
 
 var (
+	errCodeNotFound                 = errors.New("code not found")
 	errFailedToReadBytes            = errors.New("failed to read bytes")
 	errFailedToReadExpectedLenBytes = errors.New("failed to read expected length of bytes")
 	errInvalidGeodataFile           = errors.New("invalid geodata file")
 	errInvalidGeodataVarintLength   = errors.New("invalid geodata varint length")
-	errCodeNotFound                 = errors.New("code not found")
+
 )
+
+func Decode(filename, code string) ([]byte, error) {
+	f, err := filesystem.NewFileSeeker(filename)
+	if err != nil {
+		return nil, newError("failed to open file: ", filename).Base(err)
+	}
+	defer f.Close()
+	geoBytes, err := emitBytes(f, code)
+	if err != nil {
+		return nil, err
+	}
+	return geoBytes, nil
+}
 
 func emitBytes(f io.ReadSeeker, code string) ([]byte, error) {
 	count := 1
 	isInner := false
 	tempContainer := make([]byte, 0, 5)
-
 	var result []byte
 	var advancedN uint64 = 1
 	var geoDataVarintLength, codeVarintLength, varintLenByteLen uint64 = 0, 0, 0
-
 Loop:
 	for {
 		container := make([]byte, advancedN)
@@ -40,7 +52,6 @@ Loop:
 		if bytesRead != len(container) {
 			return nil, errFailedToReadExpectedLenBytes
 		}
-
 		switch count {
 		case 1, 3:
 			if container[0] != 10 {
@@ -88,18 +99,4 @@ Loop:
 		}
 	}
 	return result, nil
-}
-
-func Decode(filename, code string) ([]byte, error) {
-	f, err := filesystem.NewFileSeeker(filename)
-	if err != nil {
-		return nil, newError("failed to open file: ", filename).Base(err)
-	}
-	defer f.Close()
-
-	geoBytes, err := emitBytes(f, code)
-	if err != nil {
-		return nil, err
-	}
-	return geoBytes, nil
 }
