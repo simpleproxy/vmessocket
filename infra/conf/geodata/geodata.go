@@ -6,8 +6,36 @@ import (
 	"github.com/vmessocket/vmessocket/app/router"
 )
 
+var loaders map[string]func() LoaderImplementation
+
 type loader struct {
 	LoaderImplementation
+}
+
+func GetGeoDataLoader(name string) (Loader, error) {
+	loadImpl, err := getGeoDataLoaderImplementation(name)
+	if err == nil {
+		return &loader{loadImpl}, nil
+	}
+	return nil, err
+}
+
+func getGeoDataLoaderImplementation(name string) (LoaderImplementation, error) {
+	if geoLoader, ok := loaders[name]; ok {
+		return geoLoader(), nil
+	}
+	return nil, newError("unable to locate GeoData loader ", name)
+}
+
+func RegisterGeoDataLoaderImplementationCreator(name string, loader func() LoaderImplementation) {
+	if loaders == nil {
+		loaders = map[string]func() LoaderImplementation{}
+	}
+	loaders[name] = loader
+}
+
+func (l *loader) LoadGeoIP(country string) ([]*router.CIDR, error) {
+	return l.LoadIP("geoip.dat", country)
 }
 
 func (l *loader) LoadGeoSite(list string) ([]*router.Domain, error) {
@@ -21,16 +49,13 @@ func (l *loader) LoadGeoSiteWithAttr(file string, siteWithAttr string) ([]*route
 	}
 	list := strings.TrimSpace(parts[0])
 	attrVal := parts[1:]
-
 	if len(list) == 0 {
 		return nil, newError("empty listname in rule: ", siteWithAttr)
 	}
-
 	domains, err := l.LoadSite(file, list)
 	if err != nil {
 		return nil, err
 	}
-
 	attrs := parseAttrs(attrVal)
 	if attrs.IsEmpty() {
 		if strings.Contains(siteWithAttr, "@") {
@@ -38,7 +63,6 @@ func (l *loader) LoadGeoSiteWithAttr(file string, siteWithAttr string) ([]*route
 		}
 		return domains, nil
 	}
-
 	filteredDomains := make([]*router.Domain, 0, len(domains))
 	hasAttrMatched := false
 	for _, domain := range domains {
@@ -50,34 +74,5 @@ func (l *loader) LoadGeoSiteWithAttr(file string, siteWithAttr string) ([]*route
 	if !hasAttrMatched {
 		newError("attribute match no rule: geosite:", siteWithAttr)
 	}
-
 	return filteredDomains, nil
-}
-
-func (l *loader) LoadGeoIP(country string) ([]*router.CIDR, error) {
-	return l.LoadIP("geoip.dat", country)
-}
-
-var loaders map[string]func() LoaderImplementation
-
-func RegisterGeoDataLoaderImplementationCreator(name string, loader func() LoaderImplementation) {
-	if loaders == nil {
-		loaders = map[string]func() LoaderImplementation{}
-	}
-	loaders[name] = loader
-}
-
-func getGeoDataLoaderImplementation(name string) (LoaderImplementation, error) {
-	if geoLoader, ok := loaders[name]; ok {
-		return geoLoader(), nil
-	}
-	return nil, newError("unable to locate GeoData loader ", name)
-}
-
-func GetGeoDataLoader(name string) (Loader, error) {
-	loadImpl, err := getGeoDataLoaderImplementation(name)
-	if err == nil {
-		return &loader{loadImpl}, nil
-	}
-	return nil, err
 }
