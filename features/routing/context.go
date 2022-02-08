@@ -1,8 +1,6 @@
 package routing
 
-import (
-	"github.com/vmessocket/vmessocket/common/net"
-)
+import "github.com/vmessocket/vmessocket/common/net"
 
 type Context interface {
 	GetInboundTag() string
