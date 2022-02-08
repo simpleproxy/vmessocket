@@ -5,6 +5,8 @@
 
 ![Go](https://img.shields.io:/github/go-mod/go-version/vmessocket/vmessocket)
 
+# vmessocket ![build workflow](https://github.com/vmessocket/vmessocket/actions/workflows/build.yml/badge.svg
+
 ## Compilation
 
 ### Windows
