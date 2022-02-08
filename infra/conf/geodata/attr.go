@@ -10,6 +10,12 @@ type AttributeList struct {
 	matcher []AttributeMatcher
 }
 
+type AttributeMatcher interface {
+	Match(*router.Domain) bool
+}
+
+type BooleanMatcher string
+
 func (al *AttributeList) Match(domain *router.Domain) bool {
 	for _, matcher := range al.matcher {
 		if !matcher.Match(domain) {
@@ -17,10 +23,6 @@ func (al *AttributeList) Match(domain *router.Domain) bool {
 		}
 	}
 	return true
-}
-
-func (al *AttributeList) IsEmpty() bool {
-	return len(al.matcher) == 0
 }
 
 func parseAttrs(attrs []string) *AttributeList {
@@ -35,11 +37,9 @@ func parseAttrs(attrs []string) *AttributeList {
 	return al
 }
 
-type AttributeMatcher interface {
-	Match(*router.Domain) bool
+func (al *AttributeList) IsEmpty() bool {
+	return len(al.matcher) == 0
 }
-
-type BooleanMatcher string
 
 func (m BooleanMatcher) Match(domain *router.Domain) bool {
 	for _, attr := range domain.Attribute {
