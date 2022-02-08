@@ -1,10 +1,15 @@
 package protocol
 
+type MemoryUser struct {
+	Account Account
+	Email   string
+	Level   uint32
+}
+
 func (u *User) GetTypedAccount() (Account, error) {
 	if u.GetAccount() == nil {
 		return nil, newError("Account missing").AtWarning()
 	}
-
 	rawAccount, err := u.Account.GetInstance()
 	if err != nil {
 		return nil, err
@@ -28,10 +33,4 @@ func (u *User) ToMemoryUser() (*MemoryUser, error) {
 		Email:   u.Email,
 		Level:   u.Level,
 	}, nil
-}
-
-type MemoryUser struct {
-	Account Account
-	Email   string
-	Level   uint32
 }

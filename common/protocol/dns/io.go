@@ -11,6 +11,40 @@ import (
 	"github.com/vmessocket/vmessocket/common/serial"
 )
 
+type MessageReader interface {
+	ReadMessage() (*buf.Buffer, error)
+}
+
+type MessageWriter interface {
+	WriteMessage(msg *buf.Buffer) error
+}
+
+type TCPReader struct {
+	reader *buf.BufferedReader
+}
+
+type TCPWriter struct {
+	buf.Writer
+}
+
+type UDPReader struct {
+	buf.Reader
+	access sync.Mutex
+	cache  buf.MultiBuffer
+}
+
+type UDPWriter struct {
+	buf.Writer
+}
+
+func NewTCPReader(reader buf.Reader) *TCPReader {
+	return &TCPReader{
+		reader: &buf.BufferedReader{
+			Reader: reader,
+		},
+	}
+}
+
 func PackMessage(msg *dnsmessage.Message) (*buf.Buffer, error) {
 	buffer := buf.New()
 	rawBytes := buffer.Extend(buf.Size)
@@ -23,47 +57,8 @@ func PackMessage(msg *dnsmessage.Message) (*buf.Buffer, error) {
 	return buffer, nil
 }
 
-type MessageReader interface {
-	ReadMessage() (*buf.Buffer, error)
-}
-
-type UDPReader struct {
-	buf.Reader
-
-	access sync.Mutex
-	cache  buf.MultiBuffer
-}
-
-func (r *UDPReader) readCache() *buf.Buffer {
-	r.access.Lock()
-	defer r.access.Unlock()
-
-	mb, b := buf.SplitFirst(r.cache)
-	r.cache = mb
-	return b
-}
-
-func (r *UDPReader) refill() error {
-	mb, err := r.Reader.ReadMultiBuffer()
-	if err != nil {
-		return err
-	}
-	r.access.Lock()
-	r.cache = mb
-	r.access.Unlock()
-	return nil
-}
-
-func (r *UDPReader) ReadMessage() (*buf.Buffer, error) {
-	for {
-		b := r.readCache()
-		if b != nil {
-			return b, nil
-		}
-		if err := r.refill(); err != nil {
-			return nil, err
-		}
-	}
+func (r *TCPReader) Close() error {
+	return common.Close(r.reader)
 }
 
 func (r *UDPReader) Close() error {
@@ -73,20 +68,19 @@ func (r *UDPReader) Close() error {
 		r.cache = nil
 		r.access.Unlock()
 	}()
-
 	return common.Close(r.Reader)
 }
 
-type TCPReader struct {
-	reader *buf.BufferedReader
+func (r *TCPReader) Interrupt() {
+	common.Interrupt(r.reader)
 }
 
-func NewTCPReader(reader buf.Reader) *TCPReader {
-	return &TCPReader{
-		reader: &buf.BufferedReader{
-			Reader: reader,
-		},
-	}
+func (r *UDPReader) readCache() *buf.Buffer {
+	r.access.Lock()
+	defer r.access.Unlock()
+	mb, b := buf.SplitFirst(r.cache)
+	r.cache = mb
+	return b
 }
 
 func (r *TCPReader) ReadMessage() (*buf.Buffer, error) {
@@ -104,39 +98,40 @@ func (r *TCPReader) ReadMessage() (*buf.Buffer, error) {
 	return b, nil
 }
 
-func (r *TCPReader) Interrupt() {
-	common.Interrupt(r.reader)
+func (r *UDPReader) ReadMessage() (*buf.Buffer, error) {
+	for {
+		b := r.readCache()
+		if b != nil {
+			return b, nil
+		}
+		if err := r.refill(); err != nil {
+			return nil, err
+		}
+	}
 }
 
-func (r *TCPReader) Close() error {
-	return common.Close(r.reader)
-}
-
-type MessageWriter interface {
-	WriteMessage(msg *buf.Buffer) error
-}
-
-type UDPWriter struct {
-	buf.Writer
-}
-
-func (w *UDPWriter) WriteMessage(b *buf.Buffer) error {
-	return w.WriteMultiBuffer(buf.MultiBuffer{b})
-}
-
-type TCPWriter struct {
-	buf.Writer
+func (r *UDPReader) refill() error {
+	mb, err := r.Reader.ReadMultiBuffer()
+	if err != nil {
+		return err
+	}
+	r.access.Lock()
+	r.cache = mb
+	r.access.Unlock()
+	return nil
 }
 
 func (w *TCPWriter) WriteMessage(b *buf.Buffer) error {
 	if b.IsEmpty() {
 		return nil
 	}
-
 	mb := make(buf.MultiBuffer, 0, 2)
-
 	size := buf.New()
 	binary.BigEndian.PutUint16(size.Extend(2), uint16(b.Len()))
 	mb = append(mb, size, b)
 	return w.WriteMultiBuffer(mb)
+}
+
+func (w *UDPWriter) WriteMessage(b *buf.Buffer) error {
+	return w.WriteMultiBuffer(buf.MultiBuffer{b})
 }

@@ -2,19 +2,38 @@ package retry
 
 //go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
 
-import (
-	"time"
-)
+import "time"
 
 var ErrRetryFailed = newError("all retry attempts failed")
+
+type retryer struct {
+	totalAttempt int
+	nextDelay    func() uint32
+}
 
 type Strategy interface {
 	On(func() error) error
 }
 
-type retryer struct {
-	totalAttempt int
-	nextDelay    func() uint32
+func ExponentialBackoff(attempts int, delay uint32) Strategy {
+	nextDelay := uint32(0)
+	return &retryer{
+		totalAttempt: attempts,
+		nextDelay: func() uint32 {
+			r := nextDelay
+			nextDelay += delay
+			return r
+		},
+	}
+}
+
+func Timed(attempts int, delay uint32) Strategy {
+	return &retryer{
+		totalAttempt: attempts,
+		nextDelay: func() uint32 {
+			return delay
+		},
+	}
 }
 
 func (r *retryer) On(method func() error) error {
@@ -34,25 +53,4 @@ func (r *retryer) On(method func() error) error {
 		attempt++
 	}
 	return newError(accumulatedError).Base(ErrRetryFailed)
-}
-
-func Timed(attempts int, delay uint32) Strategy {
-	return &retryer{
-		totalAttempt: attempts,
-		nextDelay: func() uint32 {
-			return delay
-		},
-	}
-}
-
-func ExponentialBackoff(attempts int, delay uint32) Strategy {
-	nextDelay := uint32(0)
-	return &retryer{
-		totalAttempt: attempts,
-		nextDelay: func() uint32 {
-			r := nextDelay
-			nextDelay += delay
-			return r
-		},
-	}
 }

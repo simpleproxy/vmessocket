@@ -9,8 +9,10 @@ func ExpandEnv(s string) string {
 	return s
 }
 
-func LineSeparator() string {
-	return "\r\n"
+func GetAssetLocation(file string) string {
+	const name = "vmessocket.location.asset"
+	assetPath := NewEnvFlag(name).GetValue(getExecutableDir)
+	return filepath.Join(assetPath, file)
 }
 
 func GetToolLocation(file string) string {
@@ -19,8 +21,6 @@ func GetToolLocation(file string) string {
 	return filepath.Join(toolPath, file+".exe")
 }
 
-func GetAssetLocation(file string) string {
-	const name = "vmessocket.location.asset"
-	assetPath := NewEnvFlag(name).GetValue(getExecutableDir)
-	return filepath.Join(assetPath, file)
+func LineSeparator() string {
+	return "\r\n"
 }

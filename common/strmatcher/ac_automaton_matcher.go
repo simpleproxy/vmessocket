@@ -4,40 +4,11 @@ import (
 	"container/list"
 )
 
-const validCharCount = 53
-
-type MatchType struct {
-	matchType Type
-	exist     bool
-}
-
 const (
 	TrieEdge bool = true
 	FailEdge bool = false
+	validCharCount = 53
 )
-
-type Edge struct {
-	edgeType bool
-	nextNode int
-}
-
-type ACAutomaton struct {
-	trie   [][validCharCount]Edge
-	fail   []int
-	exists []MatchType
-	count  int
-}
-
-func newNode() [validCharCount]Edge {
-	var s [validCharCount]Edge
-	for i := range s {
-		s[i] = Edge{
-			edgeType: FailEdge,
-			nextNode: 0,
-		}
-	}
-	return s
-}
 
 var char2Index = []int{
 	'A':  0,
@@ -121,6 +92,23 @@ var char2Index = []int{
 	'9':  52,
 }
 
+type ACAutomaton struct {
+	trie   [][validCharCount]Edge
+	fail   []int
+	exists []MatchType
+	count  int
+}
+
+type Edge struct {
+	edgeType bool
+	nextNode int
+}
+
+type MatchType struct {
+	matchType Type
+	exist     bool
+}
+
 func NewACAutomaton() *ACAutomaton {
 	ac := new(ACAutomaton)
 	ac.trie = append(ac.trie, newNode())
@@ -130,6 +118,17 @@ func NewACAutomaton() *ACAutomaton {
 		exist:     false,
 	})
 	return ac
+}
+
+func newNode() [validCharCount]Edge {
+	var s [validCharCount]Edge
+	for i := range s {
+		s[i] = Edge{
+			edgeType: FailEdge,
+			nextNode: 0,
+		}
+	}
+	return s
 }
 
 func (ac *ACAutomaton) Add(domain string, t Type) {

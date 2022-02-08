@@ -14,10 +14,10 @@ func New(n int) *Instance {
 	return s
 }
 
-func (s *Instance) Wait() <-chan struct{} {
-	return s.token
-}
-
 func (s *Instance) Signal() {
 	s.token <- struct{}{}
+}
+
+func (s *Instance) Wait() <-chan struct{} {
+	return s.token
 }

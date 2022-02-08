@@ -2,12 +2,23 @@ package common
 
 import "github.com/vmessocket/vmessocket/common/errors"
 
+type ChainedClosable []Closable
+
 type Closable interface {
 	Close() error
 }
 
+type HasType interface {
+	Type() interface{}
+}
+
 type Interruptible interface {
 	Interrupt()
+}
+
+type Runnable interface {
+	Start() error
+	Closable
 }
 
 func Close(obj interface{}) error {
@@ -24,17 +35,6 @@ func Interrupt(obj interface{}) error {
 	}
 	return Close(obj)
 }
-
-type Runnable interface {
-	Start() error
-	Closable
-}
-
-type HasType interface {
-	Type() interface{}
-}
-
-type ChainedClosable []Closable
 
 func (cc ChainedClosable) Close() error {
 	var errs []error

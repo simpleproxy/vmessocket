@@ -9,11 +9,14 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 )
 
-type version byte
-
 const (
 	HTTP1 version = iota
 	HTTP2
+)
+
+var (
+	methods = [...]string{"get", "post", "head", "put", "delete", "options", "connect"}
+	errNotHTTPMethod = errors.New("not an HTTP method")
 )
 
 type SniffHeader struct {
@@ -21,26 +24,7 @@ type SniffHeader struct {
 	host    string
 }
 
-func (h *SniffHeader) Protocol() string {
-	switch h.version {
-	case HTTP1:
-		return "http1"
-	case HTTP2:
-		return "http2"
-	default:
-		return "unknown"
-	}
-}
-
-func (h *SniffHeader) Domain() string {
-	return h.host
-}
-
-var (
-	methods = [...]string{"get", "post", "head", "put", "delete", "options", "connect"}
-
-	errNotHTTPMethod = errors.New("not an HTTP method")
-)
+type version byte
 
 func beginWithHTTPMethod(b []byte) error {
 	for _, m := range &methods {
@@ -52,7 +36,6 @@ func beginWithHTTPMethod(b []byte) error {
 			return common.ErrNoClue
 		}
 	}
-
 	return errNotHTTPMethod
 }
 
@@ -60,11 +43,9 @@ func SniffHTTP(b []byte) (*SniffHeader, error) {
 	if err := beginWithHTTPMethod(b); err != nil {
 		return nil, err
 	}
-
 	sh := &SniffHeader{
 		version: HTTP1,
 	}
-
 	headers := bytes.Split(b, []byte{'\n'})
 	for i := 1; i < len(headers); i++ {
 		header := headers[i]
@@ -85,10 +66,23 @@ func SniffHTTP(b []byte) (*SniffHeader, error) {
 			sh.host = dest.Address.String()
 		}
 	}
-
 	if len(sh.host) > 0 {
 		return sh, nil
 	}
-
 	return nil, common.ErrNoClue
+}
+
+func (h *SniffHeader) Domain() string {
+	return h.host
+}
+
+func (h *SniffHeader) Protocol() string {
+	switch h.version {
+	case HTTP1:
+		return "http1"
+	case HTTP2:
+		return "http2"
+	default:
+		return "unknown"
+	}
 }

@@ -8,32 +8,28 @@ import (
 	"github.com/vmessocket/vmessocket/common/uuid"
 )
 
-type RequestCommand byte
-
 const (
 	RequestCommandTCP = RequestCommand(0x01)
 	RequestCommandUDP = RequestCommand(0x02)
 	RequestCommandMux = RequestCommand(0x03)
-)
-
-func (c RequestCommand) TransferType() TransferType {
-	switch c {
-	case RequestCommandTCP, RequestCommandMux:
-		return TransferTypeStream
-	case RequestCommandUDP:
-		return TransferTypePacket
-	default:
-		return TransferTypeStream
-	}
-}
-
-const (
 	RequestOptionChunkStream         bitmask.Byte = 0x01
 	RequestOptionConnectionReuse     bitmask.Byte = 0x02
 	RequestOptionChunkMasking        bitmask.Byte = 0x04
 	RequestOptionGlobalPadding       bitmask.Byte = 0x08
 	RequestOptionAuthenticatedLength bitmask.Byte = 0x10
+	ResponseOptionConnectionReuse bitmask.Byte = 0x01
 )
+
+type CommandSwitchAccount struct {
+	Host     net.Address
+	Port     net.Port
+	ID       uuid.UUID
+	Level    uint32
+	AlterIds uint16
+	ValidMin byte
+}
+
+type RequestCommand byte
 
 type RequestHeader struct {
 	Version  byte
@@ -45,17 +41,6 @@ type RequestHeader struct {
 	User     *MemoryUser
 }
 
-func (h *RequestHeader) Destination() net.Destination {
-	if h.Command == RequestCommandUDP {
-		return net.UDPDestination(h.Address, h.Port)
-	}
-	return net.TCPDestination(h.Address, h.Port)
-}
-
-const (
-	ResponseOptionConnectionReuse bitmask.Byte = 0x01
-)
-
 type ResponseCommand interface{}
 
 type ResponseHeader struct {
@@ -63,13 +48,15 @@ type ResponseHeader struct {
 	Command ResponseCommand
 }
 
-type CommandSwitchAccount struct {
-	Host     net.Address
-	Port     net.Port
-	ID       uuid.UUID
-	Level    uint32
-	AlterIds uint16
-	ValidMin byte
+func isDomainTooLong(domain string) bool {
+	return len(domain) > 256
+}
+
+func (h *RequestHeader) Destination() net.Destination {
+	if h.Command == RequestCommandUDP {
+		return net.UDPDestination(h.Address, h.Port)
+	}
+	return net.TCPDestination(h.Address, h.Port)
 }
 
 func (sc *SecurityConfig) GetSecurityType() SecurityType {
@@ -82,6 +69,13 @@ func (sc *SecurityConfig) GetSecurityType() SecurityType {
 	return sc.Type
 }
 
-func isDomainTooLong(domain string) bool {
-	return len(domain) > 256
+func (c RequestCommand) TransferType() TransferType {
+	switch c {
+	case RequestCommandTCP, RequestCommandMux:
+		return TransferTypeStream
+	case RequestCommandUDP:
+		return TransferTypePacket
+	default:
+		return TransferTypeStream
+	}
 }

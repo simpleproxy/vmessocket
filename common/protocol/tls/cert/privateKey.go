@@ -13,12 +13,6 @@ type ecPrivateKey struct {
 	PublicKey     asn1.BitString        `asn1:"optional,explicit,tag:1"`
 }
 
-type pkcs8 struct {
-	Version    int
-	Algo       pkix.AlgorithmIdentifier
-	PrivateKey []byte
-}
-
 type pkcs1AdditionalRSAPrime struct {
 	Prime *big.Int
 	Exp   *big.Int
@@ -35,6 +29,11 @@ type pkcs1PrivateKey struct {
 	Dp      *big.Int `asn1:"optional"`
 	Dq      *big.Int `asn1:"optional"`
 	Qinv    *big.Int `asn1:"optional"`
-
 	AdditionalPrimes []pkcs1AdditionalRSAPrime `asn1:"optional,omitempty"`
+}
+
+type pkcs8 struct {
+	Version    int
+	Algo       pkix.AlgorithmIdentifier
+	PrivateKey []byte
 }

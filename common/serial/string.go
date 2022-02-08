@@ -5,11 +5,18 @@ import (
 	"strings"
 )
 
+func Concat(v ...interface{}) string {
+	builder := strings.Builder{}
+	for _, value := range v {
+		builder.WriteString(ToString(value))
+	}
+	return builder.String()
+}
+
 func ToString(v interface{}) string {
 	if v == nil {
 		return ""
 	}
-
 	switch value := v.(type) {
 	case string:
 		return value
@@ -22,12 +29,4 @@ func ToString(v interface{}) string {
 	default:
 		return fmt.Sprintf("%+v", value)
 	}
-}
-
-func Concat(v ...interface{}) string {
-	builder := strings.Builder{}
-	for _, value := range v {
-		builder.WriteString(ToString(value))
-	}
-	return builder.String()
 }

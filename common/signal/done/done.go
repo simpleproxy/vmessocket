@@ -1,8 +1,6 @@
 package done
 
-import (
-	"sync"
-)
+import "sync"
 
 type Instance struct {
 	access sync.Mutex
@@ -16,6 +14,17 @@ func New() *Instance {
 	}
 }
 
+func (d *Instance) Close() error {
+	d.access.Lock()
+	defer d.access.Unlock()
+	if d.closed {
+		return nil
+	}
+	d.closed = true
+	close(d.c)
+	return nil
+}
+
 func (d *Instance) Done() bool {
 	select {
 	case <-d.Wait():
@@ -27,18 +36,4 @@ func (d *Instance) Done() bool {
 
 func (d *Instance) Wait() <-chan struct{} {
 	return d.c
-}
-
-func (d *Instance) Close() error {
-	d.access.Lock()
-	defer d.access.Unlock()
-
-	if d.closed {
-		return nil
-	}
-
-	d.closed = true
-	close(d.c)
-
-	return nil
 }

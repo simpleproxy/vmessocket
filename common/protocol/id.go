@@ -9,9 +9,12 @@ import (
 	"github.com/vmessocket/vmessocket/common/uuid"
 )
 
-const (
-	IDBytesLen = 16
-)
+const IDBytesLen = 16
+
+type ID struct {
+	uuid   uuid.UUID
+	cmdKey [IDBytesLen]byte
+}
 
 type IDHash func(key []byte) hash.Hash
 
@@ -19,29 +22,15 @@ func DefaultIDHash(key []byte) hash.Hash {
 	return hmac.New(md5.New, key)
 }
 
-type ID struct {
-	uuid   uuid.UUID
-	cmdKey [IDBytesLen]byte
-}
-
-func (id *ID) Equals(another *ID) bool {
-	return id.uuid.Equals(&(another.uuid))
-}
-
-func (id *ID) Bytes() []byte {
-	return id.uuid.Bytes()
-}
-
-func (id *ID) String() string {
-	return id.uuid.String()
-}
-
-func (id *ID) UUID() uuid.UUID {
-	return id.uuid
-}
-
-func (id ID) CmdKey() []byte {
-	return id.cmdKey[:]
+func NewAlterIDs(primary *ID, alterIDCount uint16) []*ID {
+	alterIDs := make([]*ID, alterIDCount)
+	prevID := primary.UUID()
+	for idx := range alterIDs {
+		newid := nextID(&prevID)
+		alterIDs[idx] = NewID(newid)
+		prevID = newid
+	}
+	return alterIDs
 }
 
 func NewID(uuid uuid.UUID) *ID {
@@ -67,13 +56,22 @@ func nextID(u *uuid.UUID) uuid.UUID {
 	}
 }
 
-func NewAlterIDs(primary *ID, alterIDCount uint16) []*ID {
-	alterIDs := make([]*ID, alterIDCount)
-	prevID := primary.UUID()
-	for idx := range alterIDs {
-		newid := nextID(&prevID)
-		alterIDs[idx] = NewID(newid)
-		prevID = newid
-	}
-	return alterIDs
+func (id *ID) Bytes() []byte {
+	return id.uuid.Bytes()
+}
+
+func (id ID) CmdKey() []byte {
+	return id.cmdKey[:]
+}
+
+func (id *ID) Equals(another *ID) bool {
+	return id.uuid.Equals(&(another.uuid))
+}
+
+func (id *ID) String() string {
+	return id.uuid.String()
+}
+
+func (id *ID) UUID() uuid.UUID {
+	return id.uuid
 }

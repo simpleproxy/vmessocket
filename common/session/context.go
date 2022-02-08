@@ -1,10 +1,6 @@
 package session
 
-import (
-	"context"
-)
-
-type sessionKey int
+import "context"
 
 const (
 	idSessionKey sessionKey = iota
@@ -16,41 +12,10 @@ const (
 	trackedConnectionErrorKey
 )
 
-func ContextWithID(ctx context.Context, id ID) context.Context {
-	return context.WithValue(ctx, idSessionKey, id)
-}
+type sessionKey int
 
-func IDFromContext(ctx context.Context) ID {
-	if id, ok := ctx.Value(idSessionKey).(ID); ok {
-		return id
-	}
-	return 0
-}
-
-func ContextWithInbound(ctx context.Context, inbound *Inbound) context.Context {
-	return context.WithValue(ctx, inboundSessionKey, inbound)
-}
-
-func InboundFromContext(ctx context.Context) *Inbound {
-	if inbound, ok := ctx.Value(inboundSessionKey).(*Inbound); ok {
-		return inbound
-	}
-	return nil
-}
-
-func ContextWithOutbound(ctx context.Context, outbound *Outbound) context.Context {
-	return context.WithValue(ctx, outboundSessionKey, outbound)
-}
-
-func OutboundFromContext(ctx context.Context) *Outbound {
-	if outbound, ok := ctx.Value(outboundSessionKey).(*Outbound); ok {
-		return outbound
-	}
-	return nil
-}
-
-func ContextWithContent(ctx context.Context, content *Content) context.Context {
-	return context.WithValue(ctx, contentSessionKey, content)
+type TrackedRequestErrorFeedback interface {
+	SubmitError(err error)
 }
 
 func ContentFromContext(ctx context.Context) *Content {
@@ -60,26 +25,35 @@ func ContentFromContext(ctx context.Context) *Content {
 	return nil
 }
 
+func ContextWithContent(ctx context.Context, content *Content) context.Context {
+	return context.WithValue(ctx, contentSessionKey, content)
+}
+
+func ContextWithID(ctx context.Context, id ID) context.Context {
+	return context.WithValue(ctx, idSessionKey, id)
+}
+
+func ContextWithInbound(ctx context.Context, inbound *Inbound) context.Context {
+	return context.WithValue(ctx, inboundSessionKey, inbound)
+}
+
 func ContextWithMuxPrefered(ctx context.Context, forced bool) context.Context {
 	return context.WithValue(ctx, muxPreferedSessionKey, forced)
 }
 
-func MuxPreferedFromContext(ctx context.Context) bool {
-	if val, ok := ctx.Value(muxPreferedSessionKey).(bool); ok {
-		return val
-	}
-	return false
+func ContextWithOutbound(ctx context.Context, outbound *Outbound) context.Context {
+	return context.WithValue(ctx, outboundSessionKey, outbound)
 }
 
 func ContextWithSockopt(ctx context.Context, s *Sockopt) context.Context {
 	return context.WithValue(ctx, sockoptSessionKey, s)
 }
 
-func SockoptFromContext(ctx context.Context) *Sockopt {
-	if sockopt, ok := ctx.Value(sockoptSessionKey).(*Sockopt); ok {
-		return sockopt
+func GetForcedOutboundTagFromContext(ctx context.Context) string {
+	if ContentFromContext(ctx) == nil {
+		return ""
 	}
-	return nil
+	return ContentFromContext(ctx).Attribute("forcedOutboundTag")
 }
 
 func GetTransportLayerProxyTagFromContext(ctx context.Context) string {
@@ -89,19 +63,32 @@ func GetTransportLayerProxyTagFromContext(ctx context.Context) string {
 	return ContentFromContext(ctx).Attribute("transportLayerOutgoingTag")
 }
 
-func SetTransportLayerProxyTagToContext(ctx context.Context, tag string) context.Context {
-	if contentFromContext := ContentFromContext(ctx); contentFromContext == nil {
-		ctx = ContextWithContent(ctx, &Content{})
+func IDFromContext(ctx context.Context) ID {
+	if id, ok := ctx.Value(idSessionKey).(ID); ok {
+		return id
 	}
-	ContentFromContext(ctx).SetAttribute("transportLayerOutgoingTag", tag)
-	return ctx
+	return 0
 }
 
-func GetForcedOutboundTagFromContext(ctx context.Context) string {
-	if ContentFromContext(ctx) == nil {
-		return ""
+func InboundFromContext(ctx context.Context) *Inbound {
+	if inbound, ok := ctx.Value(inboundSessionKey).(*Inbound); ok {
+		return inbound
 	}
-	return ContentFromContext(ctx).Attribute("forcedOutboundTag")
+	return nil
+}
+
+func MuxPreferedFromContext(ctx context.Context) bool {
+	if val, ok := ctx.Value(muxPreferedSessionKey).(bool); ok {
+		return val
+	}
+	return false
+}
+
+func OutboundFromContext(ctx context.Context) *Outbound {
+	if outbound, ok := ctx.Value(outboundSessionKey).(*Outbound); ok {
+		return outbound
+	}
+	return nil
 }
 
 func SetForcedOutboundTagToContext(ctx context.Context, tag string) context.Context {
@@ -112,8 +99,19 @@ func SetForcedOutboundTagToContext(ctx context.Context, tag string) context.Cont
 	return ctx
 }
 
-type TrackedRequestErrorFeedback interface {
-	SubmitError(err error)
+func SetTransportLayerProxyTagToContext(ctx context.Context, tag string) context.Context {
+	if contentFromContext := ContentFromContext(ctx); contentFromContext == nil {
+		ctx = ContextWithContent(ctx, &Content{})
+	}
+	ContentFromContext(ctx).SetAttribute("transportLayerOutgoingTag", tag)
+	return ctx
+}
+
+func SockoptFromContext(ctx context.Context) *Sockopt {
+	if sockopt, ok := ctx.Value(sockoptSessionKey).(*Sockopt); ok {
+		return sockopt
+	}
+	return nil
 }
 
 func SubmitOutboundErrorToOriginator(ctx context.Context, err error) {

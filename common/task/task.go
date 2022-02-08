@@ -19,7 +19,6 @@ func Run(ctx context.Context, tasks ...func() error) error {
 	n := len(tasks)
 	s := semaphore.New(n)
 	done := make(chan error, 1)
-
 	for _, task := range tasks {
 		<-s.Wait()
 		go func(f func() error) {
@@ -28,14 +27,12 @@ func Run(ctx context.Context, tasks ...func() error) error {
 				s.Signal()
 				return
 			}
-
 			select {
 			case done <- err:
 			default:
 			}
 		}(task)
 	}
-
 	for i := 0; i < n; i++ {
 		select {
 		case err := <-done:
@@ -45,6 +42,5 @@ func Run(ctx context.Context, tasks ...func() error) error {
 		case <-s.Wait():
 		}
 	}
-
 	return nil
 }

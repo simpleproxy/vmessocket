@@ -14,16 +14,6 @@ func ExpandEnv(s string) string {
 	return os.ExpandEnv(s)
 }
 
-func LineSeparator() string {
-	return "\n"
-}
-
-func GetToolLocation(file string) string {
-	const name = "vmessocket.location.tool"
-	toolPath := EnvFlag{Name: name, AltName: NormalizeEnvName(name)}.GetValue(getExecutableDir)
-	return filepath.Join(toolPath, file)
-}
-
 func GetAssetLocation(file string) string {
 	const name = "vmessocket.location.asset"
 	assetPath := NewEnvFlag(name).GetValue(getExecutableDir)
@@ -37,9 +27,17 @@ func GetAssetLocation(file string) string {
 		if _, err := os.Stat(p); err != nil && errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
-
 		return p
 	}
-
 	return defPath
+}
+
+func GetToolLocation(file string) string {
+	const name = "vmessocket.location.tool"
+	toolPath := EnvFlag{Name: name, AltName: NormalizeEnvName(name)}.GetValue(getExecutableDir)
+	return filepath.Join(toolPath, file)
+}
+
+func LineSeparator() string {
+	return "\n"
 }
