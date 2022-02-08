@@ -21,7 +21,7 @@ type Instance struct {
 	features           []features.Feature
 	featureResolutions []resolution
 	running            bool
-	ctx context.Context
+	ctx                context.Context
 }
 
 type resolution struct {
