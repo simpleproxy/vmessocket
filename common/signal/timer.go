@@ -9,10 +9,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/task"
 )
 
-type ActivityUpdater interface {
-	Update()
-}
-
 type ActivityTimer struct {
 	sync.RWMutex
 	updated   chan struct{}
@@ -20,11 +16,17 @@ type ActivityTimer struct {
 	onTimeout func()
 }
 
-func (t *ActivityTimer) Update() {
-	select {
-	case t.updated <- struct{}{}:
-	default:
+type ActivityUpdater interface {
+	Update()
+}
+
+func CancelAfterInactivity(ctx context.Context, cancel context.CancelFunc, timeout time.Duration) *ActivityTimer {
+	timer := &ActivityTimer{
+		updated:   make(chan struct{}, 1),
+		onTimeout: cancel,
 	}
+	timer.SetTimeout(timeout)
+	return timer
 }
 
 func (t *ActivityTimer) check() error {
@@ -39,7 +41,6 @@ func (t *ActivityTimer) check() error {
 func (t *ActivityTimer) finish() {
 	t.Lock()
 	defer t.Unlock()
-
 	if t.onTimeout != nil {
 		t.onTimeout()
 		t.onTimeout = nil
@@ -55,14 +56,11 @@ func (t *ActivityTimer) SetTimeout(timeout time.Duration) {
 		t.finish()
 		return
 	}
-
 	checkTask := &task.Periodic{
 		Interval: timeout,
 		Execute:  t.check,
 	}
-
 	t.Lock()
-
 	if t.checkTask != nil {
 		t.checkTask.Close()
 	}
@@ -72,11 +70,9 @@ func (t *ActivityTimer) SetTimeout(timeout time.Duration) {
 	common.Must(checkTask.Start())
 }
 
-func CancelAfterInactivity(ctx context.Context, cancel context.CancelFunc, timeout time.Duration) *ActivityTimer {
-	timer := &ActivityTimer{
-		updated:   make(chan struct{}, 1),
-		onTimeout: cancel,
+func (t *ActivityTimer) Update() {
+	select {
+	case t.updated <- struct{}{}:
+	default:
 	}
-	timer.SetTimeout(timeout)
-	return timer
 }
