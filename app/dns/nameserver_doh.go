@@ -263,7 +263,6 @@ func (s *DoHNameServer) sendQuery(ctx context.Context, domain string, clientIP n
 				Protocol:       "https",
 				SkipDNSResolve: true,
 			})
-			dnsCtx = session.ContextWithMuxPrefered(dnsCtx, true)
 			var cancel context.CancelFunc
 			dnsCtx, cancel = context.WithDeadline(dnsCtx, deadline)
 			defer cancel()
