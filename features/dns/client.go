@@ -7,14 +7,21 @@ import (
 	"github.com/vmessocket/vmessocket/features"
 )
 
-type IPOption struct {
-	IPv4Enable bool
-	IPv6Enable bool
-}
+var ErrEmptyResponse = errors.New("empty response")
 
 type Client interface {
 	features.Feature
 	LookupIP(domain string) ([]net.IP, error)
+}
+
+type ClientWithIPOption interface {
+	GetIPOption() *IPOption
+	SetQueryOption(isIPv4Enable, isIPv6Enable bool)
+}
+
+type IPOption struct {
+	IPv4Enable bool
+	IPv6Enable bool
 }
 
 type IPv4Lookup interface {
@@ -25,21 +32,10 @@ type IPv6Lookup interface {
 	LookupIPv6(domain string) ([]net.IP, error)
 }
 
-type ClientWithIPOption interface {
-	GetIPOption() *IPOption
-	SetQueryOption(isIPv4Enable, isIPv6Enable bool)
-}
+type RCodeError uint16
 
 func ClientType() interface{} {
 	return (*Client)(nil)
-}
-
-var ErrEmptyResponse = errors.New("empty response")
-
-type RCodeError uint16
-
-func (e RCodeError) Error() string {
-	return serial.Concat("rcode: ", uint16(e))
 }
 
 func RCodeFromError(err error) uint16 {
@@ -51,4 +47,8 @@ func RCodeFromError(err error) uint16 {
 		return uint16(r)
 	}
 	return 0
+}
+
+func (e RCodeError) Error() string {
+	return serial.Concat("rcode: ", uint16(e))
 }
