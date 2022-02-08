@@ -1,111 +1,61 @@
-package session
+package dns
+
+//go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
 
 import (
-	"context"
-
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/session"
+	"github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/features/routing"
 )
 
-type Context struct {
-	Inbound  *session.Inbound
-	Outbound *session.Outbound
-	Content  *session.Content
+type ResolvableContext struct {
+	routing.Context
+	dnsClient   dns.Client
+	resolvedIPs []net.IP
 }
 
-func AsRoutingContext(ctx context.Context) routing.Context {
-	return &Context{
-		Inbound:  session.InboundFromContext(ctx),
-		Outbound: session.OutboundFromContext(ctx),
-		Content:  session.ContentFromContext(ctx),
-	}
+func ContextWithDNSClient(ctx routing.Context, client dns.Client) routing.Context {
+	return &ResolvableContext{Context: ctx, dnsClient: client}
 }
 
-func (ctx *Context) GetAttributes() map[string]string {
-	if ctx.Content == nil {
-		return nil
+func (ctx *ResolvableContext) GetTargetIPs() []net.IP {
+	if ips := ctx.Context.GetTargetIPs(); len(ips) != 0 {
+		return ips
 	}
-	return ctx.Content.Attributes
-}
-
-func (ctx *Context) GetInboundTag() string {
-	if ctx.Inbound == nil {
-		return ""
+	if len(ctx.resolvedIPs) > 0 {
+		return ctx.resolvedIPs
 	}
-	return ctx.Inbound.Tag
-}
-
-func (ctx *Context) GetNetwork() net.Network {
-	if ctx.Outbound == nil {
-		return net.Network_Unknown
-	}
-	return ctx.Outbound.Target.Network
-}
-
-func (ctx *Context) GetProtocol() string {
-	if ctx.Content == nil {
-		return ""
-	}
-	return ctx.Content.Protocol
-}
-
-func (ctx *Context) GetSkipDNSResolve() bool {
-	if ctx.Content == nil {
-		return false
-	}
-	return ctx.Content.SkipDNSResolve
-}
-
-func (ctx *Context) GetSourceIPs() []net.IP {
-	if ctx.Inbound == nil || !ctx.Inbound.Source.IsValid() {
-		return nil
-	}
-	dest := ctx.Inbound.Source
-	if dest.Address.Family().IsDomain() {
-		return nil
-	}
-	return []net.IP{dest.Address.IP()}
-}
-
-func (ctx *Context) GetSourcePort() net.Port {
-	if ctx.Inbound == nil || !ctx.Inbound.Source.IsValid() {
-		return 0
-	}
-	return ctx.Inbound.Source.Port
-}
-
-func (ctx *Context) GetTargetDomain() string {
-	if ctx.Outbound == nil || !ctx.Outbound.Target.IsValid() {
-		return ""
-	}
-	dest := ctx.Outbound.Target
-	if !dest.Address.Family().IsDomain() {
-		return ""
-	}
-	return dest.Address.Domain()
-}
-
-func (ctx *Context) GetTargetIPs() []net.IP {
-	if ctx.Outbound == nil || !ctx.Outbound.Target.IsValid() {
-		return nil
-	}
-	if ctx.Outbound.Target.Address.Family().IsIP() {
-		return []net.IP{ctx.Outbound.Target.Address.IP()}
+	if domain := ctx.GetTargetDomain(); len(domain) != 0 {
+		lookupFunc := ctx.dnsClient.LookupIP
+		ipOption := &dns.IPOption{
+			IPv4Enable: true,
+			IPv6Enable: true,
+		}
+		if c, ok := ctx.dnsClient.(dns.ClientWithIPOption); ok {
+			ipOption = c.GetIPOption()
+		} else {
+			newError("ctx.dnsClient doesn't implement ClientWithIPOption").AtDebug().WriteToLog()
+		}
+		switch {
+		case ipOption.IPv4Enable && !ipOption.IPv6Enable:
+			if lookupIPv4, ok := ctx.dnsClient.(dns.IPv4Lookup); ok {
+				lookupFunc = lookupIPv4.LookupIPv4
+			} else {
+				newError("ctx.dnsClient doesn't implement IPv4Lookup. Use LookupIP instead.").AtDebug().WriteToLog()
+			}
+		case !ipOption.IPv4Enable && ipOption.IPv6Enable:
+			if lookupIPv6, ok := ctx.dnsClient.(dns.IPv6Lookup); ok {
+				lookupFunc = lookupIPv6.LookupIPv6
+			} else {
+				newError("ctx.dnsClient doesn't implement IPv6Lookup. Use LookupIP instead.").AtDebug().WriteToLog()
+			}
+		}
+		ips, err := lookupFunc(domain)
+		if err == nil {
+			ctx.resolvedIPs = ips
+			return ips
+		}
+		newError("resolve ip for ", domain).Base(err).WriteToLog()
 	}
 	return nil
-}
-
-func (ctx *Context) GetTargetPort() net.Port {
-	if ctx.Outbound == nil || !ctx.Outbound.Target.IsValid() {
-		return 0
-	}
-	return ctx.Outbound.Target.Port
-}
-
-func (ctx *Context) GetUser() string {
-	if ctx.Inbound == nil || ctx.Inbound.User == nil {
-		return ""
-	}
-	return ctx.Inbound.User.Email
 }
