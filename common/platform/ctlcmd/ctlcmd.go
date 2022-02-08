@@ -17,10 +17,8 @@ func Run(args []string, input io.Reader) (buf.MultiBuffer, error) {
 	if _, err := os.Stat(v2ctl); err != nil {
 		return nil, newError("v2ctl doesn't exist").Base(err)
 	}
-
 	var errBuffer buf.MultiBufferContainer
 	var outBuffer buf.MultiBufferContainer
-
 	cmd := exec.Command(v2ctl, args...)
 	cmd.Stderr = &errBuffer
 	cmd.Stdout = &outBuffer
@@ -28,11 +26,9 @@ func Run(args []string, input io.Reader) (buf.MultiBuffer, error) {
 	if input != nil {
 		cmd.Stdin = input
 	}
-
 	if err := cmd.Start(); err != nil {
 		return nil, newError("failed to start v2ctl").Base(err)
 	}
-
 	if err := cmd.Wait(); err != nil {
 		msg := "failed to execute v2ctl"
 		if errBuffer.Len() > 0 {
@@ -40,10 +36,8 @@ func Run(args []string, input io.Reader) (buf.MultiBuffer, error) {
 		}
 		return nil, newError(msg).Base(err)
 	}
-
 	if !errBuffer.IsEmpty() {
 		newError("<v2ctl message> \n", strings.TrimSpace(errBuffer.MultiBuffer.String())).AtInfo().WriteToLog()
 	}
-
 	return outBuffer.MultiBuffer, nil
 }
