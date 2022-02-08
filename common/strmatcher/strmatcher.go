@@ -1,15 +1,6 @@
 package strmatcher
 
-import (
-	"regexp"
-)
-
-type Matcher interface {
-	Match(string) bool
-	String() string
-}
-
-type Type byte
+import "regexp"
 
 const (
 	Full Type = iota
@@ -18,29 +9,13 @@ const (
 	Regex
 )
 
-func (t Type) New(pattern string) (Matcher, error) {
-	switch t {
-	case Full:
-		return fullMatcher(pattern), nil
-	case Substr:
-		return substrMatcher(pattern), nil
-	case Domain:
-		return domainMatcher(pattern), nil
-	case Regex:
-		r, err := regexp.Compile(pattern)
-		if err != nil {
-			return nil, err
-		}
-		return &regexMatcher{
-			pattern: r,
-		}, nil
-	default:
-		panic("Unknown type")
-	}
-}
-
 type IndexMatcher interface {
 	Match(input string) []uint32
+}
+
+type Matcher interface {
+	Match(string) bool
+	String() string
 }
 
 type matcherEntry struct {
@@ -54,6 +29,8 @@ type MatcherGroup struct {
 	domainMatcher DomainMatcherGroup
 	otherMatchers []matcherEntry
 }
+
+type Type byte
 
 func (g *MatcherGroup) Add(m Matcher) uint32 {
 	g.count++
@@ -84,6 +61,27 @@ func (g *MatcherGroup) Match(pattern string) []uint32 {
 		}
 	}
 	return result
+}
+
+func (t Type) New(pattern string) (Matcher, error) {
+	switch t {
+	case Full:
+		return fullMatcher(pattern), nil
+	case Substr:
+		return substrMatcher(pattern), nil
+	case Domain:
+		return domainMatcher(pattern), nil
+	case Regex:
+		r, err := regexp.Compile(pattern)
+		if err != nil {
+			return nil, err
+		}
+		return &regexMatcher{
+			pattern: r,
+		}, nil
+	default:
+		panic("Unknown type")
+	}
 }
 
 func (g *MatcherGroup) Size() uint32 {
