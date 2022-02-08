@@ -8,22 +8,14 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 )
 
-type SniffHeader struct {
-	domain string
-}
-
-func (h *SniffHeader) Protocol() string {
-	return "tls"
-}
-
-func (h *SniffHeader) Domain() string {
-	return h.domain
-}
-
 var (
 	errNotTLS         = errors.New("not TLS header")
 	errNotClientHello = errors.New("not client hello")
 )
+
+type SniffHeader struct {
+	domain string
+}
 
 func IsValidTLSVersion(major, minor byte) bool {
 	return major == 3
@@ -54,20 +46,17 @@ func ReadClientHello(data []byte, h *SniffHeader) error {
 		return common.ErrNoClue
 	}
 	data = data[1+compressionMethodsLen:]
-
 	if len(data) == 0 {
 		return errNotClientHello
 	}
 	if len(data) < 2 {
 		return errNotClientHello
 	}
-
 	extensionsLength := int(data[0])<<8 | int(data[1])
 	data = data[2:]
 	if extensionsLength != len(data) {
 		return errNotClientHello
 	}
-
 	for len(data) != 0 {
 		if len(data) < 4 {
 			return errNotClientHello
@@ -78,7 +67,6 @@ func ReadClientHello(data []byte, h *SniffHeader) error {
 		if len(data) < length {
 			return errNotClientHello
 		}
-
 		if extension == 0x00 {
 			d := data[:length]
 			if len(d) < 2 {
@@ -112,7 +100,6 @@ func ReadClientHello(data []byte, h *SniffHeader) error {
 		}
 		data = data[length:]
 	}
-
 	return errNotTLS
 }
 
@@ -120,7 +107,6 @@ func SniffTLS(b []byte) (*SniffHeader, error) {
 	if len(b) < 5 {
 		return nil, common.ErrNoClue
 	}
-
 	if b[0] != 0x16 {
 		return nil, errNotTLS
 	}
@@ -131,11 +117,18 @@ func SniffTLS(b []byte) (*SniffHeader, error) {
 	if 5+headerLen > len(b) {
 		return nil, common.ErrNoClue
 	}
-
 	h := &SniffHeader{}
 	err := ReadClientHello(b[5:5+headerLen], h)
 	if err == nil {
 		return h, nil
 	}
 	return nil, err
+}
+
+func (h *SniffHeader) Domain() string {
+	return h.domain
+}
+
+func (h *SniffHeader) Protocol() string {
+	return "tls"
 }
