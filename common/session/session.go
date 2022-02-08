@@ -9,23 +9,14 @@ import (
 	"github.com/vmessocket/vmessocket/common/protocol"
 )
 
+type Content struct {
+	Protocol        string
+	SniffingRequest SniffingRequest
+	Attributes      map[string]string
+	SkipDNSResolve  bool
+}
+
 type ID uint32
-
-func NewID() ID {
-	for {
-		id := ID(rand.Uint32())
-		if id != 0 {
-			return id
-		}
-	}
-}
-
-func ExportIDToError(ctx context.Context) errors.ExportOption {
-	id := IDFromContext(ctx)
-	return func(h *errors.ExportOptionHolder) {
-		h.SessionID = uint32(id)
-	}
-}
 
 type Inbound struct {
 	Source  net.Destination
@@ -45,22 +36,24 @@ type SniffingRequest struct {
 	MetadataOnly                   bool
 }
 
-type Content struct {
-	Protocol        string
-	SniffingRequest SniffingRequest
-	Attributes      map[string]string
-	SkipDNSResolve  bool
-}
-
 type Sockopt struct {
 	Mark uint32
 }
 
-func (c *Content) SetAttribute(name string, value string) {
-	if c.Attributes == nil {
-		c.Attributes = make(map[string]string)
+func ExportIDToError(ctx context.Context) errors.ExportOption {
+	id := IDFromContext(ctx)
+	return func(h *errors.ExportOptionHolder) {
+		h.SessionID = uint32(id)
 	}
-	c.Attributes[name] = value
+}
+
+func NewID() ID {
+	for {
+		id := ID(rand.Uint32())
+		if id != 0 {
+			return id
+		}
+	}
 }
 
 func (c *Content) Attribute(name string) string {
@@ -68,4 +61,11 @@ func (c *Content) Attribute(name string) string {
 		return ""
 	}
 	return c.Attributes[name]
+}
+
+func (c *Content) SetAttribute(name string, value string) {
+	if c.Attributes == nil {
+		c.Attributes = make(map[string]string)
+	}
+	c.Attributes[name] = value
 }
