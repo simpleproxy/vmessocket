@@ -74,27 +74,6 @@ func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
 	}, nil
 }
 
-type MuxConfig struct {
-	Enabled     bool  `json:"enabled"`
-	Concurrency int16 `json:"concurrency"`
-}
-
-func (m *MuxConfig) Build() *proxyman.MultiplexingConfig {
-	if m.Concurrency < 0 {
-		return nil
-	}
-
-	var con uint32 = 8
-	if m.Concurrency > 0 {
-		con = uint32(m.Concurrency)
-	}
-
-	return &proxyman.MultiplexingConfig{
-		Enabled:     m.Enabled,
-		Concurrency: con,
-	}
-}
-
 type InboundDetourAllocationConfig struct {
 	Strategy    string  `json:"strategy"`
 	Concurrency *uint32 `json:"concurrency"`
@@ -232,7 +211,6 @@ type OutboundDetourConfig struct {
 	Settings      *json.RawMessage   `json:"settings"`
 	StreamSetting *StreamConfig      `json:"streamSettings"`
 	ProxySettings *ProxyConfig       `json:"proxySettings"`
-	MuxSettings   *MuxConfig         `json:"mux"`
 }
 
 func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
@@ -260,10 +238,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 			return nil, newError("invalid outbound detour proxy settings.").Base(err)
 		}
 		senderSettings.ProxySettings = ps
-	}
-
-	if c.MuxSettings != nil {
-		senderSettings.MultiplexSettings = c.MuxSettings.Build()
 	}
 
 	settings := []byte("{}")
