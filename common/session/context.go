@@ -7,7 +7,6 @@ const (
 	inboundSessionKey
 	outboundSessionKey
 	contentSessionKey
-	muxPreferedSessionKey
 	sockoptSessionKey
 	trackedConnectionErrorKey
 )
@@ -35,10 +34,6 @@ func ContextWithID(ctx context.Context, id ID) context.Context {
 
 func ContextWithInbound(ctx context.Context, inbound *Inbound) context.Context {
 	return context.WithValue(ctx, inboundSessionKey, inbound)
-}
-
-func ContextWithMuxPrefered(ctx context.Context, forced bool) context.Context {
-	return context.WithValue(ctx, muxPreferedSessionKey, forced)
 }
 
 func ContextWithOutbound(ctx context.Context, outbound *Outbound) context.Context {
