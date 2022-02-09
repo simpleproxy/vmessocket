@@ -14,11 +14,42 @@ import (
 	"github.com/vmessocket/vmessocket/proxy/vmess/outbound"
 )
 
+type FeaturesConfig struct {
+	Detour *VMessDetourConfig `json:"detour"`
+}
+
 type VMessAccount struct {
 	ID          string `json:"id"`
 	AlterIds    uint16 `json:"alterId"`
 	Security    string `json:"security"`
 	Experiments string `json:"experiments"`
+}
+
+type VMessDefaultConfig struct {
+	AlterIDs uint16 `json:"alterId"`
+	Level    byte   `json:"level"`
+}
+
+type VMessDetourConfig struct {
+	ToTag string `json:"to"`
+}
+
+type VMessInboundConfig struct {
+	Users        []json.RawMessage   `json:"clients"`
+	Features     *FeaturesConfig     `json:"features"`
+	Defaults     *VMessDefaultConfig `json:"default"`
+	DetourConfig *VMessDetourConfig  `json:"detour"`
+	SecureOnly   bool                `json:"disableInsecureEncryption"`
+}
+
+type VMessOutboundConfig struct {
+	Receivers []*VMessOutboundTarget `json:"vnext"`
+}
+
+type VMessOutboundTarget struct {
+	Address *cfgcommon.Address `json:"address"`
+	Port    uint16             `json:"port"`
+	Users   []json.RawMessage  `json:"users"`
 }
 
 func (a *VMessAccount) Build() *vmess.Account {
@@ -47,8 +78,11 @@ func (a *VMessAccount) Build() *vmess.Account {
 	}
 }
 
-type VMessDetourConfig struct {
-	ToTag string `json:"to"`
+func (c *VMessDefaultConfig) Build() *inbound.DefaultConfig {
+	config := new(inbound.DefaultConfig)
+	config.AlterId = uint32(c.AlterIDs)
+	config.Level = uint32(c.Level)
+	return config
 }
 
 func (c *VMessDetourConfig) Build() *inbound.DetourConfig {
@@ -57,45 +91,18 @@ func (c *VMessDetourConfig) Build() *inbound.DetourConfig {
 	}
 }
 
-type FeaturesConfig struct {
-	Detour *VMessDetourConfig `json:"detour"`
-}
-
-type VMessDefaultConfig struct {
-	AlterIDs uint16 `json:"alterId"`
-	Level    byte   `json:"level"`
-}
-
-func (c *VMessDefaultConfig) Build() *inbound.DefaultConfig {
-	config := new(inbound.DefaultConfig)
-	config.AlterId = uint32(c.AlterIDs)
-	config.Level = uint32(c.Level)
-	return config
-}
-
-type VMessInboundConfig struct {
-	Users        []json.RawMessage   `json:"clients"`
-	Features     *FeaturesConfig     `json:"features"`
-	Defaults     *VMessDefaultConfig `json:"default"`
-	DetourConfig *VMessDetourConfig  `json:"detour"`
-	SecureOnly   bool                `json:"disableInsecureEncryption"`
-}
-
 func (c *VMessInboundConfig) Build() (proto.Message, error) {
 	config := &inbound.Config{
 		SecureEncryptionOnly: c.SecureOnly,
 	}
-
 	if c.Defaults != nil {
 		config.Default = c.Defaults.Build()
 	}
-
 	if c.DetourConfig != nil {
 		config.Detour = c.DetourConfig.Build()
 	} else if c.Features != nil && c.Features.Detour != nil {
 		config.Detour = c.Features.Detour.Build()
 	}
-
 	config.User = make([]*protocol.User, len(c.Users))
 	for idx, rawData := range c.Users {
 		user := new(protocol.User)
@@ -109,18 +116,7 @@ func (c *VMessInboundConfig) Build() (proto.Message, error) {
 		user.Account = serial.ToTypedMessage(account.Build())
 		config.User[idx] = user
 	}
-
 	return config, nil
-}
-
-type VMessOutboundTarget struct {
-	Address *cfgcommon.Address `json:"address"`
-	Port    uint16             `json:"port"`
-	Users   []json.RawMessage  `json:"users"`
-}
-
-type VMessOutboundConfig struct {
-	Receivers []*VMessOutboundTarget `json:"vnext"`
 }
 
 func (c *VMessOutboundConfig) Build() (proto.Message, error) {
