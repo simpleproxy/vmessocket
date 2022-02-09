@@ -6,8 +6,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/buf"
 )
 
-type State byte
-
 const (
 	StateContent State = iota
 	StateEscape
@@ -23,16 +21,16 @@ const (
 
 type Reader struct {
 	io.Reader
-
 	state State
 	br    *buf.BufferedReader
 }
+
+type State byte
 
 func (v *Reader) Read(b []byte) (int, error) {
 	if v.br == nil {
 		v.br = &buf.BufferedReader{Reader: buf.NewReader(v.Reader)}
 	}
-
 	p := b[:0]
 	for len(p) < len(b)-2 {
 		x, err := v.br.ReadByte()

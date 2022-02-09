@@ -12,6 +12,8 @@ import (
 
 //go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
 
+type standardLoader struct{}
+
 func loadIP(filename, country string) ([]*router.CIDR, error) {
 	geoipBytes, err := filesystem.ReadAsset(filename)
 	if err != nil {
@@ -21,13 +23,11 @@ func loadIP(filename, country string) ([]*router.CIDR, error) {
 	if err := proto.Unmarshal(geoipBytes, &geoipList); err != nil {
 		return nil, err
 	}
-
 	for _, geoip := range geoipList.Entry {
 		if strings.EqualFold(geoip.CountryCode, country) {
 			return geoip.Cidr, nil
 		}
 	}
-
 	return nil, newError("country not found in ", filename, ": ", country)
 }
 
@@ -40,24 +40,20 @@ func loadSite(filename, list string) ([]*router.Domain, error) {
 	if err := proto.Unmarshal(geositeBytes, &geositeList); err != nil {
 		return nil, err
 	}
-
 	for _, site := range geositeList.Entry {
 		if strings.EqualFold(site.CountryCode, list) {
 			return site.Domain, nil
 		}
 	}
-
 	return nil, newError("list not found in ", filename, ": ", list)
-}
-
-type standardLoader struct{}
-
-func (d standardLoader) LoadSite(filename, list string) ([]*router.Domain, error) {
-	return loadSite(filename, list)
 }
 
 func (d standardLoader) LoadIP(filename, country string) ([]*router.CIDR, error) {
 	return loadIP(filename, country)
+}
+
+func (d standardLoader) LoadSite(filename, list string) ([]*router.Domain, error) {
+	return loadSite(filename, list)
 }
 
 func init() {
