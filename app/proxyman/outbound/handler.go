@@ -139,24 +139,15 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 }
 
 func (h *Handler) Dispatch(ctx context.Context, link *transport.Link) {
-	if h.mux != nil && (h.mux.Enabled || session.MuxPreferedFromContext(ctx)) {
-		if err := h.mux.Dispatch(ctx, link); err != nil {
-			err := newError("failed to process mux outbound traffic").Base(err)
-			session.SubmitOutboundErrorToOriginator(ctx, err)
-			err.WriteToLog(session.ExportIDToError(ctx))
-			common.Interrupt(link.Writer)
-		}
+	if err := h.proxy.Process(ctx, link, h); err != nil {
+		err := newError("failed to process outbound traffic").Base(err)
+		session.SubmitOutboundErrorToOriginator(ctx, err)
+		err.WriteToLog(session.ExportIDToError(ctx))
+		common.Interrupt(link.Writer)
 	} else {
-		if err := h.proxy.Process(ctx, link, h); err != nil {
-			err := newError("failed to process outbound traffic").Base(err)
-			session.SubmitOutboundErrorToOriginator(ctx, err)
-			err.WriteToLog(session.ExportIDToError(ctx))
-			common.Interrupt(link.Writer)
-		} else {
-			common.Must(common.Close(link.Writer))
-		}
-		common.Interrupt(link.Reader)
+		common.Must(common.Close(link.Writer))
 	}
+	common.Interrupt(link.Reader)
 }
 
 func (h *Handler) GetOutbound() proxy.Outbound {
