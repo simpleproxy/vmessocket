@@ -9,10 +9,22 @@ import (
 	"github.com/vmessocket/vmessocket/transport/internet/headers/http"
 )
 
+type Authenticator struct {
+	Request  AuthenticatorRequest  `json:"request"`
+	Response AuthenticatorResponse `json:"response"`
+}
+
 type AuthenticatorRequest struct {
 	Version string                           `json:"version"`
 	Method  string                           `json:"method"`
 	Path    cfgcommon.StringList             `json:"path"`
+	Headers map[string]*cfgcommon.StringList `json:"headers"`
+}
+
+type AuthenticatorResponse struct {
+	Version string                           `json:"version"`
+	Status  string                           `json:"status"`
+	Reason  string                           `json:"reason"`
 	Headers map[string]*cfgcommon.StringList `json:"headers"`
 }
 
@@ -23,6 +35,21 @@ func sortMapKeys(m map[string]*cfgcommon.StringList) []string {
 	}
 	sort.Strings(keys)
 	return keys
+}
+
+func (v *Authenticator) Build() (proto.Message, error) {
+	config := new(http.Config)
+	requestConfig, err := v.Request.Build()
+	if err != nil {
+		return nil, err
+	}
+	config.Request = requestConfig
+	responseConfig, err := v.Response.Build()
+	if err != nil {
+		return nil, err
+	}
+	config.Response = responseConfig
+	return config, nil
 }
 
 func (v *AuthenticatorRequest) Build() (*http.RequestConfig, error) {
@@ -54,19 +81,15 @@ func (v *AuthenticatorRequest) Build() (*http.RequestConfig, error) {
 			},
 		},
 	}
-
 	if len(v.Version) > 0 {
 		config.Version = &http.Version{Value: v.Version}
 	}
-
 	if len(v.Method) > 0 {
 		config.Method = &http.Method{Value: v.Method}
 	}
-
 	if len(v.Path) > 0 {
 		config.Uri = append([]string(nil), (v.Path)...)
 	}
-
 	if len(v.Headers) > 0 {
 		config.Header = make([]*http.Header, 0, len(v.Headers))
 		headerNames := sortMapKeys(v.Headers)
@@ -81,15 +104,7 @@ func (v *AuthenticatorRequest) Build() (*http.RequestConfig, error) {
 			})
 		}
 	}
-
 	return config, nil
-}
-
-type AuthenticatorResponse struct {
-	Version string                           `json:"version"`
-	Status  string                           `json:"status"`
-	Reason  string                           `json:"reason"`
-	Headers map[string]*cfgcommon.StringList `json:"headers"`
 }
 
 func (v *AuthenticatorResponse) Build() (*http.ResponseConfig, error) {
@@ -117,11 +132,9 @@ func (v *AuthenticatorResponse) Build() (*http.ResponseConfig, error) {
 			},
 		},
 	}
-
 	if len(v.Version) > 0 {
 		config.Version = &http.Version{Value: v.Version}
 	}
-
 	if len(v.Status) > 0 || len(v.Reason) > 0 {
 		config.Status = &http.Status{
 			Code:   "200",
@@ -134,7 +147,6 @@ func (v *AuthenticatorResponse) Build() (*http.ResponseConfig, error) {
 			config.Status.Reason = v.Reason
 		}
 	}
-
 	if len(v.Headers) > 0 {
 		config.Header = make([]*http.Header, 0, len(v.Headers))
 		headerNames := sortMapKeys(v.Headers)
@@ -149,28 +161,5 @@ func (v *AuthenticatorResponse) Build() (*http.ResponseConfig, error) {
 			})
 		}
 	}
-
-	return config, nil
-}
-
-type Authenticator struct {
-	Request  AuthenticatorRequest  `json:"request"`
-	Response AuthenticatorResponse `json:"response"`
-}
-
-func (v *Authenticator) Build() (proto.Message, error) {
-	config := new(http.Config)
-	requestConfig, err := v.Request.Build()
-	if err != nil {
-		return nil, err
-	}
-	config.Request = requestConfig
-
-	responseConfig, err := v.Response.Build()
-	if err != nil {
-		return nil, err
-	}
-	config.Response = responseConfig
-
 	return config, nil
 }
