@@ -12,22 +12,26 @@ import (
 	"github.com/vmessocket/vmessocket/proxy/socks"
 )
 
+const (
+	AuthMethodNoAuth   = "noauth"
+	AuthMethodUserPass = "password"
+)
+
 type SocksAccount struct {
 	Username string `json:"user"`
 	Password string `json:"pass"`
 }
 
-func (v *SocksAccount) Build() *socks.Account {
-	return &socks.Account{
-		Username: v.Username,
-		Password: v.Password,
-	}
+type SocksClientConfig struct {
+	Servers []*SocksRemoteConfig `json:"servers"`
+	Version string               `json:"version"`
 }
 
-const (
-	AuthMethodNoAuth   = "noauth"
-	AuthMethodUserPass = "password"
-)
+type SocksRemoteConfig struct {
+	Address *cfgcommon.Address `json:"address"`
+	Port    uint16             `json:"port"`
+	Users   []json.RawMessage  `json:"users"`
+}
 
 type SocksServerConfig struct {
 	AuthMethod string             `json:"auth"`
@@ -38,43 +42,11 @@ type SocksServerConfig struct {
 	UserLevel  uint32             `json:"userLevel"`
 }
 
-func (v *SocksServerConfig) Build() (proto.Message, error) {
-	config := new(socks.ServerConfig)
-	switch v.AuthMethod {
-	case AuthMethodNoAuth:
-		config.AuthType = socks.AuthType_NO_AUTH
-	case AuthMethodUserPass:
-		config.AuthType = socks.AuthType_PASSWORD
-	default:
-		config.AuthType = socks.AuthType_NO_AUTH
+func (v *SocksAccount) Build() *socks.Account {
+	return &socks.Account{
+		Username: v.Username,
+		Password: v.Password,
 	}
-
-	if len(v.Accounts) > 0 {
-		config.Accounts = make(map[string]string, len(v.Accounts))
-		for _, account := range v.Accounts {
-			config.Accounts[account.Username] = account.Password
-		}
-	}
-
-	config.UdpEnabled = v.UDP
-	if v.Host != nil {
-		config.Address = v.Host.Build()
-	}
-
-	config.Timeout = v.Timeout
-	config.UserLevel = v.UserLevel
-	return config, nil
-}
-
-type SocksRemoteConfig struct {
-	Address *cfgcommon.Address `json:"address"`
-	Port    uint16             `json:"port"`
-	Users   []json.RawMessage  `json:"users"`
-}
-
-type SocksClientConfig struct {
-	Servers []*SocksRemoteConfig `json:"servers"`
-	Version string               `json:"version"`
 }
 
 func (v *SocksClientConfig) Build() (proto.Message, error) {
@@ -112,5 +84,30 @@ func (v *SocksClientConfig) Build() (proto.Message, error) {
 		}
 		config.Server[idx] = server
 	}
+	return config, nil
+}
+
+func (v *SocksServerConfig) Build() (proto.Message, error) {
+	config := new(socks.ServerConfig)
+	switch v.AuthMethod {
+	case AuthMethodNoAuth:
+		config.AuthType = socks.AuthType_NO_AUTH
+	case AuthMethodUserPass:
+		config.AuthType = socks.AuthType_PASSWORD
+	default:
+		config.AuthType = socks.AuthType_NO_AUTH
+	}
+	if len(v.Accounts) > 0 {
+		config.Accounts = make(map[string]string, len(v.Accounts))
+		for _, account := range v.Accounts {
+			config.Accounts[account.Username] = account.Password
+		}
+	}
+	config.UdpEnabled = v.UDP
+	if v.Host != nil {
+		config.Address = v.Host.Build()
+	}
+	config.Timeout = v.Timeout
+	config.UserLevel = v.UserLevel
 	return config, nil
 }
