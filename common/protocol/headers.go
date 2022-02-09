@@ -11,7 +11,6 @@ import (
 const (
 	RequestCommandTCP = RequestCommand(0x01)
 	RequestCommandUDP = RequestCommand(0x02)
-	RequestCommandMux = RequestCommand(0x03)
 	RequestOptionChunkStream         bitmask.Byte = 0x01
 	RequestOptionConnectionReuse     bitmask.Byte = 0x02
 	RequestOptionChunkMasking        bitmask.Byte = 0x04
@@ -71,7 +70,7 @@ func (sc *SecurityConfig) GetSecurityType() SecurityType {
 
 func (c RequestCommand) TransferType() TransferType {
 	switch c {
-	case RequestCommandTCP, RequestCommandMux:
+	case RequestCommandTCP:
 		return TransferTypeStream
 	case RequestCommandUDP:
 		return TransferTypePacket
