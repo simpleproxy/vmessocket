@@ -16,11 +16,14 @@ type HTTPAccount struct {
 	Password string `json:"pass"`
 }
 
-func (v *HTTPAccount) Build() *http.Account {
-	return &http.Account{
-		Username: v.Username,
-		Password: v.Password,
-	}
+type HTTPClientConfig struct {
+	Servers []*HTTPRemoteConfig `json:"servers"`
+}
+
+type HTTPRemoteConfig struct {
+	Address *cfgcommon.Address `json:"address"`
+	Port    uint16             `json:"port"`
+	Users   []json.RawMessage  `json:"users"`
 }
 
 type HTTPServerConfig struct {
@@ -30,31 +33,11 @@ type HTTPServerConfig struct {
 	UserLevel   uint32         `json:"userLevel"`
 }
 
-func (c *HTTPServerConfig) Build() (proto.Message, error) {
-	config := &http.ServerConfig{
-		Timeout:          c.Timeout,
-		AllowTransparent: c.Transparent,
-		UserLevel:        c.UserLevel,
+func (v *HTTPAccount) Build() *http.Account {
+	return &http.Account{
+		Username: v.Username,
+		Password: v.Password,
 	}
-
-	if len(c.Accounts) > 0 {
-		config.Accounts = make(map[string]string)
-		for _, account := range c.Accounts {
-			config.Accounts[account.Username] = account.Password
-		}
-	}
-
-	return config, nil
-}
-
-type HTTPRemoteConfig struct {
-	Address *cfgcommon.Address `json:"address"`
-	Port    uint16             `json:"port"`
-	Users   []json.RawMessage  `json:"users"`
-}
-
-type HTTPClientConfig struct {
-	Servers []*HTTPRemoteConfig `json:"servers"`
 }
 
 func (v *HTTPClientConfig) Build() (proto.Message, error) {
@@ -78,6 +61,21 @@ func (v *HTTPClientConfig) Build() (proto.Message, error) {
 			server.User = append(server.User, user)
 		}
 		config.Server[idx] = server
+	}
+	return config, nil
+}
+
+func (c *HTTPServerConfig) Build() (proto.Message, error) {
+	config := &http.ServerConfig{
+		Timeout:          c.Timeout,
+		AllowTransparent: c.Transparent,
+		UserLevel:        c.UserLevel,
+	}
+	if len(c.Accounts) > 0 {
+		config.Accounts = make(map[string]string)
+		for _, account := range c.Accounts {
+			config.Accounts[account.Username] = account.Password
+		}
 	}
 	return config, nil
 }

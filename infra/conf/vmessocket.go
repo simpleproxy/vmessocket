@@ -19,7 +19,6 @@ var (
 		"socks": func() interface{} { return new(SocksServerConfig) },
 		"vmess": func() interface{} { return new(VMessInboundConfig) },
 	}, "protocol", "settings")
-
 	outboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
 		"dns":     func() interface{} { return new(DNSOutboundConfig) },
 		"freedom": func() interface{} { return new(FreedomConfig) },
@@ -27,9 +26,70 @@ var (
 		"socks":   func() interface{} { return new(SocksClientConfig) },
 		"vmess":   func() interface{} { return new(VMessOutboundConfig) },
 	}, "protocol", "settings")
-
 	ctllog = log.New(os.Stderr, "v2ctl> ", 0)
 )
+
+type Config struct {
+	Port            uint16                 `json:"port"`
+	InboundConfig   *InboundDetourConfig   `json:"inbound"`
+	OutboundConfig  *OutboundDetourConfig  `json:"outbound"`
+	InboundDetours  []InboundDetourConfig  `json:"inboundDetour"`
+	OutboundDetours []OutboundDetourConfig `json:"outboundDetour"`
+	LogConfig       *LogConfig             `json:"log"`
+	RouterConfig    *RouterConfig          `json:"routing"`
+	DNSConfig       *DNSConfig             `json:"dns"`
+	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
+	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
+	Transport       *TransportConfig       `json:"transport"`
+	Services map[string]*json.RawMessage `json:"services"`
+}
+
+type InboundDetourAllocationConfig struct {
+	Strategy    string  `json:"strategy"`
+	Concurrency *uint32 `json:"concurrency"`
+	RefreshMin  *uint32 `json:"refresh"`
+}
+
+type InboundDetourConfig struct {
+	Protocol       string                         `json:"protocol"`
+	PortRange      *cfgcommon.PortRange           `json:"port"`
+	ListenOn       *cfgcommon.Address             `json:"listen"`
+	Settings       *json.RawMessage               `json:"settings"`
+	Tag            string                         `json:"tag"`
+	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
+	StreamSetting  *StreamConfig                  `json:"streamSettings"`
+	DomainOverride *cfgcommon.StringList          `json:"domainOverride"`
+	SniffingConfig *SniffingConfig                `json:"sniffing"`
+}
+
+type OutboundDetourConfig struct {
+	Protocol      string             `json:"protocol"`
+	SendThrough   *cfgcommon.Address `json:"sendThrough"`
+	Tag           string             `json:"tag"`
+	Settings      *json.RawMessage   `json:"settings"`
+	StreamSetting *StreamConfig      `json:"streamSettings"`
+	ProxySettings *ProxyConfig       `json:"proxySettings"`
+}
+
+type SniffingConfig struct {
+	Enabled      bool                  `json:"enabled"`
+	DestOverride *cfgcommon.StringList `json:"destOverride"`
+	MetadataOnly bool                  `json:"metadataOnly"`
+}
+
+type StatsConfig struct{}
+
+func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
+	if s.HTTPSettings == nil {
+		s.HTTPSettings = t.HTTPConfig
+	}
+	if s.TCPSettings == nil {
+		s.TCPSettings = t.TCPConfig
+	}
+	if s.WSSettings == nil {
+		s.WSSettings = t.WSConfig
+	}
+}
 
 func toProtocolList(s []string) ([]proxyman.KnownProtocols, error) {
 	kp := make([]proxyman.KnownProtocols, 0, 8)
@@ -46,38 +106,93 @@ func toProtocolList(s []string) ([]proxyman.KnownProtocols, error) {
 	return kp, nil
 }
 
-type SniffingConfig struct {
-	Enabled      bool                  `json:"enabled"`
-	DestOverride *cfgcommon.StringList `json:"destOverride"`
-	MetadataOnly bool                  `json:"metadataOnly"`
-}
-
-func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
-	var p []string
-	if c.DestOverride != nil {
-		for _, domainOverride := range *c.DestOverride {
-			switch strings.ToLower(domainOverride) {
-			case "http":
-				p = append(p, "http")
-			case "tls", "https", "ssl":
-				p = append(p, "tls")
-			default:
-				return nil, newError("unknown protocol: ", domainOverride)
-			}
+func (c *Config) Build() (*core.Config, error) {
+	config := &core.Config{
+		App: []*serial.TypedMessage{
+			serial.ToTypedMessage(&dispatcher.Config{}),
+			serial.ToTypedMessage(&proxyman.InboundConfig{}),
+			serial.ToTypedMessage(&proxyman.OutboundConfig{}),
+		},
+	}
+	var logConfMsg *serial.TypedMessage
+	if c.LogConfig != nil {
+		logConfMsg = serial.ToTypedMessage(c.LogConfig.Build())
+	} else {
+		logConfMsg = serial.ToTypedMessage(DefaultLogConfig())
+	}
+	config.App = append([]*serial.TypedMessage{logConfMsg}, config.App...)
+	if c.RouterConfig != nil {
+		routerConfig, err := c.RouterConfig.Build()
+		if err != nil {
+			return nil, err
+		}
+		config.App = append(config.App, serial.ToTypedMessage(routerConfig))
+	}
+	if c.DNSConfig != nil {
+		dnsApp, err := c.DNSConfig.Build()
+		if err != nil {
+			return nil, newError("failed to parse DNS config").Base(err)
+		}
+		config.App = append(config.App, serial.ToTypedMessage(dnsApp))
+	}
+	if msg, err := c.BuildServices(c.Services); err != nil {
+		return nil, newError("Cannot load service").Base(err)
+	} else {
+		config.App = append(config.App, msg...)
+	}
+	var inbounds []InboundDetourConfig
+	if c.InboundConfig != nil {
+		inbounds = append(inbounds, *c.InboundConfig)
+	}
+	if len(c.InboundDetours) > 0 {
+		inbounds = append(inbounds, c.InboundDetours...)
+	}
+	if len(c.InboundConfigs) > 0 {
+		inbounds = append(inbounds, c.InboundConfigs...)
+	}
+	if len(inbounds) > 0 && inbounds[0].PortRange == nil && c.Port > 0 {
+		inbounds[0].PortRange = &cfgcommon.PortRange{
+			From: uint32(c.Port),
+			To:   uint32(c.Port),
 		}
 	}
-
-	return &proxyman.SniffingConfig{
-		Enabled:             c.Enabled,
-		DestinationOverride: p,
-		MetadataOnly:        c.MetadataOnly,
-	}, nil
-}
-
-type InboundDetourAllocationConfig struct {
-	Strategy    string  `json:"strategy"`
-	Concurrency *uint32 `json:"concurrency"`
-	RefreshMin  *uint32 `json:"refresh"`
+	for _, rawInboundConfig := range inbounds {
+		if c.Transport != nil {
+			if rawInboundConfig.StreamSetting == nil {
+				rawInboundConfig.StreamSetting = &StreamConfig{}
+			}
+			applyTransportConfig(rawInboundConfig.StreamSetting, c.Transport)
+		}
+		ic, err := rawInboundConfig.Build()
+		if err != nil {
+			return nil, err
+		}
+		config.Inbound = append(config.Inbound, ic)
+	}
+	var outbounds []OutboundDetourConfig
+	if c.OutboundConfig != nil {
+		outbounds = append(outbounds, *c.OutboundConfig)
+	}
+	if len(c.OutboundDetours) > 0 {
+		outbounds = append(outbounds, c.OutboundDetours...)
+	}
+	if len(c.OutboundConfigs) > 0 {
+		outbounds = append(outbounds, c.OutboundConfigs...)
+	}
+	for _, rawOutboundConfig := range outbounds {
+		if c.Transport != nil {
+			if rawOutboundConfig.StreamSetting == nil {
+				rawOutboundConfig.StreamSetting = &StreamConfig{}
+			}
+			applyTransportConfig(rawOutboundConfig.StreamSetting, c.Transport)
+		}
+		oc, err := rawOutboundConfig.Build()
+		if err != nil {
+			return nil, err
+		}
+		config.Outbound = append(config.Outbound, oc)
+	}
+	return config, nil
 }
 
 func (c *InboundDetourAllocationConfig) Build() (*proxyman.AllocationStrategy, error) {
@@ -97,31 +212,16 @@ func (c *InboundDetourAllocationConfig) Build() (*proxyman.AllocationStrategy, e
 			Value: *c.Concurrency,
 		}
 	}
-
 	if c.RefreshMin != nil {
 		config.Refresh = &proxyman.AllocationStrategy_AllocationStrategyRefresh{
 			Value: *c.RefreshMin,
 		}
 	}
-
 	return config, nil
-}
-
-type InboundDetourConfig struct {
-	Protocol       string                         `json:"protocol"`
-	PortRange      *cfgcommon.PortRange           `json:"port"`
-	ListenOn       *cfgcommon.Address             `json:"listen"`
-	Settings       *json.RawMessage               `json:"settings"`
-	Tag            string                         `json:"tag"`
-	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
-	StreamSetting  *StreamConfig                  `json:"streamSettings"`
-	DomainOverride *cfgcommon.StringList          `json:"domainOverride"`
-	SniffingConfig *SniffingConfig                `json:"sniffing"`
 }
 
 func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 	receiverSettings := &proxyman.ReceiverConfig{}
-
 	if c.ListenOn == nil {
 		if c.PortRange == nil {
 			return nil, newError("Listen on AnyIP but no Port(s) set in InboundDetour.")
@@ -145,7 +245,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 			return nil, newError("unable to listen on domain address: ", c.ListenOn.Domain())
 		}
 	}
-
 	if c.Allocation != nil {
 		concurrency := -1
 		if c.Allocation.Concurrency != nil && c.Allocation.Strategy == "random" {
@@ -155,7 +254,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		if concurrency >= 0 && concurrency >= portRange {
 			return nil, newError("not enough ports. concurrency = ", concurrency, " ports: ", c.PortRange.From, " - ", c.PortRange.To)
 		}
-
 		as, err := c.Allocation.Build()
 		if err != nil {
 			return nil, err
@@ -183,7 +281,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		}
 		receiverSettings.DomainOverride = kp
 	}
-
 	settings := []byte("{}")
 	if c.Settings != nil {
 		settings = ([]byte)(*c.Settings)
@@ -196,7 +293,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &core.InboundHandlerConfig{
 		Tag:              c.Tag,
 		ReceiverSettings: serial.ToTypedMessage(receiverSettings),
@@ -204,18 +300,8 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 	}, nil
 }
 
-type OutboundDetourConfig struct {
-	Protocol      string             `json:"protocol"`
-	SendThrough   *cfgcommon.Address `json:"sendThrough"`
-	Tag           string             `json:"tag"`
-	Settings      *json.RawMessage   `json:"settings"`
-	StreamSetting *StreamConfig      `json:"streamSettings"`
-	ProxySettings *ProxyConfig       `json:"proxySettings"`
-}
-
 func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	senderSettings := &proxyman.SenderConfig{}
-
 	if c.SendThrough != nil {
 		address := c.SendThrough
 		if address.Family().IsDomain() {
@@ -223,7 +309,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 		}
 		senderSettings.Via = address.Build()
 	}
-
 	if c.StreamSetting != nil {
 		ss, err := c.StreamSetting.Build()
 		if err != nil {
@@ -231,7 +316,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 		}
 		senderSettings.StreamSettings = ss
 	}
-
 	if c.ProxySettings != nil {
 		ps, err := c.ProxySettings.Build()
 		if err != nil {
@@ -239,7 +323,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 		}
 		senderSettings.ProxySettings = ps
 	}
-
 	settings := []byte("{}")
 	if c.Settings != nil {
 		settings = ([]byte)(*c.Settings)
@@ -252,7 +335,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return &core.OutboundHandlerConfig{
 		SenderSettings: serial.ToTypedMessage(senderSettings),
 		Tag:            c.Tag,
@@ -260,23 +342,25 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	}, nil
 }
 
-type StatsConfig struct{}
-
-type Config struct {
-	Port            uint16                 `json:"port"`
-	InboundConfig   *InboundDetourConfig   `json:"inbound"`
-	OutboundConfig  *OutboundDetourConfig  `json:"outbound"`
-	InboundDetours  []InboundDetourConfig  `json:"inboundDetour"`
-	OutboundDetours []OutboundDetourConfig `json:"outboundDetour"`
-
-	LogConfig       *LogConfig             `json:"log"`
-	RouterConfig    *RouterConfig          `json:"routing"`
-	DNSConfig       *DNSConfig             `json:"dns"`
-	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
-	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
-	Transport       *TransportConfig       `json:"transport"`
-
-	Services map[string]*json.RawMessage `json:"services"`
+func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
+	var p []string
+	if c.DestOverride != nil {
+		for _, domainOverride := range *c.DestOverride {
+			switch strings.ToLower(domainOverride) {
+			case "http":
+				p = append(p, "http")
+			case "tls", "https", "ssl":
+				p = append(p, "tls")
+			default:
+				return nil, newError("unknown protocol: ", domainOverride)
+			}
+		}
+	}
+	return &proxyman.SniffingConfig{
+		Enabled:             c.Enabled,
+		DestinationOverride: p,
+		MetadataOnly:        c.MetadataOnly,
+	}, nil
 }
 
 func (c *Config) findInboundTag(tag string) int {
@@ -326,7 +410,6 @@ func (c *Config) Override(o *Config, fn string) {
 	if o.OutboundDetours != nil {
 		c.OutboundDetours = o.OutboundDetours
 	}
-
 	if len(o.InboundConfigs) > 0 {
 		if len(c.InboundConfigs) > 0 && len(o.InboundConfigs) == 1 {
 			if idx := c.findInboundTag(o.InboundConfigs[0].Tag); idx > -1 {
@@ -340,7 +423,6 @@ func (c *Config) Override(o *Config, fn string) {
 			c.InboundConfigs = o.InboundConfigs
 		}
 	}
-
 	if len(o.OutboundConfigs) > 0 {
 		if len(c.OutboundConfigs) > 0 && len(o.OutboundConfigs) == 1 {
 			if idx := c.findOutboundTag(o.OutboundConfigs[0].Tag); idx > -1 {
@@ -359,123 +441,4 @@ func (c *Config) Override(o *Config, fn string) {
 			c.OutboundConfigs = o.OutboundConfigs
 		}
 	}
-}
-
-func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
-	if s.TCPSettings == nil {
-		s.TCPSettings = t.TCPConfig
-	}
-	if s.WSSettings == nil {
-		s.WSSettings = t.WSConfig
-	}
-	if s.HTTPSettings == nil {
-		s.HTTPSettings = t.HTTPConfig
-	}
-}
-
-func (c *Config) Build() (*core.Config, error) {
-
-	config := &core.Config{
-		App: []*serial.TypedMessage{
-			serial.ToTypedMessage(&dispatcher.Config{}),
-			serial.ToTypedMessage(&proxyman.InboundConfig{}),
-			serial.ToTypedMessage(&proxyman.OutboundConfig{}),
-		},
-	}
-
-	var logConfMsg *serial.TypedMessage
-	if c.LogConfig != nil {
-		logConfMsg = serial.ToTypedMessage(c.LogConfig.Build())
-	} else {
-		logConfMsg = serial.ToTypedMessage(DefaultLogConfig())
-	}
-
-	config.App = append([]*serial.TypedMessage{logConfMsg}, config.App...)
-
-	if c.RouterConfig != nil {
-		routerConfig, err := c.RouterConfig.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(routerConfig))
-	}
-
-	if c.DNSConfig != nil {
-		dnsApp, err := c.DNSConfig.Build()
-		if err != nil {
-			return nil, newError("failed to parse DNS config").Base(err)
-		}
-		config.App = append(config.App, serial.ToTypedMessage(dnsApp))
-	}
-
-	if msg, err := c.BuildServices(c.Services); err != nil {
-		return nil, newError("Cannot load service").Base(err)
-	} else {
-		config.App = append(config.App, msg...)
-	}
-
-	var inbounds []InboundDetourConfig
-
-	if c.InboundConfig != nil {
-		inbounds = append(inbounds, *c.InboundConfig)
-	}
-
-	if len(c.InboundDetours) > 0 {
-		inbounds = append(inbounds, c.InboundDetours...)
-	}
-
-	if len(c.InboundConfigs) > 0 {
-		inbounds = append(inbounds, c.InboundConfigs...)
-	}
-
-	if len(inbounds) > 0 && inbounds[0].PortRange == nil && c.Port > 0 {
-		inbounds[0].PortRange = &cfgcommon.PortRange{
-			From: uint32(c.Port),
-			To:   uint32(c.Port),
-		}
-	}
-
-	for _, rawInboundConfig := range inbounds {
-		if c.Transport != nil {
-			if rawInboundConfig.StreamSetting == nil {
-				rawInboundConfig.StreamSetting = &StreamConfig{}
-			}
-			applyTransportConfig(rawInboundConfig.StreamSetting, c.Transport)
-		}
-		ic, err := rawInboundConfig.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.Inbound = append(config.Inbound, ic)
-	}
-
-	var outbounds []OutboundDetourConfig
-
-	if c.OutboundConfig != nil {
-		outbounds = append(outbounds, *c.OutboundConfig)
-	}
-
-	if len(c.OutboundDetours) > 0 {
-		outbounds = append(outbounds, c.OutboundDetours...)
-	}
-
-	if len(c.OutboundConfigs) > 0 {
-		outbounds = append(outbounds, c.OutboundConfigs...)
-	}
-
-	for _, rawOutboundConfig := range outbounds {
-		if c.Transport != nil {
-			if rawOutboundConfig.StreamSetting == nil {
-				rawOutboundConfig.StreamSetting = &StreamConfig{}
-			}
-			applyTransportConfig(rawOutboundConfig.StreamSetting, c.Transport)
-		}
-		oc, err := rawOutboundConfig.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.Outbound = append(config.Outbound, oc)
-	}
-
-	return config, nil
 }

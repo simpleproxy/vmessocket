@@ -7,18 +7,18 @@ import (
 	clog "github.com/vmessocket/vmessocket/common/log"
 )
 
+type LogConfig struct {
+	AccessLog string `json:"access"`
+	ErrorLog  string `json:"error"`
+	LogLevel  string `json:"loglevel"`
+}
+
 func DefaultLogConfig() *log.Config {
 	return &log.Config{
 		AccessLogType: log.LogType_None,
 		ErrorLogType:  log.LogType_Console,
 		ErrorLogLevel: clog.Severity_Warning,
 	}
-}
-
-type LogConfig struct {
-	AccessLog string `json:"access"`
-	ErrorLog  string `json:"error"`
-	LogLevel  string `json:"loglevel"`
 }
 
 func (v *LogConfig) Build() *log.Config {
@@ -29,7 +29,6 @@ func (v *LogConfig) Build() *log.Config {
 		ErrorLogType:  log.LogType_Console,
 		AccessLogType: log.LogType_Console,
 	}
-
 	if v.AccessLog == "none" {
 		config.AccessLogType = log.LogType_None
 	} else if len(v.AccessLog) > 0 {
@@ -42,7 +41,6 @@ func (v *LogConfig) Build() *log.Config {
 		config.ErrorLogPath = v.ErrorLog
 		config.ErrorLogType = log.LogType_File
 	}
-
 	level := strings.ToLower(v.LogLevel)
 	switch level {
 	case "debug":

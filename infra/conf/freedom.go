@@ -29,7 +29,6 @@ func (c *FreedomConfig) Build() (proto.Message, error) {
 	case "useip6", "useipv6", "use_ip6", "use_ipv6", "use_ip_v6", "use-ip6", "use-ipv6", "use-ip-v6":
 		config.DomainStrategy = freedom.Config_USE_IP6
 	}
-
 	if c.Timeout != nil {
 		config.Timeout = *c.Timeout
 	}
@@ -48,7 +47,6 @@ func (c *FreedomConfig) Build() (proto.Message, error) {
 				Port: uint32(port),
 			},
 		}
-
 		if len(host) > 0 {
 			config.DestinationOverride.Server.Address = v2net.NewIPOrDomain(v2net.ParseAddress(host))
 		}

@@ -16,37 +16,13 @@ type offset struct {
 	char int
 }
 
-func findOffset(b []byte, o int) *offset {
-	if o >= len(b) || o < 0 {
-		return nil
-	}
-
-	line := 1
-	char := 0
-	for i, x := range b {
-		if i == o {
-			break
-		}
-		if x == '\n' {
-			line++
-			char = 0
-		} else {
-			char++
-		}
-	}
-
-	return &offset{line: line, char: char}
-}
-
 func DecodeJSONConfig(reader io.Reader) (*conf.Config, error) {
 	jsonConfig := &conf.Config{}
-
 	jsonContent := bytes.NewBuffer(make([]byte, 0, 10240))
 	jsonReader := io.TeeReader(&json_reader.Reader{
 		Reader: reader,
 	}, jsonContent)
 	decoder := json.NewDecoder(jsonReader)
-
 	if err := decoder.Decode(jsonConfig); err != nil {
 		var pos *offset
 		cause := errors.Cause(err)
@@ -61,8 +37,27 @@ func DecodeJSONConfig(reader io.Reader) (*conf.Config, error) {
 		}
 		return nil, newError("failed to read config file").Base(err)
 	}
-
 	return jsonConfig, nil
+}
+
+func findOffset(b []byte, o int) *offset {
+	if o >= len(b) || o < 0 {
+		return nil
+	}
+	line := 1
+	char := 0
+	for i, x := range b {
+		if i == o {
+			break
+		}
+		if x == '\n' {
+			line++
+			char = 0
+		} else {
+			char++
+		}
+	}
+	return &offset{line: line, char: char}
 }
 
 func LoadJSONConfig(reader io.Reader) (*core.Config, error) {
@@ -70,11 +65,9 @@ func LoadJSONConfig(reader io.Reader) (*core.Config, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	pbConfig, err := jsonConfig.Build()
 	if err != nil {
 		return nil, newError("failed to parse json config").Base(err)
 	}
-
 	return pbConfig, nil
 }
