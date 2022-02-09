@@ -121,7 +121,6 @@ func (c *VMessInboundConfig) Build() (proto.Message, error) {
 
 func (c *VMessOutboundConfig) Build() (proto.Message, error) {
 	config := new(outbound.Config)
-
 	if len(c.Receivers) == 0 {
 		return nil, newError("0 VMess receiver configured")
 	}
