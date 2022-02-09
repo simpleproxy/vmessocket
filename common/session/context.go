@@ -77,13 +77,6 @@ func InboundFromContext(ctx context.Context) *Inbound {
 	return nil
 }
 
-func MuxPreferedFromContext(ctx context.Context) bool {
-	if val, ok := ctx.Value(muxPreferedSessionKey).(bool); ok {
-		return val
-	}
-	return false
-}
-
 func OutboundFromContext(ctx context.Context) *Outbound {
 	if outbound, ok := ctx.Value(outboundSessionKey).(*Outbound); ok {
 		return outbound
