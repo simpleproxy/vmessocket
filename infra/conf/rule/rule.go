@@ -13,10 +13,20 @@ import (
 
 //go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
 
+type RouterRule struct {
+	Type          string `json:"type"`
+	OutboundTag   string `json:"outboundTag"`
+	BalancerTag   string `json:"balancerTag"`
+	DomainMatcher string `json:"domainMatcher"`
+}
+
+func ParseDomainRule(ctx context.Context, domain string) ([]*router.Domain, error) {
+	return parseDomainRule(ctx, domain)
+}
+
 func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, error) {
 	cfgEnv := cfgcommon.GetConfigureLoadingEnvironment(ctx)
 	geoLoader := cfgEnv.GetGeoLoader()
-
 	if strings.HasPrefix(domain, "geosite:") {
 		list := domain[8:]
 		if len(list) == 0 {
@@ -26,10 +36,8 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		if err != nil {
 			return nil, newError("failed to load geosite: ", list).Base(err)
 		}
-
 		return domains, nil
 	}
-
 	isExtDatFile := 0
 	{
 		const prefix = "ext:"
@@ -41,7 +49,6 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 			isExtDatFile = len(prefixQualified)
 		}
 	}
-
 	if isExtDatFile != 0 {
 		kv := strings.Split(domain[isExtDatFile:], ":")
 		if len(kv) != 2 {
@@ -53,10 +60,8 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		if err != nil {
 			return nil, newError("failed to load external geosite: ", list, " from ", filename).Base(err)
 		}
-
 		return domains, nil
 	}
-
 	domainRule := new(router.Domain)
 	switch {
 	case strings.HasPrefix(domain, "regexp:"):
@@ -66,7 +71,6 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		}
 		domainRule.Type = router.Domain_Regex
 		domainRule.Value = regexpVal
-
 	case strings.HasPrefix(domain, "domain:"):
 		domainName := domain[7:]
 		if len(domainName) == 0 {
@@ -74,7 +78,6 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		}
 		domainRule.Type = router.Domain_Domain
 		domainRule.Value = domainName
-
 	case strings.HasPrefix(domain, "full:"):
 		fullVal := domain[5:]
 		if len(fullVal) == 0 {
@@ -82,7 +85,6 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		}
 		domainRule.Type = router.Domain_Full
 		domainRule.Value = fullVal
-
 	case strings.HasPrefix(domain, "keyword:"):
 		keywordVal := domain[8:]
 		if len(keywordVal) == 0 {
@@ -90,7 +92,6 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		}
 		domainRule.Type = router.Domain_Plain
 		domainRule.Value = keywordVal
-
 	case strings.HasPrefix(domain, "dotless:"):
 		domainRule.Type = router.Domain_Regex
 		switch substr := domain[8:]; {
@@ -101,103 +102,11 @@ func parseDomainRule(ctx context.Context, domain string) ([]*router.Domain, erro
 		default:
 			return nil, newError("substr in dotless rule should not contain a dot: ", substr)
 		}
-
 	default:
 		domainRule.Type = router.Domain_Plain
 		domainRule.Value = domain
 	}
 	return []*router.Domain{domainRule}, nil
-}
-
-func toCidrList(ctx context.Context, ips cfgcommon.StringList) ([]*router.GeoIP, error) {
-	cfgEnv := cfgcommon.GetConfigureLoadingEnvironment(ctx)
-	geoLoader := cfgEnv.GetGeoLoader()
-
-	var geoipList []*router.GeoIP
-	var customCidrs []*router.CIDR
-
-	for _, ip := range ips {
-		if strings.HasPrefix(ip, "geoip:") {
-			country := ip[6:]
-			isReverseMatch := false
-			if strings.HasPrefix(ip, "geoip:!") {
-				country = ip[7:]
-				isReverseMatch = true
-			}
-			if len(country) == 0 {
-				return nil, newError("empty country name in rule")
-			}
-			geoip, err := geoLoader.LoadGeoIP(country)
-			if err != nil {
-				return nil, newError("failed to load geoip: ", country).Base(err)
-			}
-
-			geoipList = append(geoipList, &router.GeoIP{
-				CountryCode:  strings.ToUpper(country),
-				Cidr:         geoip,
-				ReverseMatch: isReverseMatch,
-			})
-
-			continue
-		}
-
-		isExtDatFile := 0
-		{
-			const prefix = "ext:"
-			if strings.HasPrefix(ip, prefix) {
-				isExtDatFile = len(prefix)
-			}
-			const prefixQualified = "ext-ip:"
-			if strings.HasPrefix(ip, prefixQualified) {
-				isExtDatFile = len(prefixQualified)
-			}
-		}
-
-		if isExtDatFile != 0 {
-			kv := strings.Split(ip[isExtDatFile:], ":")
-			if len(kv) != 2 {
-				return nil, newError("invalid external resource: ", ip)
-			}
-
-			filename := kv[0]
-			country := kv[1]
-			if len(filename) == 0 || len(country) == 0 {
-				return nil, newError("empty filename or empty country in rule")
-			}
-
-			isReverseMatch := false
-			if strings.HasPrefix(country, "!") {
-				country = country[1:]
-				isReverseMatch = true
-			}
-			geoip, err := geoLoader.LoadIP(filename, country)
-			if err != nil {
-				return nil, newError("failed to load geoip: ", country, " from ", filename).Base(err)
-			}
-
-			geoipList = append(geoipList, &router.GeoIP{
-				CountryCode:  strings.ToUpper(filename + "_" + country),
-				Cidr:         geoip,
-				ReverseMatch: isReverseMatch,
-			})
-
-			continue
-		}
-
-		ipRule, err := ParseIP(ip)
-		if err != nil {
-			return nil, newError("invalid IP: ", ip).Base(err)
-		}
-		customCidrs = append(customCidrs, ipRule)
-	}
-
-	if len(customCidrs) > 0 {
-		geoipList = append(geoipList, &router.GeoIP{
-			Cidr: customCidrs,
-		})
-	}
-
-	return geoipList, nil
 }
 
 func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRule, error) {
@@ -220,7 +129,6 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 	if err != nil {
 		return nil, err
 	}
-
 	rule := new(router.RoutingRule)
 	switch {
 	case len(rawFieldRule.OutboundTag) > 0:
@@ -234,11 +142,9 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 	default:
 		return nil, newError("neither outboundTag nor balancerTag is specified in routing rule")
 	}
-
 	if rawFieldRule.DomainMatcher != "" {
 		rule.DomainMatcher = rawFieldRule.DomainMatcher
 	}
-
 	if rawFieldRule.Domain != nil {
 		for _, domain := range *rawFieldRule.Domain {
 			rules, err := parseDomainRule(ctx, domain)
@@ -248,7 +154,6 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 			rule.Domain = append(rule.Domain, rules...)
 		}
 	}
-
 	if rawFieldRule.Domains != nil {
 		for _, domain := range *rawFieldRule.Domains {
 			rules, err := parseDomainRule(ctx, domain)
@@ -258,7 +163,6 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 			rule.Domain = append(rule.Domain, rules...)
 		}
 	}
-
 	if rawFieldRule.IP != nil {
 		geoipList, err := toCidrList(ctx, *rawFieldRule.IP)
 		if err != nil {
@@ -266,15 +170,12 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 		}
 		rule.Geoip = geoipList
 	}
-
 	if rawFieldRule.Port != nil {
 		rule.PortList = rawFieldRule.Port.Build()
 	}
-
 	if rawFieldRule.Network != nil {
 		rule.Networks = rawFieldRule.Network.Build()
 	}
-
 	if rawFieldRule.SourceIP != nil {
 		geoipList, err := toCidrList(ctx, *rawFieldRule.SourceIP)
 		if err != nil {
@@ -282,51 +183,28 @@ func parseFieldRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRu
 		}
 		rule.SourceGeoip = geoipList
 	}
-
 	if rawFieldRule.SourcePort != nil {
 		rule.SourcePortList = rawFieldRule.SourcePort.Build()
 	}
-
 	if rawFieldRule.User != nil {
 		for _, s := range *rawFieldRule.User {
 			rule.UserEmail = append(rule.UserEmail, s)
 		}
 	}
-
 	if rawFieldRule.InboundTag != nil {
 		for _, s := range *rawFieldRule.InboundTag {
 			rule.InboundTag = append(rule.InboundTag, s)
 		}
 	}
-
 	if rawFieldRule.Protocols != nil {
 		for _, s := range *rawFieldRule.Protocols {
 			rule.Protocol = append(rule.Protocol, s)
 		}
 	}
-
 	if len(rawFieldRule.Attributes) > 0 {
 		rule.Attributes = rawFieldRule.Attributes
 	}
-
 	return rule, nil
-}
-
-func ParseRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRule, error) {
-	rawRule := new(RouterRule)
-	err := json.Unmarshal(msg, rawRule)
-	if err != nil {
-		return nil, newError("invalid router rule").Base(err)
-	}
-	if strings.EqualFold(rawRule.Type, "field") {
-		fieldrule, err := parseFieldRule(ctx, msg)
-		if err != nil {
-			return nil, newError("invalid field rule").Base(err)
-		}
-		return fieldrule, nil
-	}
-
-	return nil, newError("unknown router rule type: ", rawRule.Type)
 }
 
 func ParseIP(s string) (*router.CIDR, error) {
@@ -377,17 +255,100 @@ func ParseIP(s string) (*router.CIDR, error) {
 	}
 }
 
-func ParseDomainRule(ctx context.Context, domain string) ([]*router.Domain, error) {
-	return parseDomainRule(ctx, domain)
+func ParseRule(ctx context.Context, msg json.RawMessage) (*router.RoutingRule, error) {
+	rawRule := new(RouterRule)
+	err := json.Unmarshal(msg, rawRule)
+	if err != nil {
+		return nil, newError("invalid router rule").Base(err)
+	}
+	if strings.EqualFold(rawRule.Type, "field") {
+		fieldrule, err := parseFieldRule(ctx, msg)
+		if err != nil {
+			return nil, newError("invalid field rule").Base(err)
+		}
+		return fieldrule, nil
+	}
+	return nil, newError("unknown router rule type: ", rawRule.Type)
 }
 
 func ToCidrList(ctx context.Context, ips cfgcommon.StringList) ([]*router.GeoIP, error) {
 	return toCidrList(ctx, ips)
 }
 
-type RouterRule struct {
-	Type          string `json:"type"`
-	OutboundTag   string `json:"outboundTag"`
-	BalancerTag   string `json:"balancerTag"`
-	DomainMatcher string `json:"domainMatcher"`
+func toCidrList(ctx context.Context, ips cfgcommon.StringList) ([]*router.GeoIP, error) {
+	cfgEnv := cfgcommon.GetConfigureLoadingEnvironment(ctx)
+	geoLoader := cfgEnv.GetGeoLoader()
+	var geoipList []*router.GeoIP
+	var customCidrs []*router.CIDR
+	for _, ip := range ips {
+		if strings.HasPrefix(ip, "geoip:") {
+			country := ip[6:]
+			isReverseMatch := false
+			if strings.HasPrefix(ip, "geoip:!") {
+				country = ip[7:]
+				isReverseMatch = true
+			}
+			if len(country) == 0 {
+				return nil, newError("empty country name in rule")
+			}
+			geoip, err := geoLoader.LoadGeoIP(country)
+			if err != nil {
+				return nil, newError("failed to load geoip: ", country).Base(err)
+			}
+			geoipList = append(geoipList, &router.GeoIP{
+				CountryCode:  strings.ToUpper(country),
+				Cidr:         geoip,
+				ReverseMatch: isReverseMatch,
+			})
+			continue
+		}
+		isExtDatFile := 0
+		{
+			const prefix = "ext:"
+			if strings.HasPrefix(ip, prefix) {
+				isExtDatFile = len(prefix)
+			}
+			const prefixQualified = "ext-ip:"
+			if strings.HasPrefix(ip, prefixQualified) {
+				isExtDatFile = len(prefixQualified)
+			}
+		}
+		if isExtDatFile != 0 {
+			kv := strings.Split(ip[isExtDatFile:], ":")
+			if len(kv) != 2 {
+				return nil, newError("invalid external resource: ", ip)
+			}
+			filename := kv[0]
+			country := kv[1]
+			if len(filename) == 0 || len(country) == 0 {
+				return nil, newError("empty filename or empty country in rule")
+			}
+			isReverseMatch := false
+			if strings.HasPrefix(country, "!") {
+				country = country[1:]
+				isReverseMatch = true
+			}
+			geoip, err := geoLoader.LoadIP(filename, country)
+			if err != nil {
+				return nil, newError("failed to load geoip: ", country, " from ", filename).Base(err)
+			}
+			geoipList = append(geoipList, &router.GeoIP{
+				CountryCode:  strings.ToUpper(filename + "_" + country),
+				Cidr:         geoip,
+				ReverseMatch: isReverseMatch,
+			})
+			continue
+		}
+		ipRule, err := ParseIP(ip)
+		if err != nil {
+			return nil, newError("invalid IP: ", ip).Base(err)
+		}
+		customCidrs = append(customCidrs, ipRule)
+	}
+	if len(customCidrs) > 0 {
+		geoipList = append(geoipList, &router.GeoIP{
+			Cidr: customCidrs,
+		})
+	}
+	return geoipList, nil
 }
