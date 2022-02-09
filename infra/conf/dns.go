@@ -45,7 +45,7 @@ type NameServerConfig struct {
 	SkipFallback bool
 	Domains      []string
 	ExpectIPs    cfgcommon.StringList
-	cfgctx context.Context
+	cfgctx       context.Context
 }
 
 func getHostMapping(ha *HostAddress) *dns.Config_HostMapping {
