@@ -103,10 +103,8 @@ func (c *ClientSession) EncodeRequestHeader(header *protocol.RequestHeader, writ
 	security := byte(paddingLen<<4) | byte(header.Security)
 	common.Must2(buffer.Write([]byte{security, byte(0), byte(header.Command)}))
 
-	if header.Command != protocol.RequestCommandMux {
-		if err := addrParser.WriteAddressPort(buffer, header.Address, header.Port); err != nil {
-			return newError("failed to writer address and port").Base(err)
-		}
+	if err := addrParser.WriteAddressPort(buffer, header.Address, header.Port); err != nil {
+		return newError("failed to writer address and port").Base(err)
 	}
 
 	if paddingLen > 0 {
