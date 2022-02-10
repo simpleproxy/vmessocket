@@ -18,6 +18,12 @@ type Server struct {
 	dispatcher routing.Dispatcher
 }
 
+type ServerWorker struct {
+	dispatcher     routing.Dispatcher
+	link           *transport.Link
+	sessionManager *SessionManager
+}
+
 func (s *Server) Close() error {
 	return nil
 }
