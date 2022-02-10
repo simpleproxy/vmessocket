@@ -5,7 +5,6 @@ import (
 
 	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common"
-	"github.com/vmessocket/vmessocket/common/mux"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
@@ -23,7 +22,6 @@ type Handler struct {
 	streamSettings  *internet.MemoryStreamConfig
 	proxy           proxy.Outbound
 	outboundManager outbound.Manager
-	mux             *mux.ClientManager
 }
 
 func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbound.Handler, error) {
