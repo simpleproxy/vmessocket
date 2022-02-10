@@ -1,5 +1,9 @@
 package inbound
 
+import (
+	"context"
+)
+
 type Server struct {
 	dispatcher routing.Dispatcher
 }
