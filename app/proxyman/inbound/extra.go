@@ -40,3 +40,13 @@ func NewServer(ctx context.Context) *Server {
 	})
 	return s
 }
+
+func NewServerWorker(ctx context.Context, d routing.Dispatcher, link *transport.Link) (*ServerWorker, error) {
+	worker := &ServerWorker{
+		dispatcher:     d,
+		link:           link,
+		sessionManager: NewSessionManager(),
+	}
+	go worker.run(ctx)
+	return worker, nil
+}
