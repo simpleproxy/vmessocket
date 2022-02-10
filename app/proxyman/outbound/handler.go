@@ -59,6 +59,9 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 	if !ok {
 		return nil, newError("not an outbound handler")
 	}
+	h.proxy = proxyHandler
+	return h, nil
+}
 
 func (h *Handler) Address() net.Address {
 	if h.senderSettings == nil || h.senderSettings.Via == nil {
