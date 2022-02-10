@@ -39,6 +39,10 @@ func (s *Server) Start() error {
 	return nil
 }
 
+func (s *Server) Type() interface{} {
+	return s.dispatcher.Type()
+}
+
 func NewServer(ctx context.Context) *Server {
 	s := &Server{}
 	core.RequireFeatures(ctx, func(d routing.Dispatcher) {
