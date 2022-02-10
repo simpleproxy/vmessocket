@@ -3,7 +3,7 @@ package inbound
 import (
 	"context"
 
-	"github.com/vmessocket/vmessocket/common/net
+	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
 )
