@@ -93,7 +93,6 @@ func (h *Handler) Address() net.Address {
 }
 
 func (h *Handler) Close() error {
-	common.Close(h.mux)
 	return nil
 }
 
