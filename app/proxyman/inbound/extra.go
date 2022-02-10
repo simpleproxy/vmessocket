@@ -25,6 +25,14 @@ type ServerWorker struct {
 	sessionManager *SessionManager
 }
 
+type Session struct {
+	input        buf.Reader
+	output       buf.Writer
+	parent       *SessionManager
+	ID           uint16
+	transferType protocol.TransferType
+}
+
 type SessionManager struct {
 	sync.RWMutex
 	sessions map[uint16]*Session
