@@ -16,7 +16,7 @@ import (
 type AlwaysOnInboundHandler struct {
 	proxy   proxy.Inbound
 	workers []worker
-	mux     *mux.Server
+	mux     *Server
 	tag     string
 }
 
@@ -31,7 +31,7 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	}
 	h := &AlwaysOnInboundHandler{
 		proxy: p,
-		mux:   mux.NewServer(ctx),
+		mux:   NewServer(ctx),
 		tag:   tag,
 	}
 	nl := p.Network()
