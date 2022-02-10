@@ -108,7 +108,6 @@ func (h *AlwaysOnInboundHandler) Close() error {
 	for _, worker := range h.workers {
 		errs = append(errs, worker.Close())
 	}
-	errs = append(errs, h.mux.Close())
 	if err := errors.Combine(errs...); err != nil {
 		return newError("failed to close all resources").Base(err)
 	}
