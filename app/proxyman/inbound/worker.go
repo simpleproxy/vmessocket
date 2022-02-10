@@ -104,7 +104,7 @@ func (w *dsWorker) callback(conn internet.Connection) {
 		content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
 	}
 	ctx = session.ContextWithContent(ctx, content)
-	if err := w.proxy.Process(ctx, net.Network_UNIX, conn, w.dispatcher); err != nil {
+	if err := w.proxy.Process(ctx, net.Network_UNIX, conn, nil); err != nil {
 		newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
 	}
 	cancel()
@@ -148,7 +148,7 @@ func (w *tcpWorker) callback(conn internet.Connection) {
 		content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
 	}
 	ctx = session.ContextWithContent(ctx, content)
-	if err := w.proxy.Process(ctx, net.Network_TCP, conn, w.dispatcher); err != nil {
+	if err := w.proxy.Process(ctx, net.Network_TCP, conn, nil); err != nil {
 		newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
 	}
 	cancel()
