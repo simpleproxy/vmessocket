@@ -2,6 +2,8 @@ package inbound
 
 import (
 	"context"
+	"github.com/vmessocket/vmessocket/core"
+	"github.com/vmessocket/vmessocket/features/routing"
 )
 
 type Server struct {
