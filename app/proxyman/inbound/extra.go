@@ -10,6 +10,10 @@ type Server struct {
 	dispatcher routing.Dispatcher
 }
 
+func (s *Server) Close() error {
+	return nil
+}
+
 func NewServer(ctx context.Context) *Server {
 	s := &Server{}
 	core.RequireFeatures(ctx, func(d routing.Dispatcher) {
