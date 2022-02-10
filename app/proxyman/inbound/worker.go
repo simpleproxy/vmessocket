@@ -32,7 +32,6 @@ type dsWorker struct {
 	proxy          proxy.Inbound
 	stream         *internet.MemoryStreamConfig
 	tag            string
-	dispatcher     routing.Dispatcher
 	sniffingConfig *proxyman.SniffingConfig
 	hub            internet.Listener
 	ctx            context.Context
@@ -45,7 +44,6 @@ type tcpWorker struct {
 	stream         *internet.MemoryStreamConfig
 	recvOrigDest   bool
 	tag            string
-	dispatcher     routing.Dispatcher
 	sniffingConfig *proxyman.SniffingConfig
 	hub            internet.Listener
 	ctx            context.Context
@@ -70,7 +68,6 @@ type udpWorker struct {
 	port           net.Port
 	tag            string
 	stream         *internet.MemoryStreamConfig
-	dispatcher     routing.Dispatcher
 	sniffingConfig *proxyman.SniffingConfig
 	checker        *task.Periodic
 	activeConn     map[connID]*udpConn
