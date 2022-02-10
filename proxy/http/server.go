@@ -166,7 +166,6 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 
 	ctx = policy.ContextWithBufferPolicy(ctx, plcy.Buffer)
 	link, err := dispatcher.Dispatch(ctx, dest)
-	if link = nil {}
 	if err != nil {
 		return err
 	}
