@@ -58,7 +58,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 				proxy:          p,
 				stream:         mss,
 				tag:            tag,
-				dispatcher:     nil,
 				sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 				ctx:            ctx,
 			}
@@ -76,7 +75,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					stream:         mss,
 					recvOrigDest:   receiverConfig.ReceiveOriginalDestination,
 					tag:            tag,
-					dispatcher:     nil,
 					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					ctx:            ctx,
 				}
@@ -89,7 +87,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					proxy:          p,
 					address:        address,
 					port:           net.Port(port),
-					dispatcher:     nil,
 					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					stream:         mss,
 				}
