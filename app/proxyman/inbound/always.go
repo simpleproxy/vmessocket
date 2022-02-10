@@ -16,7 +16,6 @@ import (
 type AlwaysOnInboundHandler struct {
 	proxy   proxy.Inbound
 	workers []worker
-	mux     *mux.Server
 	tag     string
 }
 
@@ -31,7 +30,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	}
 	h := &AlwaysOnInboundHandler{
 		proxy: p,
-		mux:   mux.NewServer(ctx),
 		tag:   tag,
 	}
 	nl := p.Network()
@@ -61,7 +59,7 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 				proxy:          p,
 				stream:         mss,
 				tag:            tag,
-				dispatcher:     h.mux,
+				dispatcher:     new(routing.Dispatcher),
 				sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 				ctx:            ctx,
 			}
@@ -79,7 +77,7 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					stream:         mss,
 					recvOrigDest:   receiverConfig.ReceiveOriginalDestination,
 					tag:            tag,
-					dispatcher:     h.mux,
+					dispatcher:     new(routing.Dispatcher),
 					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					ctx:            ctx,
 				}
@@ -92,7 +90,7 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					proxy:          p,
 					address:        address,
 					port:           net.Port(port),
-					dispatcher:     h.mux,
+					dispatcher:     new(routing.Dispatcher),
 					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					stream:         mss,
 				}
