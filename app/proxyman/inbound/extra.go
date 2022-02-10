@@ -10,6 +10,10 @@ import (
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
+var (
+	muxCoolAddress = net.DomainAddress("v1.mux.cool")
+)
+
 type Server struct {
 	dispatcher routing.Dispatcher
 }
