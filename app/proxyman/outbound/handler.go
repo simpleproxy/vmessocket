@@ -61,25 +61,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 	if !ok {
 		return nil, newError("not an outbound handler")
 	}
-	if h.senderSettings != nil && h.senderSettings.MultiplexSettings != nil {
-		config := h.senderSettings.MultiplexSettings
-		if config.Concurrency < 1 || config.Concurrency > 1024 {
-			return nil, newError("invalid mux concurrency: ", config.Concurrency).AtWarning()
-		}
-		h.mux = &mux.ClientManager{
-			Enabled: h.senderSettings.MultiplexSettings.Enabled,
-			Picker: &mux.IncrementalWorkerPicker{
-				Factory: mux.NewDialingWorkerFactory(
-					ctx,
-					proxyHandler,
-					h,
-				),
-			},
-		}
-	}
-	h.proxy = proxyHandler
-	return h, nil
-}
 
 func (h *Handler) Address() net.Address {
 	if h.senderSettings == nil || h.senderSettings.Via == nil {
