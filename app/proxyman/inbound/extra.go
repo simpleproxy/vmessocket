@@ -35,6 +35,10 @@ func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport
 	return &transport.Link{Reader: downlinkReader, Writer: uplinkWriter}, nil
 }
 
+func (s *Server) Start() error {
+	return nil
+}
+
 func NewServer(ctx context.Context) *Server {
 	s := &Server{}
 	core.RequireFeatures(ctx, func(d routing.Dispatcher) {
