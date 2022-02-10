@@ -73,10 +73,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 					ctx,
 					proxyHandler,
 					h,
-					mux.ClientStrategy{
-						MaxConcurrency: config.Concurrency,
-						MaxConnection:  128,
-					},
 				),
 			},
 		}
