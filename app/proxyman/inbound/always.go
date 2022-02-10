@@ -7,7 +7,6 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/dice"
 	"github.com/vmessocket/vmessocket/common/errors"
-	"github.com/vmessocket/vmessocket/common/mux"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport/internet"
