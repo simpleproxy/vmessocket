@@ -2,6 +2,7 @@ package inbound
 
 import (
 	"context"
+	"sync"
 
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/core"
