@@ -12,7 +12,7 @@ import (
 
 type Inbound interface {
 	Network() []net.Network
-	Process(context.Context, net.Network, internet.Connection, routing.Dispatcher) error
+	Process(context.Context, net.Network, internet.Connection) error
 }
 
 type Outbound interface {
