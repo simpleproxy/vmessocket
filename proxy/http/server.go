@@ -79,7 +79,7 @@ type readerOnly struct {
 	io.Reader
 }
 
-func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection, dispatcher routing.Dispatcher) error {
+func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection) error {
 	inbound := session.InboundFromContext(ctx)
 	if inbound != nil {
 		inbound.User = &protocol.MemoryUser{
@@ -143,7 +143,7 @@ Start:
 
 	keepAlive := (strings.TrimSpace(strings.ToLower(request.Header.Get("Proxy-Connection"))) == "keep-alive")
 
-	err = s.handlePlainHTTP(ctx, request, conn, dest, dispatcher)
+	err = s.handlePlainHTTP(ctx, request, conn, dest)
 	if err == errWaitAnother {
 		if keepAlive {
 			goto Start
