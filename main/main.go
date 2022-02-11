@@ -36,17 +36,59 @@ var (
 	}()
 )
 
-func fileExists(file string) bool {
-	info, err := os.Stat(file)
-	return err == nil && !info.IsDir()
-}
-
 func dirExists(file string) bool {
 	if file == "" {
 		return false
 	}
 	info, err := os.Stat(file)
 	return err == nil && info.IsDir()
+}
+
+func fileExists(file string) bool {
+	info, err := os.Stat(file)
+	return err == nil && !info.IsDir()
+}
+
+func getConfigFilePath() cmdarg.Arg {
+	if dirExists(configDir) {
+		log.Println("Using confdir from arg:", configDir)
+		readConfDir(configDir)
+	} else if envConfDir := platform.GetConfDirPath(); dirExists(envConfDir) {
+		log.Println("Using confdir from env:", envConfDir)
+		readConfDir(envConfDir)
+	}
+	if len(configFiles) > 0 {
+		return configFiles
+	}
+	if workingDir, err := os.Getwd(); err == nil {
+		configFile := filepath.Join(workingDir, "config.json")
+		if fileExists(configFile) {
+			log.Println("Using default config: ", configFile)
+			return cmdarg.Arg{configFile}
+		}
+	}
+	if configFile := platform.GetConfigurationPath(); fileExists(configFile) {
+		log.Println("Using config from env: ", configFile)
+		return cmdarg.Arg{configFile}
+	}
+	log.Println("Using config from STDIN")
+	return cmdarg.Arg{"stdin:"}
+}
+
+func GetConfigFormat() string {
+	switch strings.ToLower(*format) {
+	case "pb", "protobuf":
+		return "protobuf"
+	default:
+		return "json"
+	}
+}
+
+func printVersion() {
+	version := core.VersionStatement()
+	for _, s := range version {
+		fmt.Println(s)
+	}
 }
 
 func readConfDir(dirPath string) {
@@ -61,96 +103,40 @@ func readConfDir(dirPath string) {
 	}
 }
 
-func getConfigFilePath() cmdarg.Arg {
-	if dirExists(configDir) {
-		log.Println("Using confdir from arg:", configDir)
-		readConfDir(configDir)
-	} else if envConfDir := platform.GetConfDirPath(); dirExists(envConfDir) {
-		log.Println("Using confdir from env:", envConfDir)
-		readConfDir(envConfDir)
-	}
-
-	if len(configFiles) > 0 {
-		return configFiles
-	}
-
-	if workingDir, err := os.Getwd(); err == nil {
-		configFile := filepath.Join(workingDir, "config.json")
-		if fileExists(configFile) {
-			log.Println("Using default config: ", configFile)
-			return cmdarg.Arg{configFile}
-		}
-	}
-
-	if configFile := platform.GetConfigurationPath(); fileExists(configFile) {
-		log.Println("Using config from env: ", configFile)
-		return cmdarg.Arg{configFile}
-	}
-
-	log.Println("Using config from STDIN")
-	return cmdarg.Arg{"stdin:"}
-}
-
-func GetConfigFormat() string {
-	switch strings.ToLower(*format) {
-	case "pb", "protobuf":
-		return "protobuf"
-	default:
-		return "json"
-	}
-}
-
 func startVmessocket() (core.Server, error) {
 	configFiles := getConfigFilePath()
-
 	config, err := core.LoadConfig(GetConfigFormat(), configFiles[0], configFiles)
 	if err != nil {
 		return nil, newError("failed to read config files: [", configFiles.String(), "]").Base(err)
 	}
-
 	server, err := core.New(config)
 	if err != nil {
 		return nil, newError("failed to create server").Base(err)
 	}
-
 	return server, nil
-}
-
-func printVersion() {
-	version := core.VersionStatement()
-	for _, s := range version {
-		fmt.Println(s)
-	}
 }
 
 func main() {
 	flag.Parse()
-
 	printVersion()
-
 	if *version {
 		return
 	}
-
 	server, err := startVmessocket()
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(23)
 	}
-
 	if *test {
 		fmt.Println("Configuration OK.")
 		os.Exit(0)
 	}
-
 	if err := server.Start(); err != nil {
 		fmt.Println("Failed to start", err)
 		os.Exit(-1)
 	}
 	defer server.Close()
-
 	runtime.GC()
-
 	{
 		osSignals := make(chan os.Signal, 1)
 		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
