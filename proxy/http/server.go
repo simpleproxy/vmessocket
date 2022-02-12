@@ -108,7 +108,7 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 	return nil
 }
 
-func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, writer io.Writer, dest net.Destination, dispatcher routing.Dispatcher) error {
+func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, writer io.Writer, dest net.Destination) error {
 	var link *transport.Link
         if !s.config.AllowTransparent && request.URL.Host == "" {
 		response := &http.Response{
