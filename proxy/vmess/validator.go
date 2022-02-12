@@ -21,10 +21,15 @@ const (
 	updateInterval   = 10 * time.Second
 	cacheDurationSec = 120
 )
+var (
+	ErrNotFound = newError("Not Found")
+	ErrTainted = newError("ErrTainted")
+)
 
-type user struct {
-	user    protocol.MemoryUser
-	lastSec protocol.Timestamp
+type indexTimePair struct {
+	user    *user
+	timeInc uint32
+	taintedFuse *uint32
 }
 
 type TimedUserValidator struct {
@@ -34,20 +39,15 @@ type TimedUserValidator struct {
 	hasher   protocol.IDHash
 	baseTime protocol.Timestamp
 	task     *task.Periodic
-
 	behaviorSeed  uint64
 	behaviorFused bool
-
 	aeadDecoderHolder *aead.AuthIDDecoderHolder
-
 	legacyWarnShown bool
 }
 
-type indexTimePair struct {
-	user    *user
-	timeInc uint32
-
-	taintedFuse *uint32
+type user struct {
+	user    protocol.MemoryUser
+	lastSec protocol.Timestamp
 }
 
 func NewTimedUserValidator(hasher protocol.IDHash) *TimedUserValidator {
@@ -67,6 +67,47 @@ func NewTimedUserValidator(hasher protocol.IDHash) *TimedUserValidator {
 	}
 	common.Must(tuv.task.Start())
 	return tuv
+}
+
+func (v *TimedUserValidator) Add(u *protocol.MemoryUser) error {
+	v.Lock()
+	defer v.Unlock()
+	nowSec := time.Now().Unix()
+	uu := &user{
+		user:    *u,
+		lastSec: protocol.Timestamp(nowSec - cacheDurationSec),
+	}
+	v.users = append(v.users, uu)
+	v.generateNewHashes(protocol.Timestamp(nowSec), uu)
+	account := uu.user.Account.(*MemoryAccount)
+	if !v.behaviorFused {
+		hashkdf := hmac.New(sha256.New, []byte("VMESSBSKDF"))
+		hashkdf.Write(account.ID.Bytes())
+		v.behaviorSeed = crc64.Update(v.behaviorSeed, crc64.MakeTable(crc64.ECMA), hashkdf.Sum(nil))
+	}
+	var cmdkeyfl [16]byte
+	copy(cmdkeyfl[:], account.ID.CmdKey())
+	v.aeadDecoderHolder.AddUser(cmdkeyfl, u)
+	return nil
+}
+
+func (v *TimedUserValidator) BurnTaintFuse(userHash []byte) error {
+	v.RLock()
+	defer v.RUnlock()
+	var userHashFL [16]byte
+	copy(userHashFL[:], userHash)
+	pair, found := v.userHash[userHashFL]
+	if found {
+		if atomic.CompareAndSwapUint32(pair.taintedFuse, 0, 1) {
+			return nil
+		}
+		return ErrTainted
+	}
+	return ErrNotFound
+}
+
+func (v *TimedUserValidator) Close() error {
+	return v.task.Close()
 }
 
 func (v *TimedUserValidator) generateNewHashes(nowSec protocol.Timestamp, user *user) {
@@ -90,9 +131,7 @@ func (v *TimedUserValidator) generateNewHashes(nowSec protocol.Timestamp, user *
 			}
 		}
 	}
-
 	account := user.user.Account.(*MemoryAccount)
-
 	genHashForID(account.ID)
 	for _, id := range account.AlterIDs {
 		genHashForID(id)
@@ -100,64 +139,10 @@ func (v *TimedUserValidator) generateNewHashes(nowSec protocol.Timestamp, user *
 	user.lastSec = genEndSec
 }
 
-func (v *TimedUserValidator) removeExpiredHashes(expire uint32) {
-	for key, pair := range v.userHash {
-		if pair.timeInc < expire {
-			delete(v.userHash, key)
-		}
-	}
-}
-
-func (v *TimedUserValidator) updateUserHash() {
-	now := time.Now()
-	nowSec := protocol.Timestamp(now.Unix())
-
-	v.Lock()
-	defer v.Unlock()
-
-	for _, user := range v.users {
-		v.generateNewHashes(nowSec, user)
-	}
-
-	expire := protocol.Timestamp(now.Unix() - cacheDurationSec)
-	if expire > v.baseTime {
-		v.removeExpiredHashes(uint32(expire - v.baseTime))
-	}
-}
-
-func (v *TimedUserValidator) Add(u *protocol.MemoryUser) error {
-	v.Lock()
-	defer v.Unlock()
-
-	nowSec := time.Now().Unix()
-
-	uu := &user{
-		user:    *u,
-		lastSec: protocol.Timestamp(nowSec - cacheDurationSec),
-	}
-	v.users = append(v.users, uu)
-	v.generateNewHashes(protocol.Timestamp(nowSec), uu)
-
-	account := uu.user.Account.(*MemoryAccount)
-	if !v.behaviorFused {
-		hashkdf := hmac.New(sha256.New, []byte("VMESSBSKDF"))
-		hashkdf.Write(account.ID.Bytes())
-		v.behaviorSeed = crc64.Update(v.behaviorSeed, crc64.MakeTable(crc64.ECMA), hashkdf.Sum(nil))
-	}
-
-	var cmdkeyfl [16]byte
-	copy(cmdkeyfl[:], account.ID.CmdKey())
-	v.aeadDecoderHolder.AddUser(cmdkeyfl, u)
-
-	return nil
-}
-
 func (v *TimedUserValidator) Get(userHash []byte) (*protocol.MemoryUser, protocol.Timestamp, bool, error) {
 	v.RLock()
 	defer v.RUnlock()
-
 	v.behaviorFused = true
-
 	var fixedSizeHash [16]byte
 	copy(fixedSizeHash[:], userHash)
 	pair, found := v.userHash[fixedSizeHash]
@@ -174,10 +159,8 @@ func (v *TimedUserValidator) Get(userHash []byte) (*protocol.MemoryUser, protoco
 func (v *TimedUserValidator) GetAEAD(userHash []byte) (*protocol.MemoryUser, bool, error) {
 	v.RLock()
 	defer v.RUnlock()
-
 	var userHashFL [16]byte
 	copy(userHashFL[:], userHash)
-
 	userd, err := v.aeadDecoderHolder.Match(userHashFL)
 	if err != nil {
 		return nil, false, err
@@ -185,10 +168,19 @@ func (v *TimedUserValidator) GetAEAD(userHash []byte) (*protocol.MemoryUser, boo
 	return userd.(*protocol.MemoryUser), true, err
 }
 
+func (v *TimedUserValidator) GetBehaviorSeed() uint64 {
+	v.Lock()
+	defer v.Unlock()
+	v.behaviorFused = true
+	if v.behaviorSeed == 0 {
+		v.behaviorSeed = dice.RollUint64()
+	}
+	return v.behaviorSeed
+}
+
 func (v *TimedUserValidator) Remove(email string) bool {
 	v.Lock()
 	defer v.Unlock()
-
 	email = strings.ToLower(email)
 	idx := -1
 	for i, u := range v.users {
@@ -204,44 +196,18 @@ func (v *TimedUserValidator) Remove(email string) bool {
 		return false
 	}
 	ulen := len(v.users)
-
 	v.users[idx] = v.users[ulen-1]
 	v.users[ulen-1] = nil
 	v.users = v.users[:ulen-1]
-
 	return true
 }
 
-func (v *TimedUserValidator) Close() error {
-	return v.task.Close()
-}
-
-func (v *TimedUserValidator) GetBehaviorSeed() uint64 {
-	v.Lock()
-	defer v.Unlock()
-
-	v.behaviorFused = true
-	if v.behaviorSeed == 0 {
-		v.behaviorSeed = dice.RollUint64()
-	}
-	return v.behaviorSeed
-}
-
-func (v *TimedUserValidator) BurnTaintFuse(userHash []byte) error {
-	v.RLock()
-	defer v.RUnlock()
-
-	var userHashFL [16]byte
-	copy(userHashFL[:], userHash)
-
-	pair, found := v.userHash[userHashFL]
-	if found {
-		if atomic.CompareAndSwapUint32(pair.taintedFuse, 0, 1) {
-			return nil
+func (v *TimedUserValidator) removeExpiredHashes(expire uint32) {
+	for key, pair := range v.userHash {
+		if pair.timeInc < expire {
+			delete(v.userHash, key)
 		}
-		return ErrTainted
 	}
-	return ErrNotFound
 }
 
 func (v *TimedUserValidator) ShouldShowLegacyWarn() bool {
@@ -252,6 +218,16 @@ func (v *TimedUserValidator) ShouldShowLegacyWarn() bool {
 	return true
 }
 
-var ErrNotFound = newError("Not Found")
-
-var ErrTainted = newError("ErrTainted")
+func (v *TimedUserValidator) updateUserHash() {
+	now := time.Now()
+	nowSec := protocol.Timestamp(now.Unix())
+	v.Lock()
+	defer v.Unlock()
+	for _, user := range v.users {
+		v.generateNewHashes(nowSec, user)
+	}
+	expire := protocol.Timestamp(now.Unix() - cacheDurationSec)
+	if expire > v.baseTime {
+		v.removeExpiredHashes(uint32(expire - v.baseTime))
+	}
+}
