@@ -36,7 +36,7 @@ type ClientSession struct {
 	responseBodyIV  [16]byte
 	responseReader  io.Reader
 	responseHeader  byte
-	readDrainer drain.Drainer
+	readDrainer     drain.Drainer
 }
 
 func GenerateChunkNonce(nonce []byte, size uint32) crypto.BytesGenerator {
