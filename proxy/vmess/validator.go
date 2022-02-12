@@ -34,15 +34,15 @@ type indexTimePair struct {
 
 type TimedUserValidator struct {
 	sync.RWMutex
-	users    []*user
-	userHash map[[16]byte]indexTimePair
-	hasher   protocol.IDHash
-	baseTime protocol.Timestamp
-	task     *task.Periodic
-	behaviorSeed  uint64
-	behaviorFused bool
+	users              []*user
+	userHash           map[[16]byte]indexTimePair
+	hasher             protocol.IDHash
+	baseTime           protocol.Timestamp
+	task               *task.Periodic
+	behaviorSeed       uint64
+	behaviorFused      bool
 	aeadDecoderHolder *aead.AuthIDDecoderHolder
-	legacyWarnShown bool
+	legacyWarnShown    bool
 }
 
 type user struct {
