@@ -21,7 +21,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/policy"
-	"github.com/vmessocket/vmessocket/features/routing"
+	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
 
@@ -79,7 +79,7 @@ type readerOnly struct {
 	io.Reader
 }
 
-func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection, dispatcher routing.Dispatcher) error {
+func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection) error {
 	inbound := session.InboundFromContext(ctx)
 	if inbound != nil {
 		inbound.User = &protocol.MemoryUser{
@@ -138,12 +138,12 @@ Start:
 	})
 
 	if strings.EqualFold(request.Method, "CONNECT") {
-		return s.handleConnect(ctx, request, reader, conn, dest, dispatcher)
+		return s.handleConnect(ctx, request, reader, conn, dest)
 	}
 
 	keepAlive := (strings.TrimSpace(strings.ToLower(request.Header.Get("Proxy-Connection"))) == "keep-alive")
 
-	err = s.handlePlainHTTP(ctx, request, conn, dest, dispatcher)
+	err = s.handlePlainHTTP(ctx, request, conn, dest)
 	if err == errWaitAnother {
 		if keepAlive {
 			goto Start
@@ -154,7 +154,8 @@ Start:
 	return err
 }
 
-func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *bufio.Reader, conn internet.Connection, dest net.Destination, dispatcher routing.Dispatcher) error {
+func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *bufio.Reader, conn internet.Connection, dest net.Destination) error {
+	var link *transport.Link
 	_, err := conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	if err != nil {
 		return newError("failed to write back OK response").Base(err)
@@ -165,10 +166,6 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 	timer := signal.CancelAfterInactivity(ctx, cancel, plcy.Timeouts.ConnectionIdle)
 
 	ctx = policy.ContextWithBufferPolicy(ctx, plcy.Buffer)
-	link, err := dispatcher.Dispatch(ctx, dest)
-	if err != nil {
-		return err
-	}
 
 	if reader.Buffered() > 0 {
 		payload, err := buf.ReadFrom(io.LimitReader(reader, int64(reader.Buffered())))
@@ -210,7 +207,8 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 
 var errWaitAnother = newError("keep alive")
 
-func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, writer io.Writer, dest net.Destination, dispatcher routing.Dispatcher) error {
+func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, writer io.Writer, dest net.Destination) error {
+	var link *transport.Link
 	if !s.config.AllowTransparent && request.URL.Host == "" {
 		response := &http.Response{
 			Status:        "Bad Request",
@@ -249,11 +247,6 @@ func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, wri
 	}
 
 	ctx = session.ContextWithContent(ctx, content)
-
-	link, err := dispatcher.Dispatch(ctx, dest)
-	if err != nil {
-		return err
-	}
 
 	defer common.Close(link.Writer)
 	var result error = errWaitAnother
