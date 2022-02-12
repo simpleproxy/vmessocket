@@ -209,6 +209,7 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 var errWaitAnother = newError("keep alive")
 
 func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, writer io.Writer, dest net.Destination) error {
+	var link *transport.Link
 	if !s.config.AllowTransparent && request.URL.Host == "" {
 		response := &http.Response{
 			Status:        "Bad Request",
@@ -247,11 +248,6 @@ func (s *Server) handlePlainHTTP(ctx context.Context, request *http.Request, wri
 	}
 
 	ctx = session.ContextWithContent(ctx, content)
-
-	link, err := dispatcher.Dispatch(ctx, dest)
-	if err != nil {
-		return err
-	}
 
 	defer common.Close(link.Writer)
 	var result error = errWaitAnother
