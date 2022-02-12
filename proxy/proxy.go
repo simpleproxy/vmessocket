@@ -10,6 +10,14 @@ import (
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
 
+type GetInbound interface {
+	GetInbound() Inbound
+}
+
+type GetOutbound interface {
+	GetOutbound() Outbound
+}
+
 type Inbound interface {
 	Network() []net.Network
 	Process(context.Context, net.Network, internet.Connection, routing.Dispatcher) error
@@ -22,12 +30,4 @@ type Outbound interface {
 type UserManager interface {
 	AddUser(context.Context, *protocol.MemoryUser) error
 	RemoveUser(context.Context, string) error
-}
-
-type GetInbound interface {
-	GetInbound() Inbound
-}
-
-type GetOutbound interface {
-	GetOutbound() Outbound
 }
