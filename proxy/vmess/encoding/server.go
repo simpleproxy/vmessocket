@@ -34,8 +34,8 @@ type ServerSession struct {
 	responseBodyIV  [16]byte
 	responseWriter  io.Writer
 	responseHeader  byte
-	isAEADRequest bool
-	isAEADForced bool
+	isAEADRequest   bool
+	isAEADForced    bool
 }
 
 type SessionHistory struct {
