@@ -9,10 +9,9 @@ import (
 )
 
 type MemoryAccount struct {
-	ID       *protocol.ID
-	AlterIDs []*protocol.ID
-	Security protocol.SecurityType
-
+	ID                            *protocol.ID
+	AlterIDs                      []*protocol.ID
+	Security                      protocol.SecurityType
 	AuthenticatedLengthExperiment bool
 	NoTerminationSignal           bool
 }
@@ -22,14 +21,6 @@ func (a *MemoryAccount) AnyValidID() *protocol.ID {
 		return a.ID
 	}
 	return a.AlterIDs[dice.Roll(len(a.AlterIDs))]
-}
-
-func (a *MemoryAccount) Equals(account protocol.Account) bool {
-	vmessAccount, ok := account.(*MemoryAccount)
-	if !ok {
-		return false
-	}
-	return a.ID.Equals(vmessAccount.ID)
 }
 
 func (a *Account) AsAccount() (protocol.Account, error) {
@@ -52,4 +43,12 @@ func (a *Account) AsAccount() (protocol.Account, error) {
 		AuthenticatedLengthExperiment: AuthenticatedLength,
 		NoTerminationSignal:           NoTerminationSignal,
 	}, nil
+}
+
+func (a *MemoryAccount) Equals(account protocol.Account) bool {
+	vmessAccount, ok := account.(*MemoryAccount)
+	if !ok {
+		return false
+	}
+	return a.ID.Equals(vmessAccount.ID)
 }
