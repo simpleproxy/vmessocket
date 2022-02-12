@@ -1,8 +1,10 @@
 package http
 
-import (
-	"github.com/vmessocket/vmessocket/common/protocol"
-)
+import "github.com/vmessocket/vmessocket/common/protocol"
+
+func (a *Account) AsAccount() (protocol.Account, error) {
+	return a, nil
+}
 
 func (a *Account) Equals(another protocol.Account) bool {
 	if account, ok := another.(*Account); ok {
@@ -11,15 +13,10 @@ func (a *Account) Equals(another protocol.Account) bool {
 	return false
 }
 
-func (a *Account) AsAccount() (protocol.Account, error) {
-	return a, nil
-}
-
 func (sc *ServerConfig) HasAccount(username, password string) bool {
 	if sc.Accounts == nil {
 		return false
 	}
-
 	p, found := sc.Accounts[username]
 	if !found {
 		return false

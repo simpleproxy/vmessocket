@@ -32,8 +32,8 @@ type Handler struct {
 }
 
 type outboundConn struct {
-	access sync.Mutex
-	dialer func() (internet.Connection, error)
+	access    sync.Mutex
+	dialer    func() (internet.Connection, error)
 	conn      net.Conn
 	connReady chan struct{}
 }
