@@ -7,7 +7,6 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/dice"
 	"github.com/vmessocket/vmessocket/common/errors"
-	"github.com/vmessocket/vmessocket/common/mux"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport/internet"
@@ -16,7 +15,6 @@ import (
 type AlwaysOnInboundHandler struct {
 	proxy   proxy.Inbound
 	workers []worker
-	mux     *mux.Server
 	tag     string
 }
 
@@ -31,7 +29,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	}
 	h := &AlwaysOnInboundHandler{
 		proxy: p,
-		mux:   mux.NewServer(ctx),
 		tag:   tag,
 	}
 	nl := p.Network()
@@ -61,7 +58,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 				proxy:          p,
 				stream:         mss,
 				tag:            tag,
-				dispatcher:     h.mux,
 				sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 				ctx:            ctx,
 			}
@@ -79,7 +75,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					stream:         mss,
 					recvOrigDest:   receiverConfig.ReceiveOriginalDestination,
 					tag:            tag,
-					dispatcher:     h.mux,
 					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					ctx:            ctx,
 				}
@@ -92,7 +87,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					proxy:          p,
 					address:        address,
 					port:           net.Port(port),
-					dispatcher:     h.mux,
 					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					stream:         mss,
 				}
