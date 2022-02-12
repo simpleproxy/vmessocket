@@ -55,16 +55,16 @@ func NewServerWorker(ctx context.Context, d routing.Dispatcher, link *transport.
 	return worker, nil
 }
 
+func (w *ServerWorker) ActiveConnections() uint32 {
+	return uint32(w.sessionManager.Size())
+}
+
 func (s *Server) Close() error {
 	return nil
 }
 
 func (w *ServerWorker) Closed() bool {
 	return w.sessionManager.Closed()
-}
-
-func (w *ServerWorker) ActiveConnections() uint32 {
-	return uint32(w.sessionManager.Size())
 }
 
 func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport.Link, error) {
