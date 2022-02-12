@@ -68,7 +68,7 @@ func parseBasicAuth(auth string) (username, password string, ok bool) {
 }
 
 func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *bufio.Reader, conn internet.Connection, dest net.Destination) error {
-	var *transport.Link
+	var link *transport.Link
         _, err := conn.Write([]byte("HTTP/1.1 200 Connection established\r\n\r\n"))
 	if err != nil {
 		return newError("failed to write back OK response").Base(err)
