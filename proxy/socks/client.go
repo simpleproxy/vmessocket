@@ -38,7 +38,6 @@ func NewClient(ctx context.Context, config *ClientConfig) (*Client, error) {
 	if serverList.Size() == 0 {
 		return nil, newError("0 target server")
 	}
-
 	v := core.MustFromContext(ctx)
 	c := &Client{
 		serverPicker:  protocol.NewRoundRobinServerPicker(serverList),
@@ -48,7 +47,6 @@ func NewClient(ctx context.Context, config *ClientConfig) (*Client, error) {
 	if config.Version == Version_SOCKS4 {
 		c.dns = v.GetFeature(dns.ClientType()).(dns.Client)
 	}
-
 	return c, nil
 }
 
@@ -61,7 +59,6 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	var server *protocol.ServerSpec
 	var dest net.Destination
 	var conn internet.Connection
-
 	if err := retry.ExponentialBackoff(5, 100).On(func() error {
 		server = c.serverPicker.PickServer()
 		dest = server.Destination()
@@ -70,27 +67,22 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			return err
 		}
 		conn = rawConn
-
 		return nil
 	}); err != nil {
 		return newError("failed to find an available destination").Base(err)
 	}
-
 	defer func() {
 		if err := conn.Close(); err != nil {
 			newError("failed to closed connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
 		}
 	}()
-
 	p := c.policyManager.ForLevel(0)
-
 	request := &protocol.RequestHeader{
 		Version: socks5Version,
 		Command: protocol.RequestCommandTCP,
 		Address: destination.Address,
 		Port:    destination.Port,
 	}
-
 	switch c.version {
 	case Version_SOCKS4:
 		if request.Address.Family().IsDomain() {
@@ -109,24 +101,20 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		fallthrough
 	case Version_SOCKS4A:
 		request.Version = socks4Version
-
 		if destination.Network == net.Network_UDP {
 			return newError("udp is not supported in socks4")
 		} else if destination.Address.Family().IsIPv6() {
 			return newError("ipv6 is not supported in socks4")
 		}
 	}
-
 	if destination.Network == net.Network_UDP {
 		request.Command = protocol.RequestCommandUDP
 	}
-
 	user := server.PickUser()
 	if user != nil {
 		request.User = user
 		p = c.policyManager.ForLevel(user.Level)
 	}
-
 	if err := conn.SetDeadline(time.Now().Add(p.Timeouts.Handshake)); err != nil {
 		newError("failed to set deadline for handshake").Base(err).WriteToLog(session.ExportIDToError(ctx))
 	}
@@ -139,14 +127,11 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			udpRequest.Address = dest.Address
 		}
 	}
-
 	if err := conn.SetDeadline(time.Time{}); err != nil {
 		newError("failed to clear deadline after handshake").Base(err).WriteToLog(session.ExportIDToError(ctx))
 	}
-
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel, p.Timeouts.ConnectionIdle)
-
 	var requestFunc func() error
 	var responseFunc func() error
 	if request.Command == protocol.RequestCommandTCP {
@@ -174,12 +159,10 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			return buf.Copy(reader, link.Writer, buf.UpdateActivity(timer))
 		}
 	}
-
 	responseDonePost := task.OnSuccess(responseFunc, task.Close(link.Writer))
 	if err := task.Run(ctx, requestFunc, responseDonePost); err != nil {
 		return newError("connection ends").Base(err)
 	}
-
 	return nil
 }
 
