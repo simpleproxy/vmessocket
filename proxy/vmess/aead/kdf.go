@@ -6,6 +6,11 @@ import (
 	"hash"
 )
 
+type hMacCreator struct {
+	parent *hMacCreator
+	value  []byte
+}
+
 func KDF(key []byte, path ...string) []byte {
 	hmacCreator := &hMacCreator{value: []byte(KDFSaltConstVMessAEADKDF)}
 	for _, v := range path {
@@ -16,9 +21,9 @@ func KDF(key []byte, path ...string) []byte {
 	return hmacf.Sum(nil)
 }
 
-type hMacCreator struct {
-	parent *hMacCreator
-	value  []byte
+func KDF16(key []byte, path ...string) []byte {
+	r := KDF(key, path...)
+	return r[:16]
 }
 
 func (h *hMacCreator) Create() hash.Hash {
@@ -26,9 +31,4 @@ func (h *hMacCreator) Create() hash.Hash {
 		return hmac.New(sha256.New, h.value)
 	}
 	return hmac.New(h.parent.Create, h.value)
-}
-
-func KDF16(key []byte, path ...string) []byte {
-	r := KDF(key, path...)
-	return r[:16]
 }
