@@ -5,7 +5,6 @@ import (
 
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
@@ -20,7 +19,7 @@ type GetOutbound interface {
 
 type Inbound interface {
 	Network() []net.Network
-	Process(context.Context, net.Network, internet.Connection, routing.Dispatcher) error
+	Process(context.Context, net.Network, internet.Connection) error
 }
 
 type Outbound interface {
