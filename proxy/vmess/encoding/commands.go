@@ -20,11 +20,17 @@ var (
 	ErrUnknownCommand      = newError("Unknown command.")
 )
 
+type CommandFactory interface {
+	Marshal(command interface{}, writer io.Writer) error
+	Unmarshal(data []byte) (interface{}, error)
+}
+
+type CommandSwitchAccountFactory struct{}
+
 func MarshalCommand(command interface{}, writer io.Writer) error {
 	if command == nil {
 		return ErrUnknownCommand
 	}
-
 	var cmdID byte
 	var factory CommandFactory
 	switch command.(type) {
@@ -34,21 +40,17 @@ func MarshalCommand(command interface{}, writer io.Writer) error {
 	default:
 		return ErrUnknownCommand
 	}
-
 	buffer := buf.New()
 	defer buffer.Release()
-
 	err := factory.Marshal(command, buffer)
 	if err != nil {
 		return err
 	}
-
 	auth := Authenticate(buffer.Bytes())
 	length := buffer.Len() + 4
 	if length > 255 {
 		return ErrCommandTooLarge
 	}
-
 	common.Must2(writer.Write([]byte{cmdID, byte(length), byte(auth >> 24), byte(auth >> 16), byte(auth >> 8), byte(auth)}))
 	common.Must2(writer.Write(buffer.Bytes()))
 	return nil
@@ -63,7 +65,6 @@ func UnmarshalCommand(cmdID byte, data []byte) (protocol.ResponseCommand, error)
 	if expectedAuth != actualAuth {
 		return nil, ErrInvalidAuth
 	}
-
 	var factory CommandFactory
 	switch cmdID {
 	case 1:
@@ -74,31 +75,20 @@ func UnmarshalCommand(cmdID byte, data []byte) (protocol.ResponseCommand, error)
 	return factory.Unmarshal(data[4:])
 }
 
-type CommandFactory interface {
-	Marshal(command interface{}, writer io.Writer) error
-	Unmarshal(data []byte) (interface{}, error)
-}
-
-type CommandSwitchAccountFactory struct{}
-
 func (f *CommandSwitchAccountFactory) Marshal(command interface{}, writer io.Writer) error {
 	cmd, ok := command.(*protocol.CommandSwitchAccount)
 	if !ok {
 		return ErrCommandTypeMismatch
 	}
-
 	hostStr := ""
 	if cmd.Host != nil {
 		hostStr = cmd.Host.String()
 	}
 	common.Must2(writer.Write([]byte{byte(len(hostStr))}))
-
 	if len(hostStr) > 0 {
 		common.Must2(writer.Write([]byte(hostStr)))
 	}
-
 	common.Must2(serial.WriteUint16(writer, cmd.Port.Value()))
-
 	idBytes := cmd.ID.Bytes()
 	common.Must2(writer.Write(idBytes))
 	common.Must2(serial.WriteUint16(writer, cmd.AlterIds))
