@@ -3,8 +3,6 @@ package command
 import (
 	"context"
 
-	"google.golang.org/grpc"
-
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
@@ -18,19 +16,7 @@ type service struct {
 	v *core.Instance
 }
 
-func NewRoutingServer(router routing.Router) RoutingServiceServer {
-	return &routingServer{
-		router: router,
-	}
-}
-
 func (s *routingServer) mustEmbedUnimplementedRoutingServiceServer() {}
-
-func (s *service) Register(server *grpc.Server) {
-	common.Must(s.v.RequireFeatures(func(router routing.Router) {
-		RegisterRoutingServiceServer(server, NewRoutingServer(router))
-	}))
-}
 
 func (s *routingServer) TestRoute(ctx context.Context, request *TestRouteRequest) (*RoutingContext, error) {
 	if request.RoutingContext == nil {
