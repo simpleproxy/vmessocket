@@ -11,34 +11,74 @@ import (
 
 var effectiveSystemDialer SystemDialer = &DefaultSystemDialer{}
 
+type DefaultSystemDialer struct {
+	controllers []controller
+}
+
+type packetConnWrapper struct {
+	conn net.PacketConn
+	dest net.Addr
+}
+
+type SimpleSystemDialer struct {
+	adapter SystemDialerAdapter
+}
+
 type SystemDialer interface {
 	Dial(ctx context.Context, source net.Address, destination net.Destination, sockopt *SocketConfig) (net.Conn, error)
 }
 
-type DefaultSystemDialer struct {
-	controllers []controller
+type SystemDialerAdapter interface {
+	Dial(network string, address string) (net.Conn, error)
+}
+
+func hasBindAddr(sockopt *SocketConfig) bool {
+	return sockopt != nil && len(sockopt.BindAddress) > 0 && sockopt.BindPort > 0
+}
+
+func RegisterDialerController(ctl func(network, address string, fd uintptr) error) error {
+	if ctl == nil {
+		return newError("nil listener controller")
+	}
+	dialer, ok := effectiveSystemDialer.(*DefaultSystemDialer)
+	if !ok {
+		return newError("RegisterListenerController not supported in custom dialer")
+	}
+	dialer.controllers = append(dialer.controllers, ctl)
+	return nil
 }
 
 func resolveSrcAddr(network net.Network, src net.Address) net.Addr {
 	if src == nil || src == net.AnyIP {
 		return nil
 	}
-
 	if network == net.Network_TCP {
 		return &net.TCPAddr{
 			IP:   src.IP(),
 			Port: 0,
 		}
 	}
-
 	return &net.UDPAddr{
 		IP:   src.IP(),
 		Port: 0,
 	}
 }
 
-func hasBindAddr(sockopt *SocketConfig) bool {
-	return sockopt != nil && len(sockopt.BindAddress) > 0 && sockopt.BindPort > 0
+func UseAlternativeSystemDialer(dialer SystemDialer) {
+	if dialer == nil {
+		dialer = &DefaultSystemDialer{}
+	}
+	effectiveSystemDialer = dialer
+}
+
+func WithAdapter(dialer SystemDialerAdapter) SystemDialer {
+	return &SimpleSystemDialer{
+		adapter: dialer,
+	}
+}
+
+func (c *packetConnWrapper) Close() error {
+	return c.conn.Close()
 }
 
 func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest net.Destination, sockopt *SocketConfig) (net.Conn, error) {
@@ -63,12 +103,10 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 			dest: destAddr,
 		}, nil
 	}
-
 	dialer := &net.Dialer{
 		Timeout:   time.Second * 16,
 		LocalAddr: resolveSrcAddr(dest.Network, src),
 	}
-
 	if sockopt != nil || len(d.controllers) > 0 {
 		dialer.Control = func(network, address string, c syscall.RawConn) error {
 			return c.Control(func(fd uintptr) {
@@ -82,7 +120,6 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 						}
 					}
 				}
-
 				for _, ctl := range d.controllers {
 					if err := ctl(network, address, fd); err != nil {
 						newError("failed to apply external controller").Base(err).WriteToLog(session.ExportIDToError(ctx))
@@ -91,34 +128,24 @@ func (d *DefaultSystemDialer) Dial(ctx context.Context, src net.Address, dest ne
 			})
 		}
 	}
-
 	return dialer.DialContext(ctx, dest.Network.SystemString(), dest.NetAddr())
 }
 
-type packetConnWrapper struct {
-	conn net.PacketConn
-	dest net.Addr
-}
-
-func (c *packetConnWrapper) Close() error {
-	return c.conn.Close()
+func (v *SimpleSystemDialer) Dial(ctx context.Context, src net.Address, dest net.Destination, sockopt *SocketConfig) (net.Conn, error) {
+	return v.adapter.Dial(dest.Network.SystemString(), dest.NetAddr())
 }
 
 func (c *packetConnWrapper) LocalAddr() net.Addr {
 	return c.conn.LocalAddr()
 }
 
-func (c *packetConnWrapper) RemoteAddr() net.Addr {
-	return c.dest
-}
-
-func (c *packetConnWrapper) Write(p []byte) (int, error) {
-	return c.conn.WriteTo(p, c.dest)
-}
-
 func (c *packetConnWrapper) Read(p []byte) (int, error) {
 	n, _, err := c.conn.ReadFrom(p)
 	return n, err
+}
+
+func (c *packetConnWrapper) RemoteAddr() net.Addr {
+	return c.dest
 }
 
 func (c *packetConnWrapper) SetDeadline(t time.Time) error {
@@ -133,41 +160,6 @@ func (c *packetConnWrapper) SetWriteDeadline(t time.Time) error {
 	return c.conn.SetWriteDeadline(t)
 }
 
-type SystemDialerAdapter interface {
-	Dial(network string, address string) (net.Conn, error)
-}
-
-type SimpleSystemDialer struct {
-	adapter SystemDialerAdapter
-}
-
-func WithAdapter(dialer SystemDialerAdapter) SystemDialer {
-	return &SimpleSystemDialer{
-		adapter: dialer,
-	}
-}
-
-func (v *SimpleSystemDialer) Dial(ctx context.Context, src net.Address, dest net.Destination, sockopt *SocketConfig) (net.Conn, error) {
-	return v.adapter.Dial(dest.Network.SystemString(), dest.NetAddr())
-}
-
-func UseAlternativeSystemDialer(dialer SystemDialer) {
-	if dialer == nil {
-		dialer = &DefaultSystemDialer{}
-	}
-	effectiveSystemDialer = dialer
-}
-
-func RegisterDialerController(ctl func(network, address string, fd uintptr) error) error {
-	if ctl == nil {
-		return newError("nil listener controller")
-	}
-
-	dialer, ok := effectiveSystemDialer.(*DefaultSystemDialer)
-	if !ok {
-		return newError("RegisterListenerController not supported in custom dialer")
-	}
-
-	dialer.controllers = append(dialer.controllers, ctl)
-	return nil
+func (c *packetConnWrapper) Write(p []byte) (int, error) {
+	return c.conn.WriteTo(p, c.dest)
 }
