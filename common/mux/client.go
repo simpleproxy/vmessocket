@@ -14,9 +14,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal/done"
 	"github.com/vmessocket/vmessocket/common/task"
-	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport"
-	"github.com/vmessocket/vmessocket/transport/internet"
 )
 
 var (
@@ -32,12 +30,6 @@ type ClientWorker struct {
 
 type ClientWorkerFactory interface {
 	Create() (*ClientWorker, error)
-}
-
-type DialingWorkerFactory struct {
-	Proxy  proxy.Outbound
-	Dialer internet.Dialer
-	ctx    context.Context
 }
 
 type IncrementalWorkerPicker struct {
