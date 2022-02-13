@@ -97,24 +97,3 @@ func (w *Writer) writeMetaOnly() error {
 	}
 	return w.writer.WriteMultiBuffer(buf.MultiBuffer{b})
 }
-
-func (w *Writer) WriteMultiBuffer(mb buf.MultiBuffer) error {
-	defer buf.ReleaseMulti(mb)
-	if mb.IsEmpty() {
-		return w.writeMetaOnly()
-	}
-	for !mb.IsEmpty() {
-		var chunk buf.MultiBuffer
-		if w.transferType == protocol.TransferTypeStream {
-			mb, chunk = buf.SplitSize(mb, 8*1024)
-		} else {
-			mb2, b := buf.SplitFirst(mb)
-			mb = mb2
-			chunk = buf.MultiBuffer{b}
-		}
-		if err := w.writeData(chunk); err != nil {
-			return err
-		}
-	}
-	return nil
-}
