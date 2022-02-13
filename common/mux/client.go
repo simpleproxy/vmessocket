@@ -28,12 +28,7 @@ type ClientWorker struct {
 	done           *done.Instance
 }
 
-type ClientWorkerFactory interface {
-	Create() (*ClientWorker, error)
-}
-
 type IncrementalWorkerPicker struct {
-	Factory     ClientWorkerFactory
 	access      sync.Mutex
 	workers     []*ClientWorker
 	cleanupTask *task.Periodic
