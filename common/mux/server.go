@@ -7,9 +7,7 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/errors"
-	"github.com/vmessocket/vmessocket/common/log"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/protocol"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
@@ -91,113 +89,10 @@ func (w *ServerWorker) handleFrame(ctx context.Context, reader *buf.BufferedRead
 		return newError("failed to read metadata").Base(err)
 	}
 	switch meta.SessionStatus {
-	case SessionStatusKeepAlive:
-		err = w.handleStatusKeepAlive(&meta, reader)
-	case SessionStatusEnd:
-		err = w.handleStatusEnd(&meta, reader)
-	case SessionStatusNew:
-		err = w.handleStatusNew(ctx, &meta, reader)
-	case SessionStatusKeep:
-		err = w.handleStatusKeep(&meta, reader)
 	default:
 		status := meta.SessionStatus
 		return newError("unknown status: ", status).AtError()
 	}
-	if err != nil {
-		return newError("failed to process data").Base(err)
-	}
-	return nil
-}
-
-func (w *ServerWorker) handleStatusEnd(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if s, found := w.sessionManager.Get(meta.SessionID); found {
-		if meta.Option.Has(OptionError) {
-			common.Interrupt(s.input)
-			common.Interrupt(s.output)
-		}
-		s.Close()
-	}
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
-}
-
-func (w *ServerWorker) handleStatusKeep(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if !meta.Option.Has(OptionData) {
-		return nil
-	}
-	s, found := w.sessionManager.Get(meta.SessionID)
-	if !found {
-		closingWriter := NewResponseWriter(meta.SessionID, w.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	rr := s.NewReader(reader)
-	err := buf.Copy(rr, s.output)
-	if err != nil && buf.IsWriteError(err) {
-		newError("failed to write to downstream writer. closing session ", s.ID).Base(err).WriteToLog()
-		closingWriter := NewResponseWriter(meta.SessionID, w.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-		drainErr := buf.Copy(rr, buf.Discard)
-		common.Interrupt(s.input)
-		s.Close()
-		return drainErr
-	}
-	return err
-}
-
-func (w *ServerWorker) handleStatusKeepAlive(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
-}
-
-func (w *ServerWorker) handleStatusNew(ctx context.Context, meta *FrameMetadata, reader *buf.BufferedReader) error {
-	newError("received request for ", meta.Target).WriteToLog(session.ExportIDToError(ctx))
-	{
-		msg := &log.AccessMessage{
-			To:     meta.Target,
-			Status: log.AccessAccepted,
-			Reason: "",
-		}
-		if inbound := session.InboundFromContext(ctx); inbound != nil && inbound.Source.IsValid() {
-			msg.From = inbound.Source
-			msg.Email = inbound.User.Email
-		}
-		ctx = log.ContextWithAccessMessage(ctx, msg)
-	}
-	link, err := w.dispatcher.Dispatch(ctx, meta.Target)
-	if err != nil {
-		if meta.Option.Has(OptionData) {
-			buf.Copy(NewStreamReader(reader), buf.Discard)
-		}
-		return newError("failed to dispatch request.").Base(err)
-	}
-	s := &Session{
-		input:        link.Reader,
-		output:       link.Writer,
-		parent:       w.sessionManager,
-		ID:           meta.SessionID,
-		transferType: protocol.TransferTypeStream,
-	}
-	if meta.Target.Network == net.Network_UDP {
-		s.transferType = protocol.TransferTypePacket
-	}
-	w.sessionManager.Add(s)
-	go handle(ctx, s, w.link.Writer)
-	if !meta.Option.Has(OptionData) {
-		return nil
-	}
-	rr := s.NewReader(reader)
-	if err := buf.Copy(rr, s.output); err != nil {
-		buf.Copy(rr, buf.Discard)
-		common.Interrupt(s.input)
-		return s.Close()
-	}
-	return nil
 }
 
 func (w *ServerWorker) run(ctx context.Context) {
