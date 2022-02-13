@@ -1,8 +1,6 @@
 package internet
 
-import (
-	"net"
-)
+import "net"
 
 type Connection interface {
 	net.Conn
