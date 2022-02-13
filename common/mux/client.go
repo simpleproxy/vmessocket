@@ -104,14 +104,6 @@ func (m *ClientWorker) fetchOutput() {
 			break
 		}
 		switch meta.SessionStatus {
-		case SessionStatusKeepAlive:
-			err = m.handleStatueKeepAlive(&meta, reader)
-		case SessionStatusEnd:
-			err = m.handleStatusEnd(&meta, reader)
-		case SessionStatusNew:
-			err = m.handleStatusNew(&meta, reader)
-		case SessionStatusKeep:
-			err = m.handleStatusKeep(&meta, reader)
 		default:
 			status := meta.SessionStatus
 			newError("unknown status: ", status).AtError().WriteToLog()
@@ -122,59 +114,6 @@ func (m *ClientWorker) fetchOutput() {
 			return
 		}
 	}
-}
-
-func (m *ClientWorker) handleStatueKeepAlive(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
-}
-
-func (m *ClientWorker) handleStatusEnd(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if s, found := m.sessionManager.Get(meta.SessionID); found {
-		if meta.Option.Has(OptionError) {
-			common.Interrupt(s.input)
-			common.Interrupt(s.output)
-		}
-		s.Close()
-	}
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
-}
-
-func (m *ClientWorker) handleStatusKeep(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if !meta.Option.Has(OptionData) {
-		return nil
-	}
-	s, found := m.sessionManager.Get(meta.SessionID)
-	if !found {
-		closingWriter := NewResponseWriter(meta.SessionID, m.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	rr := s.NewReader(reader)
-	err := buf.Copy(rr, s.output)
-	if err != nil && buf.IsWriteError(err) {
-		newError("failed to write to downstream. closing session ", s.ID).Base(err).WriteToLog()
-		closingWriter := NewResponseWriter(meta.SessionID, m.link.Writer, protocol.TransferTypeStream)
-		closingWriter.Close()
-		drainErr := buf.Copy(rr, buf.Discard)
-		common.Interrupt(s.input)
-		s.Close()
-		return drainErr
-	}
-	return err
-}
-
-func (m *ClientWorker) handleStatusNew(meta *FrameMetadata, reader *buf.BufferedReader) error {
-	if meta.Option.Has(OptionData) {
-		return buf.Copy(NewStreamReader(reader), buf.Discard)
-	}
-	return nil
 }
 
 func (m *ClientWorker) monitor() {
