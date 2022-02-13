@@ -11,6 +11,10 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 )
 
+func ReadUDPMsg(conn *net.UDPConn, payload []byte, oob []byte) (int, int, int, *net.UDPAddr, error) {
+	return conn.ReadMsgUDP(payload, oob)
+}
+
 func RetrieveOriginalDest(oob []byte) net.Destination {
 	msgs, err := syscall.ParseSocketControlMessage(oob)
 	if err != nil {
@@ -28,8 +32,4 @@ func RetrieveOriginalDest(oob []byte) net.Destination {
 		}
 	}
 	return net.Destination{}
-}
-
-func ReadUDPMsg(conn *net.UDPConn, payload []byte, oob []byte) (int, int, int, *net.UDPAddr, error) {
-	return conn.ReadMsgUDP(payload, oob)
 }
