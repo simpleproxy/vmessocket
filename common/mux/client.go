@@ -17,7 +17,6 @@ import (
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
 var (
@@ -25,16 +24,10 @@ var (
 	muxCoolPort    = net.Port(9527)
 )
 
-type ClientStrategy struct {
-	MaxConcurrency uint32
-	MaxConnection  uint32
-}
-
 type ClientWorker struct {
 	sessionManager *SessionManager
 	link           transport.Link
 	done           *done.Instance
-	strategy       ClientStrategy
 }
 
 type ClientWorkerFactory interface {
@@ -42,10 +35,9 @@ type ClientWorkerFactory interface {
 }
 
 type DialingWorkerFactory struct {
-	Proxy    proxy.Outbound
-	Dialer   internet.Dialer
-	Strategy ClientStrategy
-	ctx      context.Context
+	Proxy  proxy.Outbound
+	Dialer internet.Dialer
+	ctx    context.Context
 }
 
 type IncrementalWorkerPicker struct {
@@ -81,27 +73,6 @@ func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
 		writer.hasError = true
 		common.Interrupt(s.input)
 		return
-	}
-}
-
-func NewClientWorker(stream transport.Link, s ClientStrategy) (*ClientWorker, error) {
-	c := &ClientWorker{
-		sessionManager: NewSessionManager(),
-		link:           stream,
-		done:           done.New(),
-		strategy:       s,
-	}
-	go c.fetchOutput()
-	go c.monitor()
-	return c, nil
-}
-
-func NewDialingWorkerFactory(ctx context.Context, proxy proxy.Outbound, dialer internet.Dialer, strategy ClientStrategy) *DialingWorkerFactory {
-	return &DialingWorkerFactory{
-		Proxy:    proxy,
-		Dialer:   dialer,
-		Strategy: strategy,
-		ctx:      ctx,
 	}
 }
 
@@ -144,33 +115,8 @@ func (m *ClientWorker) Closed() bool {
 	return m.done.Done()
 }
 
-func (f *DialingWorkerFactory) Create() (*ClientWorker, error) {
-	opts := []pipe.Option{pipe.WithSizeLimit(64 * 1024)}
-	uplinkReader, upLinkWriter := pipe.New(opts...)
-	downlinkReader, downlinkWriter := pipe.New(opts...)
-	c, err := NewClientWorker(transport.Link{
-		Reader: downlinkReader,
-		Writer: upLinkWriter,
-	}, f.Strategy)
-	if err != nil {
-		return nil, err
-	}
-	go func(p proxy.Outbound, d internet.Dialer, c common.Closable) {
-		ctx := session.ContextWithOutbound(f.ctx, &session.Outbound{
-			Target: net.TCPDestination(muxCoolAddress, muxCoolPort),
-		})
-		ctx, cancel := context.WithCancel(ctx)
-		if err := p.Process(ctx, &transport.Link{Reader: uplinkReader, Writer: downlinkWriter}, d); err != nil {
-			errors.New("failed to handler mux client connection").Base(err).WriteToLog()
-		}
-		common.Must(c.Close())
-		cancel()
-	}(f.Proxy, f.Dialer, c.done)
-	return c, nil
-}
-
 func (m *ClientWorker) Dispatch(ctx context.Context, link *transport.Link) bool {
-	if m.IsFull() || m.Closed() {
+	if m.Closed() {
 		return false
 	}
 	sm := m.sessionManager
@@ -217,15 +163,6 @@ func (m *ClientWorker) fetchOutput() {
 			return
 		}
 	}
-}
-
-func (p *IncrementalWorkerPicker) findAvailable() int {
-	for idx, w := range p.workers {
-		if !w.IsFull() {
-			return idx
-		}
-	}
-	return -1
 }
 
 func (m *ClientWorker) handleStatueKeepAlive(meta *FrameMetadata, reader *buf.BufferedReader) error {
@@ -281,25 +218,6 @@ func (m *ClientWorker) handleStatusNew(meta *FrameMetadata, reader *buf.Buffered
 	return nil
 }
 
-func (m *ClientWorker) IsClosing() bool {
-	sm := m.sessionManager
-	if m.strategy.MaxConnection > 0 && sm.Count() >= int(m.strategy.MaxConnection) {
-		return true
-	}
-	return false
-}
-
-func (m *ClientWorker) IsFull() bool {
-	if m.IsClosing() || m.Closed() {
-		return true
-	}
-	sm := m.sessionManager
-	if m.strategy.MaxConcurrency > 0 && sm.Size() >= int(m.strategy.MaxConcurrency) {
-		return true
-	}
-	return false
-}
-
 func (m *ClientWorker) monitor() {
 	timer := time.NewTicker(time.Second * 16)
 	defer timer.Stop()
@@ -317,40 +235,6 @@ func (m *ClientWorker) monitor() {
 			}
 		}
 	}
-}
-
-func (p *IncrementalWorkerPicker) PickAvailable() (*ClientWorker, error) {
-	worker, start, err := p.pickInternal()
-	if start {
-		common.Must(p.cleanupTask.Start())
-	}
-	return worker, err
-}
-
-func (p *IncrementalWorkerPicker) pickInternal() (*ClientWorker, bool, error) {
-	p.access.Lock()
-	defer p.access.Unlock()
-	idx := p.findAvailable()
-	if idx >= 0 {
-		n := len(p.workers)
-		if n > 1 && idx != n-1 {
-			p.workers[n-1], p.workers[idx] = p.workers[idx], p.workers[n-1]
-		}
-		return p.workers[idx], false, nil
-	}
-	p.cleanup()
-	worker, err := p.Factory.Create()
-	if err != nil {
-		return nil, false, err
-	}
-	p.workers = append(p.workers, worker)
-	if p.cleanupTask == nil {
-		p.cleanupTask = &task.Periodic{
-			Interval: time.Second * 30,
-			Execute:  p.cleanupFunc,
-		}
-	}
-	return worker, true, nil
 }
 
 func (m *ClientWorker) TotalConnections() uint32 {
