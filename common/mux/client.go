@@ -2,7 +2,6 @@ package mux
 
 import (
 	"io"
-	"time"
 
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
@@ -54,25 +53,6 @@ func (m *ClientWorker) fetchOutput() {
 			status := meta.SessionStatus
 			newError("unknown status: ", status).AtError().WriteToLog()
 			return
-		}
-	}
-}
-
-func (m *ClientWorker) monitor() {
-	timer := time.NewTicker(time.Second * 16)
-	defer timer.Stop()
-	for {
-		select {
-		case <-m.done.Wait():
-			m.sessionManager.Close()
-			common.Close(m.link.Writer)
-			common.Interrupt(m.link.Reader)
-			return
-		case <-timer.C:
-			size := m.sessionManager.Size()
-			if size == 0 && m.sessionManager.CloseIfNoSession() {
-				common.Must(m.done.Close())
-			}
 		}
 	}
 }
