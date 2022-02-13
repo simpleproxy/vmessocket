@@ -9,6 +9,13 @@ import (
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
 
+type Hub struct {
+	conn         *net.UDPConn
+	cache        chan *udp.Packet
+	capacity     int
+	recvOrigDest bool
+}
+
 type HubOption func(h *Hub)
 
 func HubCapacity(capacity int) HubOption {
@@ -23,13 +30,6 @@ func HubReceiveOriginalDestination(r bool) HubOption {
 	}
 }
 
-type Hub struct {
-	conn         *net.UDPConn
-	cache        chan *udp.Packet
-	capacity     int
-	recvOrigDest bool
-}
-
 func ListenUDP(ctx context.Context, address net.Address, port net.Port, streamSettings *internet.MemoryStreamConfig, options ...HubOption) (*Hub, error) {
 	hub := &Hub{
 		capacity:     256,
@@ -38,7 +38,6 @@ func ListenUDP(ctx context.Context, address net.Address, port net.Port, streamSe
 	for _, opt := range options {
 		opt(hub)
 	}
-
 	var sockopt *internet.SocketConfig
 	if streamSettings != nil {
 		sockopt = streamSettings.SocketSettings
@@ -46,7 +45,6 @@ func ListenUDP(ctx context.Context, address net.Address, port net.Port, streamSe
 	if sockopt != nil && sockopt.ReceiveOriginalDestAddress {
 		hub.recvOrigDest = true
 	}
-
 	udpConn, err := internet.ListenSystemPacket(ctx, &net.UDPAddr{
 		IP:   address.IP(),
 		Port: int(port),
@@ -57,9 +55,12 @@ func ListenUDP(ctx context.Context, address net.Address, port net.Port, streamSe
 	newError("listening UDP on ", address, ":", port).WriteToLog()
 	hub.conn = udpConn.(*net.UDPConn)
 	hub.cache = make(chan *udp.Packet, hub.capacity)
-
 	go hub.start()
 	return hub, nil
+}
+
+func (h *Hub) Addr() net.Addr {
+	return h.conn.LocalAddr()
 }
 
 func (h *Hub) Close() error {
@@ -67,25 +68,19 @@ func (h *Hub) Close() error {
 	return nil
 }
 
-func (h *Hub) WriteTo(payload []byte, dest net.Destination) (int, error) {
-	return h.conn.WriteToUDP(payload, &net.UDPAddr{
-		IP:   dest.Address.IP(),
-		Port: int(dest.Port),
-	})
+func (h *Hub) Receive() <-chan *udp.Packet {
+	return h.cache
 }
 
 func (h *Hub) start() {
 	c := h.cache
 	defer close(c)
-
 	oobBytes := make([]byte, 256)
-
 	for {
 		buffer := buf.New()
 		var noob int
 		var addr *net.UDPAddr
 		rawBytes := buffer.Extend(buf.Size)
-
 		n, noob, _, addr, err := ReadUDPMsg(h.conn, rawBytes, oobBytes)
 		if err != nil {
 			newError("failed to read UDP msg").Base(err).WriteToLog()
@@ -93,12 +88,10 @@ func (h *Hub) start() {
 			break
 		}
 		buffer.Resize(0, int32(n))
-
 		if buffer.IsEmpty() {
 			buffer.Release()
 			continue
 		}
-
 		payload := &udp.Packet{
 			Payload: buffer,
 			Source:  net.UDPDestination(net.IPAddress(addr.IP), net.Port(addr.Port)),
@@ -111,7 +104,6 @@ func (h *Hub) start() {
 				newError("failed to read UDP original destination").WriteToLog()
 			}
 		}
-
 		select {
 		case c <- payload:
 		default:
@@ -121,10 +113,9 @@ func (h *Hub) start() {
 	}
 }
 
-func (h *Hub) Addr() net.Addr {
-	return h.conn.LocalAddr()
-}
-
-func (h *Hub) Receive() <-chan *udp.Packet {
-	return h.cache
+func (h *Hub) WriteTo(payload []byte, dest net.Destination) (int, error) {
+	return h.conn.WriteToUDP(payload, &net.UDPAddr{
+		IP:   dest.Address.IP(),
+		Port: int(dest.Port),
+	})
 }
