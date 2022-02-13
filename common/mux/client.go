@@ -1,7 +1,6 @@
 package mux
 
 import (
-	"context"
 	"io"
 	"time"
 
@@ -9,8 +8,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal/done"
 	"github.com/vmessocket/vmessocket/transport"
 )
@@ -30,31 +27,6 @@ type WorkerPicker interface {
 	PickAvailable() (*ClientWorker, error)
 }
 
-func fetchInput(ctx context.Context, s *Session, output buf.Writer) {
-	dest := session.OutboundFromContext(ctx).Target
-	transferType := protocol.TransferTypeStream
-	if dest.Network == net.Network_UDP {
-		transferType = protocol.TransferTypePacket
-	}
-	s.transferType = transferType
-	writer := NewWriter(s.ID, dest, output, transferType)
-	defer s.Close()
-	defer writer.Close()
-	newError("dispatching request to ", dest).WriteToLog(session.ExportIDToError(ctx))
-	if err := writeFirstPayload(s.input, writer); err != nil {
-		newError("failed to write first payload").Base(err).WriteToLog(session.ExportIDToError(ctx))
-		writer.hasError = true
-		common.Interrupt(s.input)
-		return
-	}
-	if err := buf.Copy(s.input, writer); err != nil {
-		newError("failed to fetch all input").Base(err).WriteToLog(session.ExportIDToError(ctx))
-		writer.hasError = true
-		common.Interrupt(s.input)
-		return
-	}
-}
-
 func writeFirstPayload(reader buf.Reader, writer *Writer) error {
 	err := buf.CopyOnceTimeout(reader, writer, time.Millisecond*100)
 	if err == buf.ErrNotTimeoutReader || err == buf.ErrReadTimeout {
@@ -72,21 +44,6 @@ func (m *ClientWorker) ActiveConnections() uint32 {
 
 func (m *ClientWorker) Closed() bool {
 	return m.done.Done()
-}
-
-func (m *ClientWorker) Dispatch(ctx context.Context, link *transport.Link) bool {
-	if m.Closed() {
-		return false
-	}
-	sm := m.sessionManager
-	s := sm.Allocate()
-	if s == nil {
-		return false
-	}
-	s.input = link.Reader
-	s.output = link.Writer
-	go fetchInput(ctx, s, m.link.Writer)
-	return true
 }
 
 func (m *ClientWorker) fetchOutput() {
