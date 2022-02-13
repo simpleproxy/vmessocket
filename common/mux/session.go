@@ -112,13 +112,6 @@ func (m *SessionManager) Get(id uint16) (*Session, bool) {
 	return s, found
 }
 
-func (s *Session) NewReader(reader *buf.BufferedReader) buf.Reader {
-	if s.transferType == protocol.TransferTypeStream {
-		return NewStreamReader(reader)
-	}
-	return NewPacketReader(reader)
-}
-
 func (m *SessionManager) Remove(id uint16) {
 	m.Lock()
 	defer m.Unlock()
