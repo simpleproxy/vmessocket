@@ -32,10 +32,6 @@ func (s *service) Register(server *grpc.Server) {
 	}))
 }
 
-func (s *routingServer) SubscribeRoutingStats(request *SubscribeRoutingStatsRequest, stream RoutingService_SubscribeRoutingStatsServer) error {
-	return nil
-}
-
 func (s *routingServer) TestRoute(ctx context.Context, request *TestRouteRequest) (*RoutingContext, error) {
 	if request.RoutingContext == nil {
 		return nil, newError("Invalid routing request.")
