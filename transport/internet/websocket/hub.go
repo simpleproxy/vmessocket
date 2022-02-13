@@ -21,13 +21,6 @@ import (
 	v2tls "github.com/vmessocket/vmessocket/transport/internet/tls"
 )
 
-type requestHandler struct {
-	path                string
-	ln                  *Listener
-	earlyDataEnabled    bool
-	earlyDataHeaderName string
-}
-
 var upgrader = &websocket.Upgrader{
 	ReadBufferSize:   4 * 1024,
 	WriteBufferSize:  4 * 1024,
@@ -37,57 +30,19 @@ var upgrader = &websocket.Upgrader{
 	},
 }
 
-func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
-	var earlyData io.Reader
-	if !h.earlyDataEnabled {
-		if request.URL.Path != h.path {
-			writer.WriteHeader(http.StatusNotFound)
-			return
-		}
-	} else if h.earlyDataHeaderName != "" {
-		if request.URL.Path != h.path {
-			writer.WriteHeader(http.StatusNotFound)
-			return
-		}
-		earlyDataStr := request.Header.Get(h.earlyDataHeaderName)
-		earlyData = base64.NewDecoder(base64.RawURLEncoding, bytes.NewReader([]byte(earlyDataStr)))
-	} else {
-		if strings.HasPrefix(request.URL.RequestURI(), h.path) {
-			earlyDataStr := request.URL.RequestURI()[len(h.path):]
-			earlyData = base64.NewDecoder(base64.RawURLEncoding, bytes.NewReader([]byte(earlyDataStr)))
-		} else {
-			writer.WriteHeader(http.StatusNotFound)
-			return
-		}
-	}
-
-	conn, err := upgrader.Upgrade(writer, request, nil)
-	if err != nil {
-		newError("failed to convert to WebSocket connection").Base(err).WriteToLog()
-		return
-	}
-
-	forwardedAddrs := http_proto.ParseXForwardedFor(request.Header)
-	remoteAddr := conn.RemoteAddr()
-	if len(forwardedAddrs) > 0 && forwardedAddrs[0].Family().IsIP() {
-		remoteAddr = &net.TCPAddr{
-			IP:   forwardedAddrs[0].IP(),
-			Port: int(0),
-		}
-	}
-	if earlyData == nil {
-		h.ln.addConn(newConnection(conn, remoteAddr))
-	} else {
-		h.ln.addConn(newConnectionWithEarlyData(conn, remoteAddr, earlyData))
-	}
-}
-
 type Listener struct {
 	sync.Mutex
 	server   http.Server
 	listener net.Listener
 	config   *Config
 	addConn  internet.ConnHandler
+}
+
+type requestHandler struct {
+	path                string
+	ln                  *Listener
+	earlyDataEnabled    bool
+	earlyDataHeaderName string
 }
 
 func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSettings *internet.MemoryStreamConfig, addConn internet.ConnHandler) (internet.Listener, error) {
@@ -113,7 +68,6 @@ func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSet
 			return nil, newError("failed to listen unix domain socket(for WS) on ", address).Base(err)
 		}
 		newError("listening unix domain socket(for WS) on ", address).WriteToLog(session.ExportIDToError(ctx))
-
 	} else {
 		listener, err = internet.ListenSystem(ctx, &net.TCPAddr{
 			IP:   address.IP(),
@@ -124,17 +78,14 @@ func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSet
 		}
 		newError("listening TCP(for WS) on ", address, ":", port).WriteToLog(session.ExportIDToError(ctx))
 	}
-
 	if streamSettings.SocketSettings != nil && streamSettings.SocketSettings.AcceptProxyProtocol {
 		newError("accepting PROXY protocol").AtWarning().WriteToLog(session.ExportIDToError(ctx))
 	}
-
 	if config := v2tls.ConfigFromStreamSettings(streamSettings); config != nil {
 		if tlsConfig := config.GetTLSConfig(); tlsConfig != nil {
 			listener = tls.NewListener(listener, tlsConfig)
 		}
 	}
-
 	l.listener = listener
 	useEarlyData := false
 	earlyDataHeaderName := ""
@@ -142,7 +93,6 @@ func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSet
 		useEarlyData = true
 		earlyDataHeaderName = wsSettings.EarlyDataHeaderName
 	}
-
 	l.server = http.Server{
 		Handler: &requestHandler{
 			path:                wsSettings.GetNormalizedPath(),
@@ -153,12 +103,54 @@ func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSet
 		ReadHeaderTimeout: time.Second * 4,
 		MaxHeaderBytes:    http.DefaultMaxHeaderBytes,
 	}
-
 	return nil, err
 }
 
 func (ln *Listener) Addr() net.Addr {
 	return ln.listener.Addr()
+}
+
+func (h *requestHandler) ServeHTTP(writer http.ResponseWriter, request *http.Request) {
+	var earlyData io.Reader
+	if !h.earlyDataEnabled {
+		if request.URL.Path != h.path {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+	} else if h.earlyDataHeaderName != "" {
+		if request.URL.Path != h.path {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+		earlyDataStr := request.Header.Get(h.earlyDataHeaderName)
+		earlyData = base64.NewDecoder(base64.RawURLEncoding, bytes.NewReader([]byte(earlyDataStr)))
+	} else {
+		if strings.HasPrefix(request.URL.RequestURI(), h.path) {
+			earlyDataStr := request.URL.RequestURI()[len(h.path):]
+			earlyData = base64.NewDecoder(base64.RawURLEncoding, bytes.NewReader([]byte(earlyDataStr)))
+		} else {
+			writer.WriteHeader(http.StatusNotFound)
+			return
+		}
+	}
+	conn, err := upgrader.Upgrade(writer, request, nil)
+	if err != nil {
+		newError("failed to convert to WebSocket connection").Base(err).WriteToLog()
+		return
+	}
+	forwardedAddrs := http_proto.ParseXForwardedFor(request.Header)
+	remoteAddr := conn.RemoteAddr()
+	if len(forwardedAddrs) > 0 && forwardedAddrs[0].Family().IsIP() {
+		remoteAddr = &net.TCPAddr{
+			IP:   forwardedAddrs[0].IP(),
+			Port: int(0),
+		}
+	}
+	if earlyData == nil {
+		h.ln.addConn(newConnection(conn, remoteAddr))
+	} else {
+		h.ln.addConn(newConnectionWithEarlyData(conn, remoteAddr, earlyData))
+	}
 }
 
 func init() {
