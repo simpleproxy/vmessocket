@@ -9,35 +9,14 @@ import (
 
 type connectionForwarder struct {
 	io.ReadWriteCloser
-
 	shouldWait        bool
 	delayedDialFinish context.Context
 	finishedDial      context.CancelFunc
 	dialer            DelayedDialerForwarded
 }
 
-func (c *connectionForwarder) Read(p []byte) (n int, err error) {
-	if c.shouldWait {
-		<-c.delayedDialFinish.Done()
-		if c.ReadWriteCloser == nil {
-			return 0, newError("unable to read delayed dial websocket connection as it do not exist")
-		}
-	}
-	return c.ReadWriteCloser.Read(p)
-}
-
-func (c *connectionForwarder) Write(p []byte) (n int, err error) {
-	if c.shouldWait {
-		var err error
-		c.ReadWriteCloser, err = c.dialer.Dial(p)
-		c.finishedDial()
-		if err != nil {
-			return 0, newError("Unable to proceed with delayed write").Base(err)
-		}
-		c.shouldWait = false
-		return len(p), nil
-	}
-	return c.ReadWriteCloser.Write(p)
+type DelayedDialerForwarded interface {
+	Dial(earlyData []byte) (io.ReadWriteCloser, error)
 }
 
 func (c *connectionForwarder) Close() error {
@@ -55,6 +34,16 @@ func (c connectionForwarder) LocalAddr() net.Addr {
 		Name: "not available",
 		Net:  "",
 	}
+}
+
+func (c *connectionForwarder) Read(p []byte) (n int, err error) {
+	if c.shouldWait {
+		<-c.delayedDialFinish.Done()
+		if c.ReadWriteCloser == nil {
+			return 0, newError("unable to read delayed dial websocket connection as it do not exist")
+		}
+	}
+	return c.ReadWriteCloser.Read(p)
 }
 
 func (c connectionForwarder) RemoteAddr() net.Addr {
@@ -76,6 +65,16 @@ func (c connectionForwarder) SetWriteDeadline(t time.Time) error {
 	return nil
 }
 
-type DelayedDialerForwarded interface {
-	Dial(earlyData []byte) (io.ReadWriteCloser, error)
+func (c *connectionForwarder) Write(p []byte) (n int, err error) {
+	if c.shouldWait {
+		var err error
+		c.ReadWriteCloser, err = c.dialer.Dial(p)
+		c.finishedDial()
+		if err != nil {
+			return 0, newError("Unable to proceed with delayed write").Base(err)
+		}
+		c.shouldWait = false
+		return len(p), nil
+	}
+	return c.ReadWriteCloser.Write(p)
 }
