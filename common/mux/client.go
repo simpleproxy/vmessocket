@@ -109,10 +109,6 @@ func (m *ClientWorker) fetchOutput() {
 			newError("unknown status: ", status).AtError().WriteToLog()
 			return
 		}
-		if err != nil {
-			newError("failed to process data").Base(err).WriteToLog()
-			return
-		}
 	}
 }
 
