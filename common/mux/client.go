@@ -3,7 +3,6 @@ package mux
 import (
 	"context"
 	"io"
-	"sync"
 	"time"
 
 	"github.com/vmessocket/vmessocket/common"
@@ -13,7 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/protocol"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal/done"
-	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/transport"
 )
 
@@ -26,12 +24,6 @@ type ClientWorker struct {
 	sessionManager *SessionManager
 	link           transport.Link
 	done           *done.Instance
-}
-
-type IncrementalWorkerPicker struct {
-	access      sync.Mutex
-	workers     []*ClientWorker
-	cleanupTask *task.Periodic
 }
 
 type WorkerPicker interface {
@@ -76,26 +68,6 @@ func writeFirstPayload(reader buf.Reader, writer *Writer) error {
 
 func (m *ClientWorker) ActiveConnections() uint32 {
 	return uint32(m.sessionManager.Size())
-}
-
-func (p *IncrementalWorkerPicker) cleanup() {
-	var activeWorkers []*ClientWorker
-	for _, w := range p.workers {
-		if !w.Closed() {
-			activeWorkers = append(activeWorkers, w)
-		}
-	}
-	p.workers = activeWorkers
-}
-
-func (p *IncrementalWorkerPicker) cleanupFunc() error {
-	p.access.Lock()
-	defer p.access.Unlock()
-	if len(p.workers) == 0 {
-		return newError("no worker")
-	}
-	p.cleanup()
-	return nil
 }
 
 func (m *ClientWorker) Closed() bool {
