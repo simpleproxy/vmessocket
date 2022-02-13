@@ -27,17 +27,6 @@ type WorkerPicker interface {
 	PickAvailable() (*ClientWorker, error)
 }
 
-func writeFirstPayload(reader buf.Reader, writer *Writer) error {
-	err := buf.CopyOnceTimeout(reader, writer, time.Millisecond*100)
-	if err == buf.ErrNotTimeoutReader || err == buf.ErrReadTimeout {
-		return writer.WriteMultiBuffer(buf.MultiBuffer{})
-	}
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
 func (m *ClientWorker) ActiveConnections() uint32 {
 	return uint32(m.sessionManager.Size())
 }
