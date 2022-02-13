@@ -39,6 +39,14 @@ func getControlFunc(ctx context.Context, sockopt *SocketConfig, controllers []co
 	}
 }
 
+func RegisterListenerController(controller func(network, address string, fd uintptr) error) error {
+	if controller == nil {
+		return newError("nil listener controller")
+	}
+	effectiveListener.controllers = append(effectiveListener.controllers, controller)
+	return nil
+}
+
 func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *SocketConfig) (net.Listener, error) {
 	var lc net.ListenConfig
 	var l net.Listener
@@ -61,7 +69,6 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 			}
 		}
 	}
-
 	l, err = lc.Listen(ctx, network, address)
 	if sockopt != nil && sockopt.AcceptProxyProtocol {
 		policyFunc := func(upstream net.Addr) (proxyproto.Policy, error) { return proxyproto.REQUIRE, nil }
@@ -72,17 +79,6 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 
 func (dl *DefaultListener) ListenPacket(ctx context.Context, addr net.Addr, sockopt *SocketConfig) (net.PacketConn, error) {
 	var lc net.ListenConfig
-
 	lc.Control = getControlFunc(ctx, sockopt, dl.controllers)
-
 	return lc.ListenPacket(ctx, addr.Network(), addr.String())
-}
-
-func RegisterListenerController(controller func(network, address string, fd uintptr) error) error {
-	if controller == nil {
-		return newError("nil listener controller")
-	}
-
-	effectiveListener.controllers = append(effectiveListener.controllers, controller)
-	return nil
 }
