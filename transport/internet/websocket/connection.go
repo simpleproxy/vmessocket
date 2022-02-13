@@ -16,10 +16,9 @@ import (
 var _ buf.Writer = (*connection)(nil)
 
 type connection struct {
-	conn       *websocket.Conn
-	reader     io.Reader
-	remoteAddr net.Addr
-
+	conn              *websocket.Conn
+	reader            io.Reader
+	remoteAddr        net.Addr
 	shouldWait        bool
 	delayedDialFinish context.Context
 	finishedDial      context.CancelFunc
@@ -37,6 +36,16 @@ func newConnection(conn *websocket.Conn, remoteAddr net.Addr) *connection {
 	}
 }
 
+func newConnectionWithDelayedDial(dialer DelayedDialer) *connection {
+	delayedDialContext, CancellFunc := context.WithCancel(context.Background())
+	return &connection{
+		shouldWait:        true,
+		delayedDialFinish: delayedDialContext,
+		finishedDial:      CancellFunc,
+		dialer:            dialer,
+	}
+}
+
 func newConnectionWithEarlyData(conn *websocket.Conn, remoteAddr net.Addr, earlyData io.Reader) *connection {
 	return &connection{
 		conn:       conn,
@@ -45,13 +54,10 @@ func newConnectionWithEarlyData(conn *websocket.Conn, remoteAddr net.Addr, early
 	}
 }
 
-func newConnectionWithDelayedDial(dialer DelayedDialer) *connection {
-	delayedDialContext, CancellFunc := context.WithCancel(context.Background())
-	return &connection{
-		shouldWait:        true,
-		delayedDialFinish: delayedDialContext,
-		finishedDial:      CancellFunc,
-		dialer:            dialer,
+func newRelayedConnection(conn io.ReadWriteCloser) *connectionForwarder {
+	return &connectionForwarder{
+		ReadWriteCloser: conn,
+		shouldWait:      false,
 	}
 }
 
@@ -63,73 +69,6 @@ func newRelayedConnectionWithDelayedDial(dialer DelayedDialerForwarded) *connect
 		finishedDial:      CancellFunc,
 		dialer:            dialer,
 	}
-}
-
-func newRelayedConnection(conn io.ReadWriteCloser) *connectionForwarder {
-	return &connectionForwarder{
-		ReadWriteCloser: conn,
-		shouldWait:      false,
-	}
-}
-
-func (c *connection) Read(b []byte) (int, error) {
-	for {
-		reader, err := c.getReader()
-		if err != nil {
-			return 0, err
-		}
-
-		nBytes, err := reader.Read(b)
-		if errors.Cause(err) == io.EOF {
-			c.reader = nil
-			continue
-		}
-		return nBytes, err
-	}
-}
-
-func (c *connection) getReader() (io.Reader, error) {
-	if c.shouldWait {
-		<-c.delayedDialFinish.Done()
-		if c.conn == nil {
-			return nil, newError("unable to read delayed dial websocket connection as it do not exist")
-		}
-	}
-	if c.reader != nil {
-		return c.reader, nil
-	}
-
-	_, reader, err := c.conn.NextReader()
-	if err != nil {
-		return nil, err
-	}
-	c.reader = reader
-	return reader, nil
-}
-
-func (c *connection) Write(b []byte) (int, error) {
-	if c.shouldWait {
-		var err error
-		c.conn, err = c.dialer.Dial(b)
-		c.finishedDial()
-		if err != nil {
-			return 0, newError("Unable to proceed with delayed write").Base(err)
-		}
-		c.remoteAddr = c.conn.RemoteAddr()
-		c.shouldWait = false
-		return len(b), nil
-	}
-	if err := c.conn.WriteMessage(websocket.BinaryMessage, b); err != nil {
-		return 0, err
-	}
-	return len(b), nil
-}
-
-func (c *connection) WriteMultiBuffer(mb buf.MultiBuffer) error {
-	mb = buf.Compact(mb)
-	mb, err := buf.WriteMultiBuffer(c, mb)
-	buf.ReleaseMulti(mb)
-	return err
 }
 
 func (c *connection) Close() error {
@@ -152,6 +91,24 @@ func (c *connection) Close() error {
 	return nil
 }
 
+func (c *connection) getReader() (io.Reader, error) {
+	if c.shouldWait {
+		<-c.delayedDialFinish.Done()
+		if c.conn == nil {
+			return nil, newError("unable to read delayed dial websocket connection as it do not exist")
+		}
+	}
+	if c.reader != nil {
+		return c.reader, nil
+	}
+	_, reader, err := c.conn.NextReader()
+	if err != nil {
+		return nil, err
+	}
+	c.reader = reader
+	return reader, nil
+}
+
 func (c *connection) LocalAddr() net.Addr {
 	if c.shouldWait {
 		<-c.delayedDialFinish.Done()
@@ -164,6 +121,21 @@ func (c *connection) LocalAddr() net.Addr {
 		}
 	}
 	return c.conn.LocalAddr()
+}
+
+func (c *connection) Read(b []byte) (int, error) {
+	for {
+		reader, err := c.getReader()
+		if err != nil {
+			return 0, err
+		}
+		nBytes, err := reader.Read(b)
+		if errors.Cause(err) == io.EOF {
+			c.reader = nil
+			continue
+		}
+		return nBytes, err
+	}
 }
 
 func (c *connection) RemoteAddr() net.Addr {
@@ -197,4 +169,29 @@ func (c *connection) SetWriteDeadline(t time.Time) error {
 		}
 	}
 	return c.conn.SetWriteDeadline(t)
+}
+
+func (c *connection) Write(b []byte) (int, error) {
+	if c.shouldWait {
+		var err error
+		c.conn, err = c.dialer.Dial(b)
+		c.finishedDial()
+		if err != nil {
+			return 0, newError("Unable to proceed with delayed write").Base(err)
+		}
+		c.remoteAddr = c.conn.RemoteAddr()
+		c.shouldWait = false
+		return len(b), nil
+	}
+	if err := c.conn.WriteMessage(websocket.BinaryMessage, b); err != nil {
+		return 0, err
+	}
+	return len(b), nil
+}
+
+func (c *connection) WriteMultiBuffer(mb buf.MultiBuffer) error {
+	mb = buf.Compact(mb)
+	mb, err := buf.WriteMultiBuffer(c, mb)
+	buf.ReleaseMulti(mb)
+	return err
 }
