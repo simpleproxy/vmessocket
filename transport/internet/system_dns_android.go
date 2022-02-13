@@ -10,8 +10,6 @@ import (
 
 const SystemDNS = "8.8.8.8:53"
 
-type DNSResolverFunc func() *net.Resolver
-
 var NewDNSResolver DNSResolverFunc = func() *net.Resolver {
 	return &net.Resolver{
 		PreferGo: true,
@@ -21,6 +19,8 @@ var NewDNSResolver DNSResolverFunc = func() *net.Resolver {
 		},
 	}
 }
+
+type DNSResolverFunc func() *net.Resolver
 
 func init() {
 	net.DefaultResolver = NewDNSResolver()
