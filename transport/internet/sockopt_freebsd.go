@@ -11,11 +11,14 @@ import (
 )
 
 const (
-	sysPFINOUT     = 0x0
-	sysPFIN        = 0x1
-	sysPFOUT       = 0x2
-	sysPFFWD       = 0x3
-	sysDIOCNATLOOK = 0xc04c4417
+	sysPFINOUT         = 0x0
+	sysPFIN            = 0x1
+	sysPFOUT           = 0x2
+	sysPFFWD           = 0x3
+	sysDIOCNATLOOK     = 0xc04c4417
+	sizeofPfiocNatlook = 0x4c
+	soReUsePort        = 0x00000200
+	soReUsePortLB      = 0x00010000
 )
 
 type pfiocNatlook struct {
@@ -33,26 +36,95 @@ type pfiocNatlook struct {
 	Pad       [1]byte
 }
 
-const (
-	sizeofPfiocNatlook = 0x4c
-	soReUsePort        = 0x00000200
-	soReUsePortLB      = 0x00010000
-)
+func applyInboundSocketOptions(network string, fd uintptr, config *SocketConfig) error {
+	if config.Mark != 0 {
+		if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_USER_COOKIE, int(config.Mark)); err != nil {
+			return newError("failed to set SO_USER_COOKIE").Base(err)
+		}
+	}
+	if isTCPSocket(network) {
+		switch config.Tfo {
+		case SocketConfig_Enable:
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 1); err != nil {
+				return newError("failed to set TCP_FASTOPEN=1").Base(err)
+			}
+		case SocketConfig_Disable:
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 0); err != nil {
+				return newError("failed to set TCP_FASTOPEN=0").Base(err)
+			}
+		}
+	}
+	if config.Tproxy.IsEnabled() {
+		if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IPV6, syscall.IPV6_BINDANY, 1); err != nil {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_BINDANY, 1); err != nil {
+				return newError("failed to set inbound IP_BINDANY").Base(err)
+			}
+		}
+	}
+	return nil
+}
+
+func applyOutboundSocketOptions(network string, address string, fd uintptr, config *SocketConfig) error {
+	if config.Mark != 0 {
+		if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_USER_COOKIE, int(config.Mark)); err != nil {
+			return newError("failed to set SO_USER_COOKIE").Base(err)
+		}
+	}
+	if isTCPSocket(network) {
+		switch config.Tfo {
+		case SocketConfig_Enable:
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 1); err != nil {
+				return newError("failed to set TCP_FASTOPEN_CONNECT=1").Base(err)
+			}
+		case SocketConfig_Disable:
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 0); err != nil {
+				return newError("failed to set TCP_FASTOPEN_CONNECT=0").Base(err)
+			}
+		}
+	}
+	if config.Tproxy.IsEnabled() {
+		ip, _, _ := net.SplitHostPort(address)
+		if net.ParseIP(ip).To4() != nil {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_BINDANY, 1); err != nil {
+				return newError("failed to set outbound IP_BINDANY").Base(err)
+			}
+		} else {
+			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IPV6, syscall.IPV6_BINDANY, 1); err != nil {
+				return newError("failed to set outbound IPV6_BINDANY").Base(err)
+			}
+		}
+	}
+	return nil
+}
+
+func bindAddr(fd uintptr, ip []byte, port uint32) error {
+	setReuseAddr(fd)
+	setReusePort(fd)
+	var sockaddr syscall.Sockaddr
+	switch len(ip) {
+	case net.IPv4len:
+		a4 := &syscall.SockaddrInet4{
+			Port: int(port),
+		}
+		copy(a4.Addr[:], ip)
+		sockaddr = a4
+	case net.IPv6len:
+		a6 := &syscall.SockaddrInet6{
+			Port: int(port),
+		}
+		copy(a6.Addr[:], ip)
+		sockaddr = a6
+	default:
+		return newError("unexpected length of ip")
+	}
+	return syscall.Bind(int(fd), sockaddr)
+}
 
 func ioctl(s uintptr, ioc int, b []byte) error {
 	if _, _, errno := syscall.Syscall(syscall.SYS_IOCTL, s, uintptr(ioc), uintptr(unsafe.Pointer(&b[0]))); errno != 0 {
 		return error(errno)
 	}
 	return nil
-}
-
-func (nl *pfiocNatlook) rdPort() int {
-	return int(binary.BigEndian.Uint16((*[2]byte)(unsafe.Pointer(&nl.Rdport))[:]))
-}
-
-func (nl *pfiocNatlook) setPort(remote, local int) {
-	binary.BigEndian.PutUint16((*[2]byte)(unsafe.Pointer(&nl.Sport))[:], uint16(remote))
-	binary.BigEndian.PutUint16((*[2]byte)(unsafe.Pointer(&nl.Dport))[:], uint16(local))
 }
 
 func OriginalDst(la, ra net.Addr) (net.IP, int, error) {
@@ -108,7 +180,6 @@ func OriginalDst(la, ra net.Addr) (net.IP, int, error) {
 	if err != nil {
 		return net.IP{}, -1, os.NewSyscallError("ioctl", err)
 	}
-
 	odPort := nl.rdPort()
 	var odIP net.IP
 	switch nl.Af {
@@ -120,97 +191,6 @@ func OriginalDst(la, ra net.Addr) (net.IP, int, error) {
 		copy(odIP, nl.Rdaddr[:])
 	}
 	return odIP, odPort, nil
-}
-
-func applyOutboundSocketOptions(network string, address string, fd uintptr, config *SocketConfig) error {
-	if config.Mark != 0 {
-		if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_USER_COOKIE, int(config.Mark)); err != nil {
-			return newError("failed to set SO_USER_COOKIE").Base(err)
-		}
-	}
-
-	if isTCPSocket(network) {
-		switch config.Tfo {
-		case SocketConfig_Enable:
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 1); err != nil {
-				return newError("failed to set TCP_FASTOPEN_CONNECT=1").Base(err)
-			}
-		case SocketConfig_Disable:
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 0); err != nil {
-				return newError("failed to set TCP_FASTOPEN_CONNECT=0").Base(err)
-			}
-		}
-	}
-
-	if config.Tproxy.IsEnabled() {
-		ip, _, _ := net.SplitHostPort(address)
-		if net.ParseIP(ip).To4() != nil {
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_BINDANY, 1); err != nil {
-				return newError("failed to set outbound IP_BINDANY").Base(err)
-			}
-		} else {
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IPV6, syscall.IPV6_BINDANY, 1); err != nil {
-				return newError("failed to set outbound IPV6_BINDANY").Base(err)
-			}
-		}
-	}
-	return nil
-}
-
-func applyInboundSocketOptions(network string, fd uintptr, config *SocketConfig) error {
-	if config.Mark != 0 {
-		if err := syscall.SetsockoptInt(int(fd), syscall.SOL_SOCKET, syscall.SO_USER_COOKIE, int(config.Mark)); err != nil {
-			return newError("failed to set SO_USER_COOKIE").Base(err)
-		}
-	}
-	if isTCPSocket(network) {
-		switch config.Tfo {
-		case SocketConfig_Enable:
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 1); err != nil {
-				return newError("failed to set TCP_FASTOPEN=1").Base(err)
-			}
-		case SocketConfig_Disable:
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_TCP, unix.TCP_FASTOPEN, 0); err != nil {
-				return newError("failed to set TCP_FASTOPEN=0").Base(err)
-			}
-		}
-	}
-
-	if config.Tproxy.IsEnabled() {
-		if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IPV6, syscall.IPV6_BINDANY, 1); err != nil {
-			if err := syscall.SetsockoptInt(int(fd), syscall.IPPROTO_IP, syscall.IP_BINDANY, 1); err != nil {
-				return newError("failed to set inbound IP_BINDANY").Base(err)
-			}
-		}
-	}
-
-	return nil
-}
-
-func bindAddr(fd uintptr, ip []byte, port uint32) error {
-	setReuseAddr(fd)
-	setReusePort(fd)
-
-	var sockaddr syscall.Sockaddr
-
-	switch len(ip) {
-	case net.IPv4len:
-		a4 := &syscall.SockaddrInet4{
-			Port: int(port),
-		}
-		copy(a4.Addr[:], ip)
-		sockaddr = a4
-	case net.IPv6len:
-		a6 := &syscall.SockaddrInet6{
-			Port: int(port),
-		}
-		copy(a6.Addr[:], ip)
-		sockaddr = a6
-	default:
-		return newError("unexpected length of ip")
-	}
-
-	return syscall.Bind(int(fd), sockaddr)
 }
 
 func setReuseAddr(fd uintptr) error {
@@ -227,4 +207,13 @@ func setReusePort(fd uintptr) error {
 		}
 	}
 	return nil
+}
+
+func (nl *pfiocNatlook) rdPort() int {
+	return int(binary.BigEndian.Uint16((*[2]byte)(unsafe.Pointer(&nl.Rdport))[:]))
+}
+
+func (nl *pfiocNatlook) setPort(remote, local int) {
+	binary.BigEndian.PutUint16((*[2]byte)(unsafe.Pointer(&nl.Sport))[:], uint16(remote))
+	binary.BigEndian.PutUint16((*[2]byte)(unsafe.Pointer(&nl.Dport))[:], uint16(local))
 }
