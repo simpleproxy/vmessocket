@@ -17,8 +17,6 @@ import (
 	"github.com/vmessocket/vmessocket/transport"
 )
 
-type ResponseCallback func(ctx context.Context, packet *udp.Packet)
-
 type connEntry struct {
 	link   *transport.Link
 	timer  signal.ActivityUpdater
@@ -32,6 +30,12 @@ type Dispatcher struct {
 	callback   ResponseCallback
 }
 
+type dispatcherConn struct {
+	dispatcher *Dispatcher
+	cache      chan *udp.Packet
+	done       *done.Instance
+}
+
 func NewDispatcher(dispatcher routing.Dispatcher, callback ResponseCallback) *Dispatcher {
 	return &Dispatcher{
 		conns:      make(map[net.Destination]*connEntry),
@@ -40,26 +44,79 @@ func NewDispatcher(dispatcher routing.Dispatcher, callback ResponseCallback) *Di
 	}
 }
 
-func (v *Dispatcher) RemoveRay(dest net.Destination) {
-	v.Lock()
-	defer v.Unlock()
-	if conn, found := v.conns[dest]; found {
-		common.Close(conn.link.Reader)
-		common.Close(conn.link.Writer)
-		delete(v.conns, dest)
+type ResponseCallback func(ctx context.Context, packet *udp.Packet)
+
+func DialDispatcher(ctx context.Context, dispatcher routing.Dispatcher) (net.PacketConn, error) {
+	c := &dispatcherConn{
+		cache: make(chan *udp.Packet, 16),
+		done:  done.New(),
+	}
+	d := NewDispatcher(dispatcher, c.callback)
+	c.dispatcher = d
+	return c, nil
+}
+
+func handleInput(ctx context.Context, conn *connEntry, dest net.Destination, callback ResponseCallback) {
+	defer conn.cancel()
+	input := conn.link.Reader
+	timer := conn.timer
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+		}
+		mb, err := input.ReadMultiBuffer()
+		if err != nil {
+			newError("failed to handle UDP input").Base(err).WriteToLog(session.ExportIDToError(ctx))
+			return
+		}
+		timer.Update()
+		for _, b := range mb {
+			callback(ctx, &udp.Packet{
+				Payload: b,
+				Source:  dest,
+			})
+		}
+	}
+}
+
+func (c *dispatcherConn) callback(ctx context.Context, packet *udp.Packet) {
+	select {
+	case <-c.done.Wait():
+		packet.Payload.Release()
+		return
+	case c.cache <- packet:
+	default:
+		packet.Payload.Release()
+		return
+	}
+}
+
+func (c *dispatcherConn) Close() error {
+	return c.done.Close()
+}
+
+func (v *Dispatcher) Dispatch(ctx context.Context, destination net.Destination, payload *buf.Buffer) {
+	newError("dispatch request to: ", destination).AtDebug().WriteToLog(session.ExportIDToError(ctx))
+	conn := v.getInboundRay(ctx, destination)
+	outputStream := conn.link.Writer
+	if outputStream != nil {
+		if err := outputStream.WriteMultiBuffer(buf.MultiBuffer{payload}); err != nil {
+			newError("failed to write first UDP payload").Base(err).WriteToLog(session.ExportIDToError(ctx))
+			conn.cancel()
+			return
+		}
 	}
 }
 
 func (v *Dispatcher) getInboundRay(ctx context.Context, dest net.Destination) *connEntry {
 	v.Lock()
 	defer v.Unlock()
-
 	if entry, found := v.conns[dest]; found {
 		return entry
 	}
-
 	newError("establishing new connection for ", dest).WriteToLog()
-
 	ctx, cancel := context.WithCancel(ctx)
 	removeRay := func() {
 		cancel()
@@ -77,74 +134,10 @@ func (v *Dispatcher) getInboundRay(ctx context.Context, dest net.Destination) *c
 	return entry
 }
 
-func (v *Dispatcher) Dispatch(ctx context.Context, destination net.Destination, payload *buf.Buffer) {
-	newError("dispatch request to: ", destination).AtDebug().WriteToLog(session.ExportIDToError(ctx))
-
-	conn := v.getInboundRay(ctx, destination)
-	outputStream := conn.link.Writer
-	if outputStream != nil {
-		if err := outputStream.WriteMultiBuffer(buf.MultiBuffer{payload}); err != nil {
-			newError("failed to write first UDP payload").Base(err).WriteToLog(session.ExportIDToError(ctx))
-			conn.cancel()
-			return
-		}
-	}
-}
-
-func handleInput(ctx context.Context, conn *connEntry, dest net.Destination, callback ResponseCallback) {
-	defer conn.cancel()
-
-	input := conn.link.Reader
-	timer := conn.timer
-
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-		}
-
-		mb, err := input.ReadMultiBuffer()
-		if err != nil {
-			newError("failed to handle UDP input").Base(err).WriteToLog(session.ExportIDToError(ctx))
-			return
-		}
-		timer.Update()
-		for _, b := range mb {
-			callback(ctx, &udp.Packet{
-				Payload: b,
-				Source:  dest,
-			})
-		}
-	}
-}
-
-type dispatcherConn struct {
-	dispatcher *Dispatcher
-	cache      chan *udp.Packet
-	done       *done.Instance
-}
-
-func DialDispatcher(ctx context.Context, dispatcher routing.Dispatcher) (net.PacketConn, error) {
-	c := &dispatcherConn{
-		cache: make(chan *udp.Packet, 16),
-		done:  done.New(),
-	}
-
-	d := NewDispatcher(dispatcher, c.callback)
-	c.dispatcher = d
-	return c, nil
-}
-
-func (c *dispatcherConn) callback(ctx context.Context, packet *udp.Packet) {
-	select {
-	case <-c.done.Wait():
-		packet.Payload.Release()
-		return
-	case c.cache <- packet:
-	default:
-		packet.Payload.Release()
-		return
+func (c *dispatcherConn) LocalAddr() net.Addr {
+	return &net.UDPAddr{
+		IP:   []byte{0, 0, 0, 0},
+		Port: 0,
 	}
 }
 
@@ -161,25 +154,13 @@ func (c *dispatcherConn) ReadFrom(p []byte) (int, net.Addr, error) {
 	}
 }
 
-func (c *dispatcherConn) WriteTo(p []byte, addr net.Addr) (int, error) {
-	buffer := buf.New()
-	raw := buffer.Extend(buf.Size)
-	n := copy(raw, p)
-	buffer.Resize(0, int32(n))
-
-	ctx := context.Background()
-	c.dispatcher.Dispatch(ctx, net.DestinationFromAddr(addr), buffer)
-	return n, nil
-}
-
-func (c *dispatcherConn) Close() error {
-	return c.done.Close()
-}
-
-func (c *dispatcherConn) LocalAddr() net.Addr {
-	return &net.UDPAddr{
-		IP:   []byte{0, 0, 0, 0},
-		Port: 0,
+func (v *Dispatcher) RemoveRay(dest net.Destination) {
+	v.Lock()
+	defer v.Unlock()
+	if conn, found := v.conns[dest]; found {
+		common.Close(conn.link.Reader)
+		common.Close(conn.link.Writer)
+		delete(v.conns, dest)
 	}
 }
 
@@ -193,4 +174,14 @@ func (c *dispatcherConn) SetReadDeadline(t time.Time) error {
 
 func (c *dispatcherConn) SetWriteDeadline(t time.Time) error {
 	return nil
+}
+
+func (c *dispatcherConn) WriteTo(p []byte, addr net.Addr) (int, error) {
+	buffer := buf.New()
+	raw := buffer.Extend(buf.Size)
+	n := copy(raw, p)
+	buffer.Resize(0, int32(n))
+	ctx := context.Background()
+	c.dispatcher.Dispatch(ctx, net.DestinationFromAddr(addr), buffer)
+	return n, nil
 }
