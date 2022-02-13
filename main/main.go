@@ -17,7 +17,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/cmdarg"
 	"github.com/vmessocket/vmessocket/common/platform"
 	"github.com/vmessocket/vmessocket/core"
-	_ "github.com/vmessocket/vmessocket/main/distro/all"
+	_ "github.com/vmessocket/vmessocket/main/all"
 )
 
 var (
