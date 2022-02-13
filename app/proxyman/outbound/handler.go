@@ -5,7 +5,6 @@ import (
 
 	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common"
-	"github.com/vmessocket/vmessocket/common/mux"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
@@ -23,7 +22,6 @@ type Handler struct {
 	streamSettings  *internet.MemoryStreamConfig
 	proxy           proxy.Outbound
 	outboundManager outbound.Manager
-	mux             *mux.ClientManager
 }
 
 func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbound.Handler, error) {
@@ -61,26 +59,6 @@ func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbou
 	if !ok {
 		return nil, newError("not an outbound handler")
 	}
-	if h.senderSettings != nil && h.senderSettings.MultiplexSettings != nil {
-		config := h.senderSettings.MultiplexSettings
-		if config.Concurrency < 1 || config.Concurrency > 1024 {
-			return nil, newError("invalid mux concurrency: ", config.Concurrency).AtWarning()
-		}
-		h.mux = &mux.ClientManager{
-			Enabled: h.senderSettings.MultiplexSettings.Enabled,
-			Picker: &mux.IncrementalWorkerPicker{
-				Factory: mux.NewDialingWorkerFactory(
-					ctx,
-					proxyHandler,
-					h,
-					mux.ClientStrategy{
-						MaxConcurrency: config.Concurrency,
-						MaxConnection:  128,
-					},
-				),
-			},
-		}
-	}
 	h.proxy = proxyHandler
 	return h, nil
 }
@@ -93,7 +71,6 @@ func (h *Handler) Address() net.Address {
 }
 
 func (h *Handler) Close() error {
-	common.Close(h.mux)
 	return nil
 }
 

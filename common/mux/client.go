@@ -25,11 +25,6 @@ var (
 	muxCoolPort    = net.Port(9527)
 )
 
-type ClientManager struct {
-	Enabled bool
-	Picker  WorkerPicker
-}
-
 type ClientStrategy struct {
 	MaxConcurrency uint32
 	MaxConnection  uint32
@@ -50,11 +45,11 @@ type DialingWorkerFactory struct {
 	Proxy    proxy.Outbound
 	Dialer   internet.Dialer
 	Strategy ClientStrategy
-	ctx context.Context
+	ctx      context.Context
 }
 
 type IncrementalWorkerPicker struct {
-	Factory ClientWorkerFactory
+	Factory     ClientWorkerFactory
 	access      sync.Mutex
 	workers     []*ClientWorker
 	cleanupTask *task.Periodic
@@ -172,19 +167,6 @@ func (f *DialingWorkerFactory) Create() (*ClientWorker, error) {
 		cancel()
 	}(f.Proxy, f.Dialer, c.done)
 	return c, nil
-}
-
-func (m *ClientManager) Dispatch(ctx context.Context, link *transport.Link) error {
-	for i := 0; i < 16; i++ {
-		worker, err := m.Picker.PickAvailable()
-		if err != nil {
-			return err
-		}
-		if worker.Dispatch(ctx, link) {
-			return nil
-		}
-	}
-	return newError("unable to find an available mux client").AtWarning()
 }
 
 func (m *ClientWorker) Dispatch(ctx context.Context, link *transport.Link) bool {
