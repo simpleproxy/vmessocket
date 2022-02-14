@@ -11,7 +11,6 @@ type Writer struct {
 	writer       buf.Writer
 	id           uint16
 	followup     bool
-	hasError     bool
 	transferType protocol.TransferType
 }
 
