@@ -5,15 +5,12 @@ import (
 
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
-	"github.com/vmessocket/vmessocket/common/protocol"
 )
 
 type Session struct {
 	input        buf.Reader
 	output       buf.Writer
-	parent       *SessionManager
 	ID           uint16
-	transferType protocol.TransferType
 }
 
 type SessionManager struct {
