@@ -3,10 +3,8 @@ package mux
 import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
-	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/common/serial"
 )
 
 type Writer struct {
@@ -37,24 +35,6 @@ func NewWriter(id uint16, dest net.Destination, writer buf.Writer, transferType 
 	}
 }
 
-func writeMetaWithFrame(writer buf.Writer, meta FrameMetadata, data buf.MultiBuffer) error {
-	frame := buf.New()
-	if err := meta.WriteTo(frame); err != nil {
-		return err
-	}
-	if _, err := serial.WriteUint16(frame, uint16(data.Len())); err != nil {
-		return err
-	}
-	if len(data)+1 > 64*1024*1024 {
-		return errors.New("value too large")
-	}
-	sliceSize := len(data) + 1
-	mb2 := make(buf.MultiBuffer, 0, sliceSize)
-	mb2 = append(mb2, frame)
-	mb2 = append(mb2, data...)
-	return writer.WriteMultiBuffer(mb2)
-}
-
 func (w *Writer) Close() error {
 	meta := FrameMetadata{
 		SessionID:     w.id,
@@ -67,18 +47,4 @@ func (w *Writer) Close() error {
 	common.Must(meta.WriteTo(frame))
 	w.writer.WriteMultiBuffer(buf.MultiBuffer{frame})
 	return nil
-}
-
-func (w *Writer) getNextFrameMeta() FrameMetadata {
-	meta := FrameMetadata{
-		SessionID: w.id,
-		Target:    w.dest,
-	}
-	if w.followup {
-		meta.SessionStatus = SessionStatusKeep
-	} else {
-		w.followup = true
-		meta.SessionStatus = SessionStatusNew
-	}
-	return meta
 }
