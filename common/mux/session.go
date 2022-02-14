@@ -43,7 +43,6 @@ func (m *SessionManager) Add(s *Session) {
 func (s *Session) Close() error {
 	common.Close(s.output)
 	common.Close(s.input)
-	s.parent.Remove(s.ID)
 	return nil
 }
 
@@ -82,16 +81,4 @@ func (m *SessionManager) Get(id uint16) (*Session, bool) {
 	}
 	s, found := m.sessions[id]
 	return s, found
-}
-
-func (m *SessionManager) Remove(id uint16) {
-	m.Lock()
-	defer m.Unlock()
-	if m.closed {
-		return
-	}
-	delete(m.sessions, id)
-	if len(m.sessions) == 0 {
-		m.sessions = make(map[uint16]*Session, 16)
-	}
 }
