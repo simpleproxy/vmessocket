@@ -69,13 +69,3 @@ func (m *SessionManager) Count() int {
 	defer m.RUnlock()
 	return int(m.count)
 }
-
-func (m *SessionManager) Get(id uint16) (*Session, bool) {
-	m.RLock()
-	defer m.RUnlock()
-	if m.closed {
-		return nil, false
-	}
-	s, found := m.sessions[id]
-	return s, found
-}
