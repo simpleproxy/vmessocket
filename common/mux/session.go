@@ -68,19 +68,6 @@ func (m *SessionManager) Closed() bool {
 	return m.closed
 }
 
-func (m *SessionManager) CloseIfNoSession() bool {
-	m.Lock()
-	defer m.Unlock()
-	if m.closed {
-		return true
-	}
-	if len(m.sessions) != 0 {
-		return false
-	}
-	m.closed = true
-	return true
-}
-
 func (m *SessionManager) Count() int {
 	m.RLock()
 	defer m.RUnlock()
