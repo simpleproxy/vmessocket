@@ -8,7 +8,6 @@ import (
 var muxCoolAddress = net.DomainAddress("v1.mux.cool")
 
 type ClientWorker struct {
-	sessionManager *SessionManager
 	done           *done.Instance
 }
 
