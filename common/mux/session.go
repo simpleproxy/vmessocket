@@ -108,9 +108,3 @@ func (m *SessionManager) Remove(id uint16) {
 		m.sessions = make(map[uint16]*Session, 16)
 	}
 }
-
-func (m *SessionManager) Size() int {
-	m.RLock()
-	defer m.RUnlock()
-	return len(m.sessions)
-}
