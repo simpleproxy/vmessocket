@@ -63,9 +63,3 @@ func (m *SessionManager) Closed() bool {
 	defer m.RUnlock()
 	return m.closed
 }
-
-func (m *SessionManager) Count() int {
-	m.RLock()
-	defer m.RUnlock()
-	return int(m.count)
-}
