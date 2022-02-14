@@ -26,10 +26,6 @@ type WorkerPicker interface {
 	PickAvailable() (*ClientWorker, error)
 }
 
-func (m *ClientWorker) ActiveConnections() uint32 {
-	return uint32(m.sessionManager.Size())
-}
-
 func (m *ClientWorker) Closed() bool {
 	return m.done.Done()
 }
