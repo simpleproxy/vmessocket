@@ -4,7 +4,6 @@ import (
 	"encoding/binary"
 	"io"
 
-	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/bitmask"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
@@ -84,28 +83,5 @@ func (f *FrameMetadata) UnmarshalFromBuffer(b *buf.Buffer) error {
 			return newError("unknown network type: ", network)
 		}
 	}
-	return nil
-}
-
-func (f FrameMetadata) WriteTo(b *buf.Buffer) error {
-	lenBytes := b.Extend(2)
-	len0 := b.Len()
-	sessionBytes := b.Extend(2)
-	binary.BigEndian.PutUint16(sessionBytes, f.SessionID)
-	common.Must(b.WriteByte(byte(f.SessionStatus)))
-	common.Must(b.WriteByte(byte(f.Option)))
-	if f.SessionStatus == SessionStatusNew {
-		switch f.Target.Network {
-		case net.Network_TCP:
-			common.Must(b.WriteByte(byte(TargetNetworkTCP)))
-		case net.Network_UDP:
-			common.Must(b.WriteByte(byte(TargetNetworkUDP)))
-		}
-		if err := addrParser.WriteAddressPort(b, f.Target.Address, f.Target.Port); err != nil {
-			return err
-		}
-	}
-	len1 := b.Len()
-	binary.BigEndian.PutUint16(lenBytes, uint16(len1-len0))
 	return nil
 }
