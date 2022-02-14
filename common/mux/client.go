@@ -19,7 +19,3 @@ type WorkerPicker interface {
 func (m *ClientWorker) Closed() bool {
 	return m.done.Done()
 }
-
-func (m *ClientWorker) TotalConnections() uint32 {
-	return uint32(m.sessionManager.Count())
-}
