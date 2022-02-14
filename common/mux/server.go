@@ -43,10 +43,6 @@ func NewServerWorker(ctx context.Context, d routing.Dispatcher, link *transport.
 	return worker, nil
 }
 
-func (w *ServerWorker) ActiveConnections() uint32 {
-	return uint32(w.sessionManager.Size())
-}
-
 func (s *Server) Close() error {
 	return nil
 }
