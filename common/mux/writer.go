@@ -1,7 +1,6 @@
 package mux
 
 import (
-	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol"
@@ -33,18 +32,4 @@ func NewWriter(id uint16, dest net.Destination, writer buf.Writer, transferType 
 		followup:     false,
 		transferType: transferType,
 	}
-}
-
-func (w *Writer) Close() error {
-	meta := FrameMetadata{
-		SessionID:     w.id,
-		SessionStatus: SessionStatusEnd,
-	}
-	if w.hasError {
-		meta.Option.Set(OptionError)
-	}
-	frame := buf.New()
-	common.Must(meta.WriteTo(frame))
-	w.writer.WriteMultiBuffer(buf.MultiBuffer{frame})
-	return nil
 }
