@@ -40,21 +40,6 @@ func (m *SessionManager) Add(s *Session) {
 	m.sessions[s.ID] = s
 }
 
-func (m *SessionManager) Allocate() *Session {
-	m.Lock()
-	defer m.Unlock()
-	if m.closed {
-		return nil
-	}
-	m.count++
-	s := &Session{
-		ID:     m.count,
-		parent: m,
-	}
-	m.sessions[s.ID] = s
-	return s
-}
-
 func (s *Session) Close() error {
 	common.Close(s.output)
 	common.Close(s.input)
