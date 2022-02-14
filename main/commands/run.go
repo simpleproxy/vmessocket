@@ -13,6 +13,7 @@ import (
 	"github.com/vmessocket/vmessocket/common/platform"
 	"github.com/vmessocket/vmessocket/core"
 	_ "github.com/vmessocket/vmessocket/main/all"
+	"github.com/vmessocket/vmessocket/main/commands/base"
 )
 
 var CmdRun = &base.Command{
