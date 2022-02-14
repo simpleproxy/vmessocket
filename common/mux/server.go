@@ -91,13 +91,11 @@ func (w *ServerWorker) run(ctx context.Context) {
 			return
 		default:
 			err := w.handleFrame(ctx, reader)
-			if err != nil {
-				if errors.Cause(err) != io.EOF {
-					newError("unexpected EOF").Base(err).WriteToLog(session.ExportIDToError(ctx))
-					common.Interrupt(input)
-				}
-				return
+			if errors.Cause(err) != io.EOF {
+				newError("unexpected EOF").Base(err).WriteToLog(session.ExportIDToError(ctx))
+				common.Interrupt(input)
 			}
+			return
 		}
 	}
 }
