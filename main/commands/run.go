@@ -53,22 +53,19 @@ func dirExists(file string) bool {
 }
 
 func executeRun(cmd *base.Command, args []string) {
-	setConfigFlags(cmd)
+	flag.Parse()
 	cmd.Flag.Parse(args)
 	printVersion()
 	configFiles = getConfigFilePath()
-	server, err := startV2Ray()
+	server, err := startVmessocket()
 	if err != nil {
 		base.Fatalf("Failed to start: %s", err)
 	}
-
 	if err := server.Start(); err != nil {
 		base.Fatalf("Failed to start: %s", err)
 	}
 	defer server.Close()
-
 	runtime.GC()
-
 	{
 		osSignals := make(chan os.Signal, 1)
 		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
