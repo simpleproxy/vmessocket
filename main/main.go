@@ -1,48 +1,29 @@
 package main
 
 import (
-	"flag"
-	"fmt"
-	"log"
-	"os"
-	"os/signal"
-	"path"
-	"path/filepath"
-	"runtime"
-	"strings"
-	"syscall"
-
-	"github.com/vmessocket/vmessocket/common/cmdarg"
-	"github.com/vmessocket/vmessocket/common/platform"
-	"github.com/vmessocket/vmessocket/core"
-	_ "github.com/vmessocket/vmessocket/main/all"
 	"github.com/vmessocket/vmessocket/main/commands"
+	"github.com/vmessocket/vmessocket/main/commands/base"
+	_ "github.com/vmessocket/vmessocket/main/all"
 )
 
 func main() {
-	flag.Parse()
-	printVersion()
-	if *version {
-		return
+	base.RootCommand.Long = "A unified platform for anti-censorship."
+	base.RegisterCommand(commands.CmdRun)
+	base.RegisterCommand(commands.CmdVersion)
+	base.RegisterCommand(commands.CmdTest)
+	base.SortLessFunc = runIsTheFirst
+	base.SortCommands()
+	base.Execute()
+}
+
+func runIsTheFirst(i, j *base.Command) bool {
+	left := i.Name()
+	right := j.Name()
+	if left == "run" {
+		return true
 	}
-	server, err := startVmessocket()
-	if err != nil {
-		fmt.Println(err)
-		os.Exit(23)
+	if right == "run" {
+		return false
 	}
-	if *test {
-		fmt.Println("Configuration OK.")
-		os.Exit(0)
-	}
-	if err := server.Start(); err != nil {
-		fmt.Println("Failed to start", err)
-		os.Exit(-1)
-	}
-	defer server.Close()
-	runtime.GC()
-	{
-		osSignals := make(chan os.Signal, 1)
-		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
-		<-osSignals
-	}
+	return left < right
 }
