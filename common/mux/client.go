@@ -2,13 +2,11 @@ package mux
 
 import (
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/signal/done"
 )
 
 var muxCoolAddress = net.DomainAddress("v1.mux.cool")
 
 type ClientWorker struct {
-	done           *done.Instance
 }
 
 type WorkerPicker interface {
