@@ -5,13 +5,9 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"os/signal"
 	"path"
 	"path/filepath"
-	"runtime"
 	"strings"
-	"syscall"
-
 	"github.com/vmessocket/vmessocket/common/cmdarg"
 	"github.com/vmessocket/vmessocket/common/platform"
 	"github.com/vmessocket/vmessocket/core"
