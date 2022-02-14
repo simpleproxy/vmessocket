@@ -68,17 +68,3 @@ func (w *Writer) Close() error {
 	w.writer.WriteMultiBuffer(buf.MultiBuffer{frame})
 	return nil
 }
-
-func (w *Writer) getNextFrameMeta() FrameMetadata {
-	meta := FrameMetadata{
-		SessionID: w.id,
-		Target:    w.dest,
-	}
-	if w.followup {
-		meta.SessionStatus = SessionStatusKeep
-	} else {
-		w.followup = true
-		meta.SessionStatus = SessionStatusNew
-	}
-	return meta
-}
