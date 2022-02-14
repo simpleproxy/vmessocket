@@ -79,6 +79,30 @@ func dirExists(file string) bool {
 	return err == nil && info.IsDir()
 }
 
+func executeRun(cmd *base.Command, args []string) {
+	setConfigFlags(cmd)
+	cmd.Flag.Parse(args)
+	printVersion()
+	configFiles = getConfigFilePath()
+	server, err := startV2Ray()
+	if err != nil {
+		base.Fatalf("Failed to start: %s", err)
+	}
+
+	if err := server.Start(); err != nil {
+		base.Fatalf("Failed to start: %s", err)
+	}
+	defer server.Close()
+
+	runtime.GC()
+
+	{
+		osSignals := make(chan os.Signal, 1)
+		signal.Notify(osSignals, os.Interrupt, syscall.SIGTERM)
+		<-osSignals
+	}
+}
+
 func fileExists(file string) bool {
 	info, err := os.Stat(file)
 	return err == nil && !info.IsDir()
