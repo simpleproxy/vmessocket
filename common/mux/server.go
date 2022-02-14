@@ -2,13 +2,9 @@ package mux
 
 import (
 	"context"
-	"io"
 
-	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
-	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport"
@@ -39,7 +35,6 @@ func NewServerWorker(ctx context.Context, d routing.Dispatcher, link *transport.
 		link:           link,
 		sessionManager: NewSessionManager(),
 	}
-	go worker.run(ctx)
 	return worker, nil
 }
 
@@ -78,25 +73,6 @@ func (w *ServerWorker) handleFrame(ctx context.Context, reader *buf.BufferedRead
 	default:
 		status := meta.SessionStatus
 		return newError("unknown status: ", status).AtError()
-	}
-}
-
-func (w *ServerWorker) run(ctx context.Context) {
-	input := w.link.Reader
-	reader := &buf.BufferedReader{Reader: input}
-	defer w.sessionManager.Close()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			err := w.handleFrame(ctx, reader)
-			if errors.Cause(err) != io.EOF {
-				newError("unexpected EOF").Base(err).WriteToLog(session.ExportIDToError(ctx))
-				common.Interrupt(input)
-			}
-			return
-		}
 	}
 }
 
