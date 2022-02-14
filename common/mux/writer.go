@@ -82,9 +82,3 @@ func (w *Writer) getNextFrameMeta() FrameMetadata {
 	}
 	return meta
 }
-
-func (w *Writer) writeData(mb buf.MultiBuffer) error {
-	meta := w.getNextFrameMeta()
-	meta.Option.Set(OptionData)
-	return writeMetaWithFrame(w.writer, meta, mb)
-}
