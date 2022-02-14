@@ -14,7 +14,3 @@ type ClientWorker struct {
 type WorkerPicker interface {
 	PickAvailable() (*ClientWorker, error)
 }
-
-func (m *ClientWorker) Closed() bool {
-	return m.done.Done()
-}
