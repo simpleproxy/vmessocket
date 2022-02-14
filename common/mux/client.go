@@ -3,17 +3,12 @@ package mux
 import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/signal/done"
-	"github.com/vmessocket/vmessocket/transport"
 )
 
-var (
-	muxCoolAddress = net.DomainAddress("v1.mux.cool")
-	muxCoolPort    = net.Port(9527)
-)
+var muxCoolAddress = net.DomainAddress("v1.mux.cool")
 
 type ClientWorker struct {
 	sessionManager *SessionManager
-	link           transport.Link
 	done           *done.Instance
 }
 
