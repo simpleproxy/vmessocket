@@ -26,7 +26,6 @@ type AuthIDDecoder struct {
 
 type AuthIDDecoderHolder struct {
 	decoders map[string]*AuthIDDecoderItem
-	filter   *antireplay.ReplayFilter
 }
 
 type AuthIDDecoderItem struct {
@@ -55,7 +54,7 @@ func NewAuthIDDecoder(cmdKey []byte) *AuthIDDecoder {
 }
 
 func NewAuthIDDecoderHolder() *AuthIDDecoderHolder {
-	return &AuthIDDecoderHolder{make(map[string]*AuthIDDecoderItem), antireplay.NewReplayFilter(120)}
+	return &AuthIDDecoderHolder{make(map[string]*AuthIDDecoderItem)}
 }
 
 func NewAuthIDDecoderItem(key [16]byte, ticket interface{}) *AuthIDDecoderItem {
