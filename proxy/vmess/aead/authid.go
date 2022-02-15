@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/vmessocket/vmessocket/common"
-	"github.com/vmessocket/vmessocket/common/antireplay"
 )
 
 var (
@@ -27,7 +26,6 @@ type AuthIDDecoder struct {
 
 type AuthIDDecoderHolder struct {
 	decoders map[string]*AuthIDDecoderItem
-	filter   *antireplay.ReplayFilter
 }
 
 type AuthIDDecoderItem struct {
@@ -56,7 +54,7 @@ func NewAuthIDDecoder(cmdKey []byte) *AuthIDDecoder {
 }
 
 func NewAuthIDDecoderHolder() *AuthIDDecoderHolder {
-	return &AuthIDDecoderHolder{make(map[string]*AuthIDDecoderItem), antireplay.NewReplayFilter(120)}
+	return &AuthIDDecoderHolder{make(map[string]*AuthIDDecoderItem)}
 }
 
 func NewAuthIDDecoderItem(key [16]byte, ticket interface{}) *AuthIDDecoderItem {
@@ -101,9 +99,6 @@ func (a *AuthIDDecoderHolder) Match(authID [16]byte) (interface{}, error) {
 		}
 		if math.Abs(math.Abs(float64(t))-float64(time.Now().Unix())) > 120 {
 			continue
-		}
-		if !a.filter.Check(authID[:]) {
-			return nil, ErrReplay
 		}
 		return v.ticket, nil
 	}
