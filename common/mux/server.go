@@ -41,10 +41,6 @@ func (s *Server) Close() error {
 	return nil
 }
 
-func (w *ServerWorker) Closed() bool {
-	return w.sessionManager.Closed()
-}
-
 func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport.Link, error) {
 	if dest.Address != muxCoolAddress {
 		return s.dispatcher.Dispatch(ctx, dest)
