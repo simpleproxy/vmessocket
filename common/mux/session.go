@@ -42,18 +42,3 @@ func (s *Session) Close() error {
 	common.Close(s.input)
 	return nil
 }
-
-func (m *SessionManager) Close() error {
-	m.Lock()
-	defer m.Unlock()
-	if m.closed {
-		return nil
-	}
-	m.closed = true
-	for _, s := range m.sessions {
-		common.Close(s.input)
-		common.Close(s.output)
-	}
-	m.sessions = nil
-	return nil
-}
