@@ -65,7 +65,6 @@ func dirExists(file string) bool {
 
 func executeRun(cmd *base.Command, args []string) {
 	flag.Parse()
-	cmd.Flag.Parse(args)
 	printVersion()
 	configFiles = getConfigFilePath()
 	server, err := startVmessocket()
