@@ -38,7 +38,6 @@ var (
 	configFiles cmdarg.Arg
 	configDir   string
 	version     = flag.Bool("version", false, "Show current version of vmessocket.")
-	test        = flag.Bool("test", false, "Test config file only, without launching vmessocket server.")
 	format      = flag.String("format", "json", "Format of input file.")
 
 	_ = func() error {
