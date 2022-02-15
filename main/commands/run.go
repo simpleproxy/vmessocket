@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"os/signal"
 	"path"
 	"path/filepath"
 	"runtime"
-	"signal"
 	"strings"
 	"syscall"
 
