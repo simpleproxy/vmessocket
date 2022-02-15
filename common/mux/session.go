@@ -3,14 +3,13 @@ package mux
 import (
 	"sync"
 
-	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 )
 
 type Session struct {
-	input        buf.Reader
-	output       buf.Writer
-	ID           uint16
+	input  buf.Reader
+	output buf.Writer
+	ID     uint16
 }
 
 type SessionManager struct {
@@ -35,10 +34,4 @@ func (m *SessionManager) Add(s *Session) {
 	}
 	m.count++
 	m.sessions[s.ID] = s
-}
-
-func (s *Session) Close() error {
-	common.Close(s.output)
-	common.Close(s.input)
-	return nil
 }
