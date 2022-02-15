@@ -84,6 +84,10 @@ func executeRun(cmd *base.Command, args []string) {
 	}
 }
 
+func executeVersion(cmd *base.Command, args []string) {
+	printVersion()
+}
+
 func fileExists(file string) bool {
 	info, err := os.Stat(file)
 	return err == nil && !info.IsDir()
