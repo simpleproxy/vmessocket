@@ -3,7 +3,6 @@ package mux
 import (
 	"context"
 
-	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
@@ -61,19 +60,6 @@ func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport
 		return nil, err
 	}
 	return &transport.Link{Reader: downlinkReader, Writer: uplinkWriter}, nil
-}
-
-func (w *ServerWorker) handleFrame(ctx context.Context, reader *buf.BufferedReader) error {
-	var meta FrameMetadata
-	err := meta.Unmarshal(reader)
-	if err != nil {
-		return newError("failed to read metadata").Base(err)
-	}
-	switch meta.SessionStatus {
-	default:
-		status := meta.SessionStatus
-		return newError("unknown status: ", status).AtError()
-	}
 }
 
 func (s *Server) Start() error {
