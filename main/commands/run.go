@@ -23,19 +23,14 @@ var CmdRun = &base.Command{
 	CustomFlags: true,
 	UsageLine:   "{{.Exec}} run [-c config.json] [-d dir]",
 	Short:       "run V2Ray with config",
-	Long: `
-Run V2Ray with config.
-
-Use "{{.Exec}} help format-loader" for more information about format.
-	`,
+	Long: `running`,
 	Run: executeRun,
 }
 
 var CmdVersion = &base.Command{
 	UsageLine: "{{.Exec}} version",
 	Short:     "print V2Ray version",
-	Long: `Prints the build information for V2Ray.
-`,
+	Long: `Prints the build information`,
 	Run: executeVersion,
 }
 
