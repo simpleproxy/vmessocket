@@ -8,11 +8,6 @@ import (
 	"strings"
 )
 
-// Copyright 2011 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// copied from "github.com/golang/go/main.go"
-
-// Execute excute the commands
 func Execute() {
 	flag.Parse()
 	args := flag.Args()
@@ -20,7 +15,7 @@ func Execute() {
 		PrintUsage(os.Stderr, RootCommand)
 		return
 	}
-	cmdName := args[0] // for error messages
+	cmdName := args[0]
 	if args[0] == "help" {
 		Help(os.Stdout, args[1:])
 		return
@@ -33,7 +28,6 @@ BigCmdLoop:
 				continue
 			}
 			if len(cmd.Commands) > 0 {
-				// test sub commands
 				bigCmd = cmd
 				args = args[1:]
 				if len(args) == 0 {
@@ -42,7 +36,6 @@ BigCmdLoop:
 					Exit()
 				}
 				if args[0] == "help" {
-					// Accept 'go mod help' and 'go mod help foo' for 'go help mod' and 'go help mod foo'.
 					Help(os.Stdout, append(strings.Split(cmdName, " "), args[1:]...))
 					return
 				}
@@ -75,14 +68,12 @@ BigCmdLoop:
 	}
 }
 
-// SortCommands sorts the first level sub commands
 func SortCommands() {
 	sort.Slice(RootCommand.Commands, func(i, j int) bool {
 		return SortLessFunc(RootCommand.Commands[i], RootCommand.Commands[j])
 	})
 }
 
-// SortLessFunc used for sort commands list, can be override from outside
 var SortLessFunc = func(i, j *Command) bool {
 	return i.Name() < j.Name()
 }
