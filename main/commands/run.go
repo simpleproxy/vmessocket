@@ -31,6 +31,14 @@ Use "{{.Exec}} help format-loader" for more information about format.
 	Run: executeRun,
 }
 
+var CmdVersion = &base.Command{
+	UsageLine: "{{.Exec}} version",
+	Short:     "print V2Ray version",
+	Long: `Prints the build information for V2Ray.
+`,
+	Run: executeVersion,
+}
+
 var (
 	configFiles cmdarg.Arg
 	configDir   string
