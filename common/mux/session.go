@@ -2,14 +2,10 @@ package mux
 
 import (
 	"sync"
-
-	"github.com/vmessocket/vmessocket/common/buf"
 )
 
 type Session struct {
-	input  buf.Reader
-	output buf.Writer
-	ID     uint16
+	ID uint16
 }
 
 type SessionManager struct {
