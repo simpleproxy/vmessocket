@@ -57,9 +57,3 @@ func (m *SessionManager) Close() error {
 	m.sessions = nil
 	return nil
 }
-
-func (m *SessionManager) Closed() bool {
-	m.RLock()
-	defer m.RUnlock()
-	return m.closed
-}
