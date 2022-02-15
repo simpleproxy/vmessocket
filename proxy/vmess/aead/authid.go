@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/vmessocket/vmessocket/common"
-	"github.com/vmessocket/vmessocket/common/antireplay"
 )
 
 var (
