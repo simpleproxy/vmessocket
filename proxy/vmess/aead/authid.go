@@ -100,9 +100,6 @@ func (a *AuthIDDecoderHolder) Match(authID [16]byte) (interface{}, error) {
 		if math.Abs(math.Abs(float64(t))-float64(time.Now().Unix())) > 120 {
 			continue
 		}
-		if !a.filter.Check(authID[:]) {
-			return nil, ErrReplay
-		}
 		return v.ticket, nil
 	}
 	return nil, ErrNotFound
