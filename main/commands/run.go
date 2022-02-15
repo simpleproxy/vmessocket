@@ -8,7 +8,9 @@ import (
 	"path"
 	"path/filepath"
 	"runtime"
+	"signal"
 	"strings"
+	"syscall"
 
 	"github.com/vmessocket/vmessocket/common/cmdarg"
 	"github.com/vmessocket/vmessocket/common/platform"
