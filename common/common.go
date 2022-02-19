@@ -14,8 +14,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/errors"
 )
 
-//go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
-
 var ErrNoClue = errors.New("not enough information for making a decision")
 
 func envFile() (string, error) {
