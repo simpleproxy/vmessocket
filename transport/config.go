@@ -1,8 +1,6 @@
 package transport
 
-import (
-	"github.com/vmessocket/vmessocket/transport/internet"
-)
+import "github.com/vmessocket/vmessocket/transport/internet"
 
 func (c *Config) Apply() error {
 	if c == nil {
