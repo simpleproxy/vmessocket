@@ -15,21 +15,6 @@ func (c *Config) getHosts() []string {
 	return c.Host
 }
 
-func (c *Config) isValidHost(host string) bool {
-	hosts := c.getHosts()
-	for _, h := range hosts {
-		if h == host {
-			return true
-		}
-	}
-	return false
-}
-
-func (c *Config) getRandomHost() string {
-	hosts := c.getHosts()
-	return hosts[dice.Roll(len(hosts))]
-}
-
 func (c *Config) getNormalizedPath() string {
 	if c.Path == "" {
 		return "/"
@@ -38,6 +23,21 @@ func (c *Config) getNormalizedPath() string {
 		return "/" + c.Path
 	}
 	return c.Path
+}
+
+func (c *Config) getRandomHost() string {
+	hosts := c.getHosts()
+	return hosts[dice.Roll(len(hosts))]
+}
+
+func (c *Config) isValidHost(host string) bool {
+	hosts := c.getHosts()
+	for _, h := range hosts {
+		if h == host {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {
