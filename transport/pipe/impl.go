@@ -13,8 +13,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/signal/done"
 )
 
-type state byte
-
 const (
 	open state = iota
 	closed
@@ -24,10 +22,6 @@ const (
 type pipeOption struct {
 	limit           int32
 	discardOverflow bool
-}
-
-func (o *pipeOption) isFull(curSize int32) bool {
-	return o.limit >= 0 && curSize > o.limit
 }
 
 type pipe struct {
@@ -40,10 +34,27 @@ type pipe struct {
 	state       state
 }
 
+type state byte
+
+func (o *pipeOption) isFull(curSize int32) bool {
+	return o.limit >= 0 && curSize > o.limit
+}
+
 var (
 	errBufferFull = errors.New("buffer full")
 	errSlowDown   = errors.New("slow down")
 )
+
+func (p *pipe) Close() error {
+	p.Lock()
+	defer p.Unlock()
+	if p.state == closed || p.state == errord {
+		return nil
+	}
+	p.state = closed
+	common.Must(p.done.Close())
+	return nil
+}
 
 func (p *pipe) getState(forRead bool) error {
 	switch p.state {
@@ -67,17 +78,18 @@ func (p *pipe) getState(forRead bool) error {
 	}
 }
 
-func (p *pipe) readMultiBufferInternal() (buf.MultiBuffer, error) {
+func (p *pipe) Interrupt() {
 	p.Lock()
 	defer p.Unlock()
-
-	if err := p.getState(true); err != nil {
-		return nil, err
+	if p.state == closed || p.state == errord {
+		return
 	}
-
-	data := p.data
-	p.data = nil
-	return data, nil
+	p.state = errord
+	if !p.data.IsEmpty() {
+		buf.ReleaseMulti(p.data)
+		p.data = nil
+	}
+	common.Must(p.done.Close())
 }
 
 func (p *pipe) ReadMultiBuffer() (buf.MultiBuffer, error) {
@@ -87,7 +99,6 @@ func (p *pipe) ReadMultiBuffer() (buf.MultiBuffer, error) {
 			p.writeSignal.Signal()
 			return data, err
 		}
-
 		select {
 		case <-p.readSignal.Wait():
 		case <-p.done.Wait():
@@ -95,17 +106,26 @@ func (p *pipe) ReadMultiBuffer() (buf.MultiBuffer, error) {
 	}
 }
 
+func (p *pipe) readMultiBufferInternal() (buf.MultiBuffer, error) {
+	p.Lock()
+	defer p.Unlock()
+	if err := p.getState(true); err != nil {
+		return nil, err
+	}
+	data := p.data
+	p.data = nil
+	return data, nil
+}
+
 func (p *pipe) ReadMultiBufferTimeout(d time.Duration) (buf.MultiBuffer, error) {
 	timer := time.NewTimer(d)
 	defer timer.Stop()
-
 	for {
 		data, err := p.readMultiBufferInternal()
 		if data != nil || err != nil {
 			p.writeSignal.Signal()
 			return data, err
 		}
-
 		select {
 		case <-p.readSignal.Wait():
 		case <-p.done.Wait():
@@ -115,53 +135,31 @@ func (p *pipe) ReadMultiBufferTimeout(d time.Duration) (buf.MultiBuffer, error) 
 	}
 }
 
-func (p *pipe) writeMultiBufferInternal(mb buf.MultiBuffer) error {
-	p.Lock()
-	defer p.Unlock()
-
-	if err := p.getState(false); err != nil {
-		return err
-	}
-
-	if p.data == nil {
-		p.data = mb
-		return nil
-	}
-
-	p.data, _ = buf.MergeMulti(p.data, mb)
-	return errSlowDown
-}
-
 func (p *pipe) WriteMultiBuffer(mb buf.MultiBuffer) error {
 	if mb.IsEmpty() {
 		return nil
 	}
-
 	for {
 		err := p.writeMultiBufferInternal(mb)
 		if err == nil {
 			p.readSignal.Signal()
 			return nil
 		}
-
 		if err == errSlowDown {
 			p.readSignal.Signal()
 
 			runtime.Gosched()
 			return nil
 		}
-
 		if err == errBufferFull && p.option.discardOverflow {
 			buf.ReleaseMulti(mb)
 			return nil
 		}
-
 		if err != errBufferFull {
 			buf.ReleaseMulti(mb)
 			p.readSignal.Signal()
 			return err
 		}
-
 		select {
 		case <-p.writeSignal.Wait():
 		case <-p.done.Wait():
@@ -170,33 +168,16 @@ func (p *pipe) WriteMultiBuffer(mb buf.MultiBuffer) error {
 	}
 }
 
-func (p *pipe) Close() error {
+func (p *pipe) writeMultiBufferInternal(mb buf.MultiBuffer) error {
 	p.Lock()
 	defer p.Unlock()
-
-	if p.state == closed || p.state == errord {
+	if err := p.getState(false); err != nil {
+		return err
+	}
+	if p.data == nil {
+		p.data = mb
 		return nil
 	}
-
-	p.state = closed
-	common.Must(p.done.Close())
-	return nil
-}
-
-func (p *pipe) Interrupt() {
-	p.Lock()
-	defer p.Unlock()
-
-	if p.state == closed || p.state == errord {
-		return
-	}
-
-	p.state = errord
-
-	if !p.data.IsEmpty() {
-		buf.ReleaseMulti(p.data)
-		p.data = nil
-	}
-
-	common.Must(p.done.Close())
+	p.data, _ = buf.MergeMulti(p.data, mb)
+	return errSlowDown
 }
