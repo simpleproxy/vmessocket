@@ -7,19 +7,20 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 )
 
-//go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
-
 var _ buf.Writer = (*Conn)(nil)
 
 type Conn struct {
 	*tls.Conn
 }
 
-func (c *Conn) WriteMultiBuffer(mb buf.MultiBuffer) error {
-	mb = buf.Compact(mb)
-	mb, err := buf.WriteMultiBuffer(c, mb)
-	buf.ReleaseMulti(mb)
-	return err
+func Client(c net.Conn, config *tls.Config) net.Conn {
+	tlsConn := tls.Client(c, config)
+	return &Conn{Conn: tlsConn}
+}
+
+func Server(c net.Conn, config *tls.Config) net.Conn {
+	tlsConn := tls.Server(c, config)
+	return &Conn{Conn: tlsConn}
 }
 
 func (c *Conn) HandshakeAddress() net.Address {
@@ -33,12 +34,9 @@ func (c *Conn) HandshakeAddress() net.Address {
 	return net.ParseAddress(state.ServerName)
 }
 
-func Client(c net.Conn, config *tls.Config) net.Conn {
-	tlsConn := tls.Client(c, config)
-	return &Conn{Conn: tlsConn}
-}
-
-func Server(c net.Conn, config *tls.Config) net.Conn {
-	tlsConn := tls.Server(c, config)
-	return &Conn{Conn: tlsConn}
+func (c *Conn) WriteMultiBuffer(mb buf.MultiBuffer) error {
+	mb = buf.Compact(mb)
+	mb, err := buf.WriteMultiBuffer(c, mb)
+	buf.ReleaseMulti(mb)
+	return err
 }
