@@ -44,7 +44,6 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 			return nil, newError("failed to listen Unix Domain Socket on ", address).Base(err)
 		}
 		newError("listening Unix Domain Socket on ", address).WriteToLog(session.ExportIDToError(ctx))
-
 	} else {
 		listener, err = internet.ListenSystem(ctx, &net.TCPAddr{
 			IP:   address.IP(),
@@ -55,17 +54,13 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 		}
 		newError("listening TCP on ", address, ":", port).WriteToLog(session.ExportIDToError(ctx))
 	}
-
 	if streamSettings.SocketSettings != nil && streamSettings.SocketSettings.AcceptProxyProtocol {
 		newError("accepting PROXY protocol").AtWarning().WriteToLog(session.ExportIDToError(ctx))
 	}
-
 	l.listener = listener
-
 	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
 		l.tlsConfig = config.GetTLSConfig()
 	}
-
 	if tcpSettings.HeaderSettings != nil {
 		headerConfig, err := tcpSettings.HeaderSettings.GetInstance()
 		if err != nil {
@@ -77,9 +72,12 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 		}
 		l.authConfig = auth
 	}
-
 	go l.keepAccepting()
 	return nil, nil
+}
+
+func (v *Listener) Addr() net.Addr {
+	return v.listener.Addr()
 }
 
 func (v *Listener) keepAccepting() {
@@ -96,20 +94,14 @@ func (v *Listener) keepAccepting() {
 			}
 			continue
 		}
-
 		if v.tlsConfig != nil {
 			conn = tls.Server(conn, v.tlsConfig)
 		}
 		if v.authConfig != nil {
 			conn = v.authConfig.Server(conn)
 		}
-
 		v.addConn(internet.Connection(conn))
 	}
-}
-
-func (v *Listener) Addr() net.Addr {
-	return v.listener.Addr()
 }
 
 func init() {
