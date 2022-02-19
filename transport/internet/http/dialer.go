@@ -25,24 +25,72 @@ var (
 
 type dialerCanceller func()
 
+func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (internet.Connection, error) {
+	httpSettings := streamSettings.ProtocolSettings.(*Config)
+	tlsConfig := tls.ConfigFromStreamSettings(streamSettings)
+	if tlsConfig == nil {
+		return nil, newError("TLS must be enabled for http transport.").AtWarning()
+	}
+	client, canceller := getHTTPClient(ctx, dest, tlsConfig, streamSettings)
+	opts := pipe.OptionsFromContext(ctx)
+	preader, pwriter := pipe.New(opts...)
+	breader := &buf.BufferedReader{Reader: preader}
+	httpMethod := "PUT"
+	if httpSettings.Method != "" {
+		httpMethod = httpSettings.Method
+	}
+	httpHeaders := make(http.Header)
+	for _, httpHeader := range httpSettings.Header {
+		for _, httpHeaderValue := range httpHeader.Value {
+			httpHeaders.Set(httpHeader.Name, httpHeaderValue)
+		}
+	}
+	request := &http.Request{
+		Method: httpMethod,
+		Host:   httpSettings.getRandomHost(),
+		Body:   breader,
+		URL: &url.URL{
+			Scheme: "https",
+			Host:   dest.NetAddr(),
+			Path:   httpSettings.getNormalizedPath(),
+		},
+		Proto:      "HTTP/2",
+		ProtoMajor: 2,
+		ProtoMinor: 0,
+		Header:     httpHeaders,
+	}
+	request.Header.Set("Accept-Encoding", "identity")
+	response, err := client.Do(request)
+	if err != nil {
+		canceller()
+		return nil, newError("failed to dial to ", dest).Base(err).AtWarning()
+	}
+	if response.StatusCode != 200 {
+		return nil, newError("unexpected status", response.StatusCode).AtWarning()
+	}
+	bwriter := buf.NewBufferedWriter(pwriter)
+	common.Must(bwriter.SetBuffered(false))
+	return net.NewConnection(
+		net.ConnectionOutput(response.Body),
+		net.ConnectionInput(bwriter),
+		net.ConnectionOnClose(common.ChainedClosable{breader, bwriter, response.Body}),
+	), nil
+}
+
 func getHTTPClient(ctx context.Context, dest net.Destination, tlsSettings *tls.Config, streamSettings *internet.MemoryStreamConfig) (*http.Client, dialerCanceller) {
 	globalDialerAccess.Lock()
 	defer globalDialerAccess.Unlock()
-
 	canceller := func() {
 		globalDialerAccess.Lock()
 		defer globalDialerAccess.Unlock()
 		delete(globalDialerMap, dest)
 	}
-
 	if globalDialerMap == nil {
 		globalDialerMap = make(map[net.Destination]*http.Client)
 	}
-
 	if client, found := globalDialerMap[dest]; found {
 		return client, canceller
 	}
-
 	transport := &http2.Transport{
 		DialTLS: func(network string, addr string, tlsConfig *gotls.Config) (net.Conn, error) {
 			rawHost, rawPort, err := net.SplitHostPort(addr)
@@ -57,13 +105,11 @@ func getHTTPClient(ctx context.Context, dest net.Destination, tlsSettings *tls.C
 				return nil, err
 			}
 			address := net.ParseAddress(rawHost)
-
 			detachedContext := core.ToBackgroundDetachedContext(ctx)
 			pconn, err := internet.DialSystem(detachedContext, net.TCPDestination(address, port), streamSettings.SocketSettings)
 			if err != nil {
 				return nil, err
 			}
-
 			cn := gotls.Client(pconn, tlsConfig)
 			if err := cn.Handshake(); err != nil {
 				return nil, err
@@ -81,72 +127,11 @@ func getHTTPClient(ctx context.Context, dest net.Destination, tlsSettings *tls.C
 		},
 		TLSClientConfig: tlsSettings.GetTLSConfig(tls.WithDestination(dest)),
 	}
-
 	client := &http.Client{
 		Transport: transport,
 	}
-
 	globalDialerMap[dest] = client
 	return client, canceller
-}
-
-func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (internet.Connection, error) {
-	httpSettings := streamSettings.ProtocolSettings.(*Config)
-	tlsConfig := tls.ConfigFromStreamSettings(streamSettings)
-	if tlsConfig == nil {
-		return nil, newError("TLS must be enabled for http transport.").AtWarning()
-	}
-	client, canceller := getHTTPClient(ctx, dest, tlsConfig, streamSettings)
-
-	opts := pipe.OptionsFromContext(ctx)
-	preader, pwriter := pipe.New(opts...)
-	breader := &buf.BufferedReader{Reader: preader}
-
-	httpMethod := "PUT"
-	if httpSettings.Method != "" {
-		httpMethod = httpSettings.Method
-	}
-
-	httpHeaders := make(http.Header)
-
-	for _, httpHeader := range httpSettings.Header {
-		for _, httpHeaderValue := range httpHeader.Value {
-			httpHeaders.Set(httpHeader.Name, httpHeaderValue)
-		}
-	}
-
-	request := &http.Request{
-		Method: httpMethod,
-		Host:   httpSettings.getRandomHost(),
-		Body:   breader,
-		URL: &url.URL{
-			Scheme: "https",
-			Host:   dest.NetAddr(),
-			Path:   httpSettings.getNormalizedPath(),
-		},
-		Proto:      "HTTP/2",
-		ProtoMajor: 2,
-		ProtoMinor: 0,
-		Header:     httpHeaders,
-	}
-	request.Header.Set("Accept-Encoding", "identity")
-
-	response, err := client.Do(request)
-	if err != nil {
-		canceller()
-		return nil, newError("failed to dial to ", dest).Base(err).AtWarning()
-	}
-	if response.StatusCode != 200 {
-		return nil, newError("unexpected status", response.StatusCode).AtWarning()
-	}
-
-	bwriter := buf.NewBufferedWriter(pwriter)
-	common.Must(bwriter.SetBuffered(false))
-	return net.NewConnection(
-		net.ConnectionOutput(response.Body),
-		net.ConnectionInput(bwriter),
-		net.ConnectionOnClose(common.ChainedClosable{breader, bwriter, response.Body}),
-	), nil
 }
 
 func init() {
