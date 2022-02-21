@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/golang/protobuf v1.5.2
 	github.com/gorilla/websocket v1.5.0
-	github.com/jhump/protoreflect v1.11.0
+	github.com/jhump/protoreflect v1.12.0
 	github.com/pires/go-proxyproto v0.6.1
 	github.com/v2fly/VSign v0.0.0-20201108000810-e2adc24bf848
 	go.starlark.net v0.0.0-20220213143740-c55a923347b1
