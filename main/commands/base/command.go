@@ -1,9 +1,3 @@
-// Copyright 2017 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
-// Package base defines shared basic pieces of the commands,
-// in particular logging and the Command structure.
 package base
 
 import (
@@ -12,6 +6,11 @@ import (
 	"os"
 	"strings"
 	"sync"
+)
+
+var (
+	exitStatus = 0
+	exitMu     sync.Mutex
 )
 
 type Command struct {
@@ -45,24 +44,15 @@ func (c *Command) Name() string {
 	return strings.TrimSpace(name)
 }
 
+func (c *Command) Runnable() bool {
+	return c.Run != nil
+}
+
 func (c *Command) Usage() {
 	buildCommandText(c)
 	fmt.Fprintf(os.Stderr, "usage: %s\n", c.UsageLine)
 	fmt.Fprintf(os.Stderr, "Run '%s help %s' for details.\n", CommandEnv.Exec, c.LongName())
 	SetExitStatus(2)
-	Exit()
-}
-
-func (c *Command) Runnable() bool {
-	return c.Run != nil
-}
-
-func Exit() {
-	os.Exit(exitStatus)
-}
-
-func Fatalf(format string, args ...interface{}) {
-	Errorf(format, args...)
 	Exit()
 }
 
@@ -72,16 +62,24 @@ func Errorf(format string, args ...interface{}) {
 	SetExitStatus(1)
 }
 
+func Exit() {
+	os.Exit(exitStatus)
+}
+
 func ExitIfErrors() {
 	if exitStatus != 0 {
 		Exit()
 	}
 }
 
-var (
-	exitStatus = 0
-	exitMu     sync.Mutex
-)
+func Fatalf(format string, args ...interface{}) {
+	Errorf(format, args...)
+	Exit()
+}
+
+func GetExitStatus() int {
+	return exitStatus
+}
 
 func SetExitStatus(n int) {
 	exitMu.Lock()
@@ -89,8 +87,4 @@ func SetExitStatus(n int) {
 		exitStatus = n
 	}
 	exitMu.Unlock()
-}
-
-func GetExitStatus() int {
-	return exitStatus
 }
