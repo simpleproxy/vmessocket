@@ -5,12 +5,12 @@ import (
 	"path"
 )
 
+var CommandEnv CommandEnvHolder
+
 type CommandEnvHolder struct {
 	Exec string
 	CommandsWidth int
 }
-
-var CommandEnv CommandEnvHolder
 
 func init() {
 	exec, err := os.Executable()
