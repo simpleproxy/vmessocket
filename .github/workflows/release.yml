@@ -1,0 +1,25 @@
+name: Build Release
+
+on:
+  push:
+  release:      
+    
+      - name: Create a Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: "Build ${{ steps.date.outputs.date }}"
+          draft: false
+
+      - name: Upload Release Assets - extension.zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./vmessocket-${{ steps.get_filename.outputs.ASSET_NAME }}.zip
+          asset_name: vmessocket-${{ steps.get_filename.outputs.ASSET_NAME }}.zip
+          asset_content_type: application/zip
