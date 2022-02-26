@@ -8,6 +8,10 @@ import (
 	"strings"
 )
 
+var SortLessFunc = func(i, j *Command) bool {
+	return i.Name() < j.Name()
+}
+
 func Execute() {
 	flag.Parse()
 	args := flag.Args()
@@ -52,7 +56,6 @@ BigCmdLoop:
 				cmd.Flag.Parse(args[1:])
 				args = cmd.Flag.Args()
 			}
-
 			buildCommandText(cmd)
 			cmd.Run(cmd, args)
 			Exit()
@@ -72,8 +75,4 @@ func SortCommands() {
 	sort.Slice(RootCommand.Commands, func(i, j int) bool {
 		return SortLessFunc(RootCommand.Commands[i], RootCommand.Commands[j])
 	})
-}
-
-var SortLessFunc = func(i, j *Command) bool {
-	return i.Name() < j.Name()
 }
