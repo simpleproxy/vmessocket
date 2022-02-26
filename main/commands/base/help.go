@@ -1,7 +1,3 @@
-// Copyright 2017 The Go Authors. All rights reserved.
-// Use of this source code is governed by a BSD-style
-// license that can be found in the LICENSE file.
-
 package base
 
 import (
@@ -15,8 +11,7 @@ import (
 	"unicode"
 	"unicode/utf8"
 )
-
-// Help implements the 'help' command.
+.
 func Help(w io.Writer, args []string) {
 	cmd := RootCommand
 Args:
@@ -27,8 +22,6 @@ Args:
 				continue Args
 			}
 		}
-
-		// helpSuccess is the help command using as many args as possible that would succeed.
 		helpSuccess := CommandEnv.Exec + " help"
 		if i > 0 {
 			helpSuccess += " " + strings.Join(args[:i], " ")
@@ -37,7 +30,6 @@ Args:
 		SetExitStatus(2) // failed at 'v2ray help cmd'
 		Exit()
 	}
-
 	if len(cmd.Commands) > 0 {
 		PrintUsage(os.Stdout, cmd)
 	} else {
