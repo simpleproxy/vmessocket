@@ -7,6 +7,7 @@ on:
 
 jobs:
   build:
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         goos: [windows, freebsd, openbsd, linux, dragonfly, darwin]
@@ -49,7 +50,6 @@ jobs:
             goarch: arm64
       fail-fast: false
 
-    runs-on: ubuntu-latest
     env:
       GOOS: ${{ matrix.goos }}
       GOARCH: ${{ matrix.goarch }}
