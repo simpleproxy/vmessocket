@@ -15,9 +15,9 @@ import (
 
 type Commander struct {
 	sync.Mutex
+	ohm      outbound.Manager
 	server   *grpc.Server
 	services []Service
-	ohm      outbound.Manager
 	tag      string
 }
 
