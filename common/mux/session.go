@@ -21,13 +21,3 @@ func NewSessionManager() *SessionManager {
 		sessions: make(map[uint16]*Session, 16),
 	}
 }
-
-func (m *SessionManager) Add(s *Session) {
-	m.Lock()
-	defer m.Unlock()
-	if m.closed {
-		return
-	}
-	m.count++
-	m.sessions[s.ID] = s
-}
