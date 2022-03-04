@@ -108,12 +108,6 @@ jobs:
           pushd build || exit 1
           zip -9vr ../vmessocket-$ASSET_NAME.zip .
           popd || exit 1
-          FILE=./vmessocket-$ASSET_NAME.zip
-          DGST=$FILE.dgst
-          openssl dgst -md5    $FILE | sed 's/([^)]*)//g' >>$DGST
-          openssl dgst -sha1   $FILE | sed 's/([^)]*)//g' >>$DGST
-          openssl dgst -sha256 $FILE | sed 's/([^)]*)//g' >>$DGST
-          openssl dgst -sha512 $FILE | sed 's/([^)]*)//g' >>$DGST
 
       - name: Upload ZIP file to Artifacts
         uses: actions/upload-artifact@v2
