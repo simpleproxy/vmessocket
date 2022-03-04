@@ -8,10 +8,10 @@ require (
 	github.com/jhump/protoreflect v1.12.0
 	github.com/pires/go-proxyproto v0.6.2
 	github.com/v2fly/VSign v0.0.0-20201108000810-e2adc24bf848
-	go.starlark.net v0.0.0-20220213143740-c55a923347b1
+	go.starlark.net v0.0.0-20220302181546-5411bad688d1
 	golang.org/x/crypto v0.0.0-20220214200702-86341886e292
-	golang.org/x/net v0.0.0-20220127200216-cd36cc0744dd
-	golang.org/x/sys v0.0.0-20220209214540-3681064d5158
+	golang.org/x/net v0.0.0-20220225172249-27dd8689420f
+	golang.org/x/sys v0.0.0-20220227234510-4e6760a101f9
 	google.golang.org/grpc v1.44.0
 	google.golang.org/protobuf v1.27.1
 	inet.af/netaddr v0.0.0-20211027220019-c74959edd3b6
