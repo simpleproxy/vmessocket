@@ -2,13 +2,11 @@ package mux
 
 import (
 	"encoding/binary"
-	"io"
 
 	"github.com/vmessocket/vmessocket/common/bitmask"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/common/serial"
 )
 
 const (
@@ -39,22 +37,6 @@ type FrameMetadata struct {
 type SessionStatus byte
 
 type TargetNetwork byte
-
-func (f *FrameMetadata) Unmarshal(reader io.Reader) error {
-	metaLen, err := serial.ReadUint16(reader)
-	if err != nil {
-		return err
-	}
-	if metaLen > 512 {
-		return newError("invalid metalen ", metaLen).AtError()
-	}
-	b := buf.New()
-	defer b.Release()
-	if _, err := b.ReadFullFrom(reader, int32(metaLen)); err != nil {
-		return err
-	}
-	return f.UnmarshalFromBuffer(b)
-}
 
 func (f *FrameMetadata) UnmarshalFromBuffer(b *buf.Buffer) error {
 	if b.Len() < 4 {
