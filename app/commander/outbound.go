@@ -11,10 +11,10 @@ import (
 )
 
 type Outbound struct {
-	tag      string
-	listener *OutboundListener
 	access   sync.RWMutex
 	closed   bool
+	listener *OutboundListener
+	tag      string
 }
 
 type OutboundListener struct {
