@@ -7,7 +7,6 @@ import (
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport"
-	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
 type Server struct {
@@ -42,20 +41,7 @@ func (s *Server) Close() error {
 }
 
 func (s *Server) Dispatch(ctx context.Context, dest net.Destination) (*transport.Link, error) {
-	if dest.Address != muxCoolAddress {
-		return s.dispatcher.Dispatch(ctx, dest)
-	}
-	opts := pipe.OptionsFromContext(ctx)
-	uplinkReader, uplinkWriter := pipe.New(opts...)
-	downlinkReader, downlinkWriter := pipe.New(opts...)
-	_, err := NewServerWorker(ctx, s.dispatcher, &transport.Link{
-		Reader: uplinkReader,
-		Writer: downlinkWriter,
-	})
-	if err != nil {
-		return nil, err
-	}
-	return &transport.Link{Reader: downlinkReader, Writer: uplinkWriter}, nil
+	return s.dispatcher.Dispatch(ctx, dest)
 }
 
 func (s *Server) Start() error {
