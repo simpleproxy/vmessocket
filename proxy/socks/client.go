@@ -14,16 +14,14 @@ import (
 	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/dns"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
 
 type Client struct {
-	serverPicker  protocol.ServerPicker
-	policyManager policy.Manager
-	version       Version
-	dns           dns.Client
+	serverPicker protocol.ServerPicker
+	version      Version
+	dns          dns.Client
 }
 
 func NewClient(ctx context.Context, config *ClientConfig) (*Client, error) {
@@ -40,9 +38,8 @@ func NewClient(ctx context.Context, config *ClientConfig) (*Client, error) {
 	}
 	v := core.MustFromContext(ctx)
 	c := &Client{
-		serverPicker:  protocol.NewRoundRobinServerPicker(serverList),
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
-		version:       config.Version,
+		serverPicker: protocol.NewRoundRobinServerPicker(serverList),
+		version:      config.Version,
 	}
 	if config.Version == Version_SOCKS4 {
 		c.dns = v.GetFeature(dns.ClientType()).(dns.Client)
@@ -76,7 +73,6 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			newError("failed to closed connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
 		}
 	}()
-	p := c.policyManager.ForLevel(0)
 	request := &protocol.RequestHeader{
 		Version: socks5Version,
 		Command: protocol.RequestCommandTCP,
@@ -113,10 +109,6 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	user := server.PickUser()
 	if user != nil {
 		request.User = user
-		p = c.policyManager.ForLevel(user.Level)
-	}
-	if err := conn.SetDeadline(time.Now().Add(p.Timeouts.Handshake)); err != nil {
-		newError("failed to set deadline for handshake").Base(err).WriteToLog(session.ExportIDToError(ctx))
 	}
 	udpRequest, err := ClientHandshake(request, conn, conn)
 	if err != nil {
@@ -136,11 +128,9 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	var responseFunc func() error
 	if request.Command == protocol.RequestCommandTCP {
 		requestFunc = func() error {
-			defer timer.SetTimeout(p.Timeouts.DownlinkOnly)
 			return buf.Copy(link.Reader, buf.NewWriter(conn), buf.UpdateActivity(timer))
 		}
 		responseFunc = func() error {
-			defer timer.SetTimeout(p.Timeouts.UplinkOnly)
 			return buf.Copy(buf.NewReader(conn), link.Writer, buf.UpdateActivity(timer))
 		}
 	} else if request.Command == protocol.RequestCommandUDP {
@@ -150,11 +140,9 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		}
 		defer udpConn.Close()
 		requestFunc = func() error {
-			defer timer.SetTimeout(p.Timeouts.DownlinkOnly)
 			return buf.Copy(link.Reader, &buf.SequentialWriter{Writer: NewUDPWriter(request, udpConn)}, buf.UpdateActivity(timer))
 		}
 		responseFunc = func() error {
-			defer timer.SetTimeout(p.Timeouts.UplinkOnly)
 			reader := &UDPReader{reader: udpConn}
 			return buf.Copy(reader, link.Writer, buf.UpdateActivity(timer))
 		}
