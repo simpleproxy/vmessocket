@@ -218,7 +218,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, d internet.
 		}
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	timer := signal.CancelAfterInactivity(ctx, cancel, h.timeout)
+	timer := signal.CancelAfterInactivity(ctx, cancel)
 	request := func() error {
 		defer conn.Close()
 		for {

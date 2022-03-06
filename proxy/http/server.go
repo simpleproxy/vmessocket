@@ -74,7 +74,7 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 	}
 	plcy := s.policy()
 	ctx, cancel := context.WithCancel(ctx)
-	timer := signal.CancelAfterInactivity(ctx, cancel, plcy.Timeouts.ConnectionIdle)
+	timer := signal.CancelAfterInactivity(ctx, cancel)
 	ctx = policy.ContextWithBufferPolicy(ctx, plcy.Buffer)
 	link, err := dispatcher.Dispatch(ctx, dest)
 	if err != nil {

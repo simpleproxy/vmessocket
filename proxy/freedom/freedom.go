@@ -93,7 +93,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	defer conn.Close()
 	plcy := h.policy()
 	ctx, cancel := context.WithCancel(ctx)
-	timer := signal.CancelAfterInactivity(ctx, cancel, plcy.Timeouts.ConnectionIdle)
+	timer := signal.CancelAfterInactivity(ctx, cancel)
 	requestDone := func() error {
 		defer timer.SetTimeout(plcy.Timeouts.DownlinkOnly)
 		var writer buf.Writer

@@ -240,7 +240,7 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		p = c.policyManager.ForLevel(user.Level)
 	}
 	ctx, cancel := context.WithCancel(ctx)
-	timer := signal.CancelAfterInactivity(ctx, cancel, p.Timeouts.ConnectionIdle)
+	timer := signal.CancelAfterInactivity(ctx, cancel)
 	requestFunc := func() error {
 		defer timer.SetTimeout(p.Timeouts.DownlinkOnly)
 		return buf.Copy(link.Reader, buf.NewWriter(conn), buf.UpdateActivity(timer))

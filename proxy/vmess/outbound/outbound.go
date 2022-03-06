@@ -120,7 +120,7 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	session := encoding.NewClientSession(ctx, isAEAD, protocol.DefaultIDHash, int64(behaviorSeed))
 	sessionPolicy := h.policyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
-	timer := signal.CancelAfterInactivity(ctx, cancel, sessionPolicy.Timeouts.ConnectionIdle)
+	timer := signal.CancelAfterInactivity(ctx, cancel)
 	requestDone := func() error {
 		defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 		writer := buf.NewBufferedWriter(buf.NewWriter(conn))

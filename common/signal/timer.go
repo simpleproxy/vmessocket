@@ -20,12 +20,11 @@ type ActivityUpdater interface {
 	Update()
 }
 
-func CancelAfterInactivity(ctx context.Context, cancel context.CancelFunc, timeout time.Duration) *ActivityTimer {
+func CancelAfterInactivity(ctx context.Context, cancel context.CancelFunc) *ActivityTimer {
 	timer := &ActivityTimer{
 		updated:   make(chan struct{}, 1),
 		onTimeout: cancel,
 	}
-	timer.SetTimeout(timeout)
 	return timer
 }
 
