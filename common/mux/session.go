@@ -11,7 +11,6 @@ type Session struct {
 type SessionManager struct {
 	sync.RWMutex
 	sessions map[uint16]*Session
-	count    uint16
 }
 
 func NewSessionManager() *SessionManager {
