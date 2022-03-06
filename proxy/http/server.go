@@ -19,8 +19,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
-	"github.com/vmessocket/vmessocket/core"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
@@ -32,8 +30,7 @@ type readerOnly struct {
 }
 
 type Server struct {
-	config        *ServerConfig
-	policyManager policy.Manager
+	config *ServerConfig
 }
 
 func isTimeout(err error) bool {
@@ -42,10 +39,8 @@ func isTimeout(err error) bool {
 }
 
 func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
-	v := core.MustFromContext(ctx)
 	s := &Server{
-		config:        config,
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
+		config: config,
 	}
 	return s, nil
 }
@@ -72,10 +67,8 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 	if err != nil {
 		return newError("failed to write back OK response").Base(err)
 	}
-	plcy := s.policy()
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
-	ctx = policy.ContextWithBufferPolicy(ctx, plcy.Buffer)
 	link, err := dispatcher.Dispatch(ctx, dest)
 	if err != nil {
 		return err
@@ -91,11 +84,9 @@ func (s *Server) handleConnect(ctx context.Context, _ *http.Request, reader *buf
 		reader = nil
 	}
 	requestDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.DownlinkOnly)
 		return buf.Copy(buf.NewReader(conn), link.Writer, buf.UpdateActivity(timer))
 	}
 	responseDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.UplinkOnly)
 		v2writer := buf.NewWriter(conn)
 		if err := buf.Copy(link.Reader, v2writer, buf.UpdateActivity(timer)); err != nil {
 			return err
@@ -208,15 +199,6 @@ func (*Server) Network() []net.Network {
 	return []net.Network{net.Network_TCP, net.Network_UNIX}
 }
 
-func (s *Server) policy() policy.Session {
-	config := s.config
-	p := s.policyManager.ForLevel(config.UserLevel)
-	if config.Timeout > 0 && config.UserLevel == 0 {
-		p.Timeouts.ConnectionIdle = time.Duration(config.Timeout) * time.Second
-	}
-	return p
-}
-
 func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection, dispatcher routing.Dispatcher) error {
 	inbound := session.InboundFromContext(ctx)
 	if inbound != nil {
@@ -227,9 +209,6 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn internet
 	reader := bufio.NewReaderSize(readerOnly{conn}, buf.Size)
 
 Start:
-	if err := conn.SetReadDeadline(time.Now().Add(s.policy().Timeouts.Handshake)); err != nil {
-		newError("failed to set read deadline").Base(err).WriteToLog(session.ExportIDToError(ctx))
-	}
 	request, err := http.ReadRequest(reader)
 	if err != nil {
 		trace := newError("failed to read http request").Base(err)
