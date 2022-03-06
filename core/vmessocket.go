@@ -122,7 +122,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 		Instance features.Feature
 	}{
 		{dns.ClientType(), localdns.New()},
-		{policy.ManagerType(), policy.DefaultManager{}},
 		{routing.RouterType(), routing.DefaultRouter{}},
 	}
 	for _, f := range essentialFeatures {
