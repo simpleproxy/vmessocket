@@ -16,7 +16,6 @@ type SessionManager struct {
 
 func NewSessionManager() *SessionManager {
 	return &SessionManager{
-		count:    0,
 		sessions: make(map[uint16]*Session, 16),
 	}
 }
