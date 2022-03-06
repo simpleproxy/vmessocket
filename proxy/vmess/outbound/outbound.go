@@ -16,8 +16,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
-	"github.com/vmessocket/vmessocket/core"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/proxy/vmess"
 	"github.com/vmessocket/vmessocket/proxy/vmess/encoding"
 	"github.com/vmessocket/vmessocket/transport"
@@ -30,9 +28,8 @@ var (
 )
 
 type Handler struct {
-	serverList    *protocol.ServerList
-	serverPicker  protocol.ServerPicker
-	policyManager policy.Manager
+	serverList   *protocol.ServerList
+	serverPicker protocol.ServerPicker
 }
 
 func New(ctx context.Context, config *Config) (*Handler, error) {
@@ -44,11 +41,9 @@ func New(ctx context.Context, config *Config) (*Handler, error) {
 		}
 		serverList.AddServer(s)
 	}
-	v := core.MustFromContext(ctx)
 	handler := &Handler{
-		serverList:    serverList,
-		serverPicker:  protocol.NewRoundRobinServerPicker(serverList),
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
+		serverList:   serverList,
+		serverPicker: protocol.NewRoundRobinServerPicker(serverList),
 	}
 	return handler, nil
 }
@@ -118,11 +113,9 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	hashkdf.Write(account.ID.Bytes())
 	behaviorSeed := crc64.Checksum(hashkdf.Sum(nil), crc64.MakeTable(crc64.ISO))
 	session := encoding.NewClientSession(ctx, isAEAD, protocol.DefaultIDHash, int64(behaviorSeed))
-	sessionPolicy := h.policyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
 	requestDone := func() error {
-		defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 		writer := buf.NewBufferedWriter(buf.NewWriter(conn))
 		if err := session.EncodeRequestHeader(request, writer); err != nil {
 			return newError("failed to encode request").Base(err).AtWarning()
@@ -145,7 +138,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		return nil
 	}
 	responseDone := func() error {
-		defer timer.SetTimeout(sessionPolicy.Timeouts.UplinkOnly)
 		reader := &buf.BufferedReader{Reader: buf.NewReader(conn)}
 		header, err := session.DecodeResponseHeader(reader)
 		if err != nil {
