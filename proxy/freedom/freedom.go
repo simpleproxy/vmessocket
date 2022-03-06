@@ -2,7 +2,6 @@ package freedom
 
 import (
 	"context"
-	"time"
 
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
@@ -14,15 +13,13 @@ import (
 	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/dns"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
 
 type Handler struct {
-	policyManager policy.Manager
-	dns           dns.Client
-	config        *Config
+	dns    dns.Client
+	config *Config
 }
 
 func isValidAddress(addr *net.IPOrDomain) bool {
@@ -33,19 +30,10 @@ func isValidAddress(addr *net.IPOrDomain) bool {
 	return a != net.AnyIP
 }
 
-func (h *Handler) Init(config *Config, pm policy.Manager, d dns.Client) error {
+func (h *Handler) Init(config *Config, d dns.Client) error {
 	h.config = config
-	h.policyManager = pm
 	h.dns = d
 	return nil
-}
-
-func (h *Handler) policy() policy.Session {
-	p := h.policyManager.ForLevel(h.config.UserLevel)
-	if h.config.Timeout > 0 && h.config.UserLevel == 0 {
-		p.Timeouts.ConnectionIdle = time.Duration(h.config.Timeout) * time.Second
-	}
-	return p
 }
 
 func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {
@@ -91,11 +79,9 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		return newError("failed to open connection to ", destination).Base(err)
 	}
 	defer conn.Close()
-	plcy := h.policy()
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
 	requestDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.DownlinkOnly)
 		var writer buf.Writer
 		if destination.Network == net.Network_TCP {
 			writer = buf.NewWriter(conn)
@@ -108,7 +94,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 		return nil
 	}
 	responseDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.UplinkOnly)
 		var reader buf.Reader
 		if destination.Network == net.Network_TCP {
 			reader = buf.NewReader(conn)
@@ -150,8 +135,8 @@ func (h *Handler) resolveIP(ctx context.Context, domain string, localAddr net.Ad
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		h := new(Handler)
-		if err := core.RequireFeatures(ctx, func(pm policy.Manager, d dns.Client) error {
-			return h.Init(config.(*Config), pm, d)
+		if err := core.RequireFeatures(ctx, func(d dns.Client) error {
+			return h.Init(config.(*Config), d)
 		}); err != nil {
 			return nil, err
 		}
