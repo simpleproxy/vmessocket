@@ -11,8 +11,6 @@ const (
 	SessionStatusKeep      SessionStatus = 0x02
 	SessionStatusEnd       SessionStatus = 0x03
 	SessionStatusKeepAlive SessionStatus = 0x04
-	TargetNetworkTCP       TargetNetwork = 0x01
-	TargetNetworkUDP       TargetNetwork = 0x02
 )
 
 type SessionStatus byte
