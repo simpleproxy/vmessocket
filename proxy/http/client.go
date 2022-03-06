@@ -20,8 +20,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
-	"github.com/vmessocket/vmessocket/core"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
@@ -33,8 +31,7 @@ var (
 )
 
 type Client struct {
-	serverPicker  protocol.ServerPicker
-	policyManager policy.Manager
+	serverPicker protocol.ServerPicker
 }
 
 type h2Conn struct {
@@ -60,10 +57,8 @@ func NewClient(ctx context.Context, config *ClientConfig) (*Client, error) {
 	if serverList.Size() == 0 {
 		return nil, newError("0 target server")
 	}
-	v := core.MustFromContext(ctx)
 	return &Client{
-		serverPicker:  protocol.NewRoundRobinServerPicker(serverList),
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
+		serverPicker: protocol.NewRoundRobinServerPicker(serverList),
 	}, nil
 }
 
@@ -235,18 +230,12 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 			newError("failed to closed connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
 		}
 	}()
-	p := c.policyManager.ForLevel(0)
-	if user != nil {
-		p = c.policyManager.ForLevel(user.Level)
-	}
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
 	requestFunc := func() error {
-		defer timer.SetTimeout(p.Timeouts.DownlinkOnly)
 		return buf.Copy(link.Reader, buf.NewWriter(conn), buf.UpdateActivity(timer))
 	}
 	responseFunc := func() error {
-		defer timer.SetTimeout(p.Timeouts.UplinkOnly)
 		return buf.Copy(buf.NewReader(conn), link.Writer, buf.UpdateActivity(timer))
 	}
 	responseDonePost := task.OnSuccess(responseFunc, task.Close(link.Writer))
