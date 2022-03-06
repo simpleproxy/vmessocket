@@ -14,24 +14,18 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
-	"github.com/vmessocket/vmessocket/core"
-	"github.com/vmessocket/vmessocket/features"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport/internet"
 	"github.com/vmessocket/vmessocket/transport/internet/udp"
 )
 
 type Server struct {
-	config        *ServerConfig
-	policyManager policy.Manager
+	config *ServerConfig
 }
 
 func NewServer(ctx context.Context, config *ServerConfig) (*Server, error) {
-	v := core.MustFromContext(ctx)
 	s := &Server{
-		config:        config,
-		policyManager: v.GetFeature(policy.ManagerType()).(policy.Manager),
+		config: config,
 	}
 	return s, nil
 }
@@ -100,18 +94,6 @@ func (s *Server) Network() []net.Network {
 	return list
 }
 
-func (s *Server) policy() policy.Session {
-	config := s.config
-	p := s.policyManager.ForLevel(config.UserLevel)
-	if config.Timeout > 0 {
-		features.PrintDeprecatedFeatureWarning("Socks timeout")
-	}
-	if config.Timeout > 0 && config.UserLevel == 0 {
-		p.Timeouts.ConnectionIdle = time.Duration(config.Timeout) * time.Second
-	}
-	return p
-}
-
 func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection, dispatcher routing.Dispatcher) error {
 	if inbound := session.InboundFromContext(ctx); inbound != nil {
 		inbound.User = &protocol.MemoryUser{
@@ -129,10 +111,6 @@ func (s *Server) Process(ctx context.Context, network net.Network, conn internet
 }
 
 func (s *Server) processTCP(ctx context.Context, conn internet.Connection, dispatcher routing.Dispatcher) error {
-	plcy := s.policy()
-	if err := conn.SetReadDeadline(time.Now().Add(plcy.Timeouts.Handshake)); err != nil {
-		newError("failed to set deadline").Base(err).WriteToLog(session.ExportIDToError(ctx))
-	}
 	inbound := session.InboundFromContext(ctx)
 	if inbound == nil || !inbound.Gateway.IsValid() {
 		return newError("inbound gateway not specified")
@@ -184,21 +162,17 @@ func (s *Server) processTCP(ctx context.Context, conn internet.Connection, dispa
 func (s *Server) transport(ctx context.Context, reader io.Reader, writer io.Writer, dest net.Destination, dispatcher routing.Dispatcher) error {
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
-	plcy := s.policy()
-	ctx = policy.ContextWithBufferPolicy(ctx, plcy.Buffer)
 	link, err := dispatcher.Dispatch(ctx, dest)
 	if err != nil {
 		return err
 	}
 	requestDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.DownlinkOnly)
 		if err := buf.Copy(buf.NewReader(reader), link.Writer, buf.UpdateActivity(timer)); err != nil {
 			return newError("failed to transport all TCP request").Base(err)
 		}
 		return nil
 	}
 	responseDone := func() error {
-		defer timer.SetTimeout(plcy.Timeouts.UplinkOnly)
 		v2writer := buf.NewWriter(writer)
 		if err := buf.Copy(link.Reader, v2writer, buf.UpdateActivity(timer)); err != nil {
 			return newError("failed to transport all TCP response").Base(err)
