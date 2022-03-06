@@ -14,7 +14,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 	routing_session "github.com/vmessocket/vmessocket/features/routing/session"
 	"github.com/vmessocket/vmessocket/transport"
