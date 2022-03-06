@@ -31,15 +31,7 @@ type Session struct {
 }
 
 type System struct {
-	Stats  SystemStats
 	Buffer Buffer
-}
-
-type SystemStats struct {
-	InboundUplink    bool
-	InboundDownlink  bool
-	OutboundUplink   bool
-	OutboundDownlink bool
 }
 
 type Timeout struct {
