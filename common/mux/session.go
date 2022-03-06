@@ -1,15 +1,10 @@
 package mux
 
-import (
-	"sync"
-)
-
 type Session struct {
 	ID uint16
 }
 
 type SessionManager struct {
-	sync.RWMutex
 	sessions map[uint16]*Session
 }
 
