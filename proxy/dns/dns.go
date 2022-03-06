@@ -17,7 +17,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/dns"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
 )
@@ -140,9 +139,8 @@ func (h *Handler) handleIPQuery(id uint16, qType dnsmessage.Type, domain string,
 	}
 }
 
-func (h *Handler) Init(config *Config, dnsClient dns.Client, policyManager policy.Manager) error {
+func (h *Handler) Init(config *Config, dnsClient dns.Client) error {
 	h.client = dnsClient
-	h.timeout = policyManager.ForLevel(config.UserLevel).Timeouts.ConnectionIdle
 	if ipv4lookup, ok := dnsClient.(dns.IPv4Lookup); ok {
 		h.ipv4Lookup = ipv4lookup
 	} else {
@@ -296,8 +294,8 @@ func (c *outboundConn) Write(b []byte) (int, error) {
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		h := new(Handler)
-		if err := core.RequireFeatures(ctx, func(dnsClient dns.Client, policyManager policy.Manager) error {
-			return h.Init(config.(*Config), dnsClient, policyManager)
+		if err := core.RequireFeatures(ctx, func(dnsClient dns.Client) error {
+			return h.Init(config.(*Config), dnsClient)
 		}); err != nil {
 			return nil, err
 		}
