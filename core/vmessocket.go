@@ -12,7 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/dns/localdns"
 	"github.com/vmessocket/vmessocket/features/inbound"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 )
 
