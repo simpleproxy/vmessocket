@@ -20,7 +20,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/uuid"
 	"github.com/vmessocket/vmessocket/core"
 	feature_inbound "github.com/vmessocket/vmessocket/features/inbound"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/proxy/vmess"
 	"github.com/vmessocket/vmessocket/proxy/vmess/encoding"
@@ -33,7 +32,6 @@ var (
 )
 
 type Handler struct {
-	policyManager         policy.Manager
 	inboundHandlerManager feature_inbound.Manager
 	clients               *vmess.TimedUserValidator
 	usersByEmail          *userByEmail
@@ -56,7 +54,6 @@ func isInsecureEncryption(s protocol.SecurityType) bool {
 func New(ctx context.Context, config *Config) (*Handler, error) {
 	v := core.MustFromContext(ctx)
 	handler := &Handler{
-		policyManager:         v.GetFeature(policy.ManagerType()).(policy.Manager),
 		inboundHandlerManager: v.GetFeature(feature_inbound.ManagerType()).(feature_inbound.Manager),
 		clients:               vmess.NewTimedUserValidator(protocol.DefaultIDHash),
 		detours:               config.Detour,
@@ -211,10 +208,6 @@ func (*Handler) Network() []net.Network {
 }
 
 func (h *Handler) Process(ctx context.Context, network net.Network, connection internet.Connection, dispatcher routing.Dispatcher) error {
-	sessionPolicy := h.policyManager.ForLevel(0)
-	if err := connection.SetReadDeadline(time.Now().Add(sessionPolicy.Timeouts.Handshake)); err != nil {
-		return newError("unable to set read deadline").Base(err).AtWarning()
-	}
 	reader := &buf.BufferedReader{Reader: buf.NewReader(connection)}
 	svrSession := encoding.NewServerSession(h.clients, h.sessionHistory)
 	svrSession.SetAEADForced(aeadForced)
@@ -257,16 +250,13 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection i
 		panic("no inbound metadata")
 	}
 	inbound.User = request.User
-	sessionPolicy = h.policyManager.ForLevel(request.User.Level)
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
-	ctx = policy.ContextWithBufferPolicy(ctx, sessionPolicy.Buffer)
 	link, err := dispatcher.Dispatch(ctx, request.Destination())
 	if err != nil {
 		return newError("failed to dispatch request to ", request.Destination()).Base(err)
 	}
 	requestDone := func() error {
-		defer timer.SetTimeout(sessionPolicy.Timeouts.DownlinkOnly)
 		bodyReader := svrSession.DecodeRequestBody(request, reader)
 		if err := buf.Copy(bodyReader, link.Writer, buf.UpdateActivity(timer)); err != nil {
 			return newError("failed to transfer request").Base(err)
@@ -274,7 +264,6 @@ func (h *Handler) Process(ctx context.Context, network net.Network, connection i
 		return nil
 	}
 	responseDone := func() error {
-		defer timer.SetTimeout(sessionPolicy.Timeouts.UplinkOnly)
 		writer := buf.NewBufferedWriter(buf.NewWriter(connection))
 		defer writer.Flush()
 		response := &protocol.ResponseHeader{
