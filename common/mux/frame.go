@@ -14,5 +14,3 @@ const (
 )
 
 type SessionStatus byte
-
-type TargetNetwork byte
