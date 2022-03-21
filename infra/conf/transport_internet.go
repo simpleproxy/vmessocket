@@ -76,7 +76,6 @@ type WebSocketConfig struct {
 	Path                 string            `json:"path"`
 	Headers              map[string]string `json:"headers"`
 	MaxEarlyData         int32             `json:"maxEarlyData"`
-	UseBrowserForwarding bool              `json:"useBrowserForwarding"`
 	EarlyDataHeaderName  string            `json:"earlyDataHeaderName"`
 }
 
@@ -302,7 +301,6 @@ func (c *WebSocketConfig) Build() (proto.Message, error) {
 		Path:                 path,
 		Header:               header,
 		MaxEarlyData:         c.MaxEarlyData,
-		UseBrowserForwarding: c.UseBrowserForwarding,
 		EarlyDataHeaderName:  c.EarlyDataHeaderName,
 	}
 	return config, nil
