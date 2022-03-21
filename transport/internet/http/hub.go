@@ -71,9 +71,6 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 			ReadHeaderTimeout: time.Second * 4,
 		}
 	}
-	if streamSettings.SocketSettings != nil && streamSettings.SocketSettings.AcceptProxyProtocol {
-		newError("accepting PROXY protocol").AtWarning().WriteToLog(session.ExportIDToError(ctx))
-	}
 	listener.server = server
 	go func() {
 		var streamListener net.Listener
