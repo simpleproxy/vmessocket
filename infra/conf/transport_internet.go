@@ -214,9 +214,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 
 func (c *TCPConfig) Build() (proto.Message, error) {
 	config := new(tcp.Config)
-	if c.AcceptProxyProtocol {
-		config.AcceptProxyProtocol = c.AcceptProxyProtocol
-	}
 	return config, nil
 }
 
