@@ -117,10 +117,6 @@ func (h *Handler) resolveIP(ctx context.Context, domain string, localAddr net.Ad
 		if lookupIPv4, ok := h.dns.(dns.IPv4Lookup); ok {
 			lookupFunc = lookupIPv4.LookupIPv4
 		}
-	} else if h.config.DomainStrategy == Config_USE_IP6 || (localAddr != nil && localAddr.Family().IsIPv6()) {
-		if lookupIPv6, ok := h.dns.(dns.IPv6Lookup); ok {
-			lookupFunc = lookupIPv6.LookupIPv6
-		}
 	}
 	ips, err := lookupFunc(domain)
 	if err != nil {
