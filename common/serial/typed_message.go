@@ -4,7 +4,7 @@ import (
 	"errors"
 	"reflect"
 
-	"github.com/golang/protobuf/proto"
+	"google.golang.org/protobuf/proto"
 )
 
 func GetInstance(messageType string) (interface{}, error) {
