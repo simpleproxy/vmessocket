@@ -49,7 +49,6 @@ type StreamConfig struct {
 
 type TCPConfig struct {
 	HeaderConfig        json.RawMessage `json:"header"`
-	AcceptProxyProtocol bool            `json:"acceptProxyProtocol"`
 }
 
 type TLSCertConfig struct {
@@ -76,7 +75,6 @@ type TransportProtocol string
 type WebSocketConfig struct {
 	Path                 string            `json:"path"`
 	Headers              map[string]string `json:"headers"`
-	AcceptProxyProtocol  bool              `json:"acceptProxyProtocol"`
 	MaxEarlyData         int32             `json:"maxEarlyData"`
 	UseBrowserForwarding bool              `json:"useBrowserForwarding"`
 	EarlyDataHeaderName  string            `json:"earlyDataHeaderName"`
