@@ -2,7 +2,6 @@ package dispatcher
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,8 +20,6 @@ import (
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
-var errSniffingTimeout = newError("timeout on sniffing")
-
 type cachedReader struct {
 	sync.Mutex
 	reader *pipe.Reader
@@ -33,24 +30,6 @@ type DefaultDispatcher struct {
 	ohm    outbound.Manager
 	router routing.Router
 	policy policy.Manager
-}
-
-func shouldOverride(result SniffResult, domainOverride []string) bool {
-	protocolString := result.Protocol()
-	if resComp, ok := result.(SnifferResultComposite); ok {
-		protocolString = resComp.ProtocolForDomainResult()
-	}
-	for _, p := range domainOverride {
-		if strings.HasPrefix(protocolString, p) {
-			return true
-		}
-		if resultSubset, ok := result.(SnifferIsProtoSubsetOf); ok {
-			if resultSubset.IsProtoSubsetOf(p) {
-				return true
-			}
-		}
-	}
-	return false
 }
 
 func (r *cachedReader) Cache(b *buf.Buffer) {
