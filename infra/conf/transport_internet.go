@@ -11,7 +11,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	httpheader "github.com/vmessocket/vmessocket/transport/internet/headers/http"
 	"github.com/vmessocket/vmessocket/transport/internet/http"
 	"github.com/vmessocket/vmessocket/transport/internet/tcp"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
@@ -109,20 +108,6 @@ func (c *HTTPConfig) Build() (proto.Message, error) {
 	}
 	if c.Method != "" {
 		config.Method = c.Method
-	}
-	if len(c.Headers) > 0 {
-		config.Header = make([]*httpheader.Header, 0, len(c.Headers))
-		headerNames := sortMapKeys(c.Headers)
-		for _, key := range headerNames {
-			value := c.Headers[key]
-			if value == nil {
-				return nil, newError("empty HTTP header value: " + key).AtError()
-			}
-			config.Header = append(config.Header, &httpheader.Header{
-				Name:  key,
-				Value: append([]string(nil), (*value)...),
-			})
-		}
 	}
 	return config, nil
 }
