@@ -11,5 +11,4 @@ import "common/serial/typed_message.proto";
 message Config {
   reserved 1;
   vmessocket.core.common.serial.TypedMessage header_settings = 2;
-  bool accept_proxy_protocol = 3;
 }
