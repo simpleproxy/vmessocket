@@ -5,8 +5,6 @@ import (
 	"runtime"
 	"syscall"
 
-	"github.com/pires/go-proxyproto"
-
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 )
