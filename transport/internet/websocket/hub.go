@@ -85,10 +85,6 @@ func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSet
 	l.listener = listener
 	useEarlyData := false
 	earlyDataHeaderName := ""
-	if wsSettings.MaxEarlyData != 0 {
-		useEarlyData = true
-		earlyDataHeaderName = wsSettings.EarlyDataHeaderName
-	}
 	l.server = http.Server{
 		Handler: &requestHandler{
 			path:                wsSettings.GetNormalizedPath(),
