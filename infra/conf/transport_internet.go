@@ -17,12 +17,6 @@ import (
 	"github.com/vmessocket/vmessocket/transport/internet/websocket"
 )
 
-var (
-	tcpHeaderLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"http": func() interface{} { return new(Authenticator) },
-	}, "type", "")
-)
-
 type HTTPConfig struct {
 	Host    *cfgcommon.StringList            `json:"host"`
 	Path    string                           `json:"path"`
@@ -220,17 +214,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 
 func (c *TCPConfig) Build() (proto.Message, error) {
 	config := new(tcp.Config)
-	if len(c.HeaderConfig) > 0 {
-		headerConfig, _, err := tcpHeaderLoader.Load(c.HeaderConfig)
-		if err != nil {
-			return nil, newError("invalid TCP header config").Base(err).AtError()
-		}
-		ts, err := headerConfig.(Buildable).Build()
-		if err != nil {
-			return nil, newError("invalid TCP header config").Base(err).AtError()
-		}
-		config.HeaderSettings = serial.ToTypedMessage(ts)
-	}
 	if c.AcceptProxyProtocol {
 		config.AcceptProxyProtocol = c.AcceptProxyProtocol
 	}
