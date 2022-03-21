@@ -38,17 +38,17 @@ type SocketConfig struct {
 }
 
 type StreamConfig struct {
-	Network        *TransportProtocol  `json:"network"`
-	Security       string              `json:"security"`
-	TLSSettings    *TLSConfig          `json:"tlsSettings"`
-	TCPSettings    *TCPConfig          `json:"tcpSettings"`
-	WSSettings     *WebSocketConfig    `json:"wsSettings"`
-	HTTPSettings   *HTTPConfig         `json:"httpSettings"`
-	SocketSettings *SocketConfig       `json:"sockopt"`
+	Network        *TransportProtocol `json:"network"`
+	Security       string             `json:"security"`
+	TLSSettings    *TLSConfig         `json:"tlsSettings"`
+	TCPSettings    *TCPConfig         `json:"tcpSettings"`
+	WSSettings     *WebSocketConfig   `json:"wsSettings"`
+	HTTPSettings   *HTTPConfig        `json:"httpSettings"`
+	SocketSettings *SocketConfig      `json:"sockopt"`
 }
 
 type TCPConfig struct {
-	HeaderConfig        json.RawMessage `json:"header"`
+	HeaderConfig json.RawMessage `json:"header"`
 }
 
 type TLSCertConfig struct {
@@ -73,10 +73,8 @@ type TLSConfig struct {
 type TransportProtocol string
 
 type WebSocketConfig struct {
-	Path                 string            `json:"path"`
-	Headers              map[string]string `json:"headers"`
-	MaxEarlyData         int32             `json:"maxEarlyData"`
-	EarlyDataHeaderName  string            `json:"earlyDataHeaderName"`
+	Path    string            `json:"path"`
+	Headers map[string]string `json:"headers"`
 }
 
 func readFileOrString(f string, s []string) ([]byte, error) {
@@ -298,10 +296,8 @@ func (c *WebSocketConfig) Build() (proto.Message, error) {
 		})
 	}
 	config := &websocket.Config{
-		Path:                 path,
-		Header:               header,
-		MaxEarlyData:         c.MaxEarlyData,
-		EarlyDataHeaderName:  c.EarlyDataHeaderName,
+		Path:   path,
+		Header: header,
 	}
 	return config, nil
 }
