@@ -34,7 +34,6 @@ type SocketConfig struct {
 	TFO                  *bool  `json:"tcpFastOpen"`
 	TFOQueueLength       uint32 `json:"tcpFastOpenQueueLength"`
 	TProxy               string `json:"tproxy"`
-	AcceptProxyProtocol  bool   `json:"acceptProxyProtocol"`
 	TCPKeepAliveInterval int32  `json:"tcpKeepAliveInterval"`
 }
 
@@ -143,7 +142,6 @@ func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
 		Tfo:                  tfoSettings,
 		TfoQueueLength:       tfoQueueLength,
 		Tproxy:               tproxy,
-		AcceptProxyProtocol:  c.AcceptProxyProtocol,
 		TcpKeepAliveInterval: c.TCPKeepAliveInterval,
 	}, nil
 }

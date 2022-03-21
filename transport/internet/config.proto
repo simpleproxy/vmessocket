@@ -57,7 +57,6 @@ message SocketConfig {
   bool receive_original_dest_address = 4;
   bytes bind_address = 5;
   uint32 bind_port = 6;
-  bool accept_proxy_protocol = 7;
-  int32 tcp_keep_alive_interval = 8;
-  uint32 tfo_queue_length = 9;
+  int32 tcp_keep_alive_interval = 7;
+  uint32 tfo_queue_length = 8;
 }
