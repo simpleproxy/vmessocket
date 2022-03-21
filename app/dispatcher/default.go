@@ -2,7 +2,6 @@ package dispatcher
 
 import (
 	"context"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,8 +20,6 @@ import (
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
-var errSniffingTimeout = newError("timeout on sniffing")
-
 type cachedReader struct {
 	sync.Mutex
 	reader *pipe.Reader
@@ -33,66 +30,6 @@ type DefaultDispatcher struct {
 	ohm    outbound.Manager
 	router routing.Router
 	policy policy.Manager
-}
-
-func shouldOverride(result SniffResult, domainOverride []string) bool {
-	protocolString := result.Protocol()
-	if resComp, ok := result.(SnifferResultComposite); ok {
-		protocolString = resComp.ProtocolForDomainResult()
-	}
-	for _, p := range domainOverride {
-		if strings.HasPrefix(protocolString, p) {
-			return true
-		}
-		if resultSubset, ok := result.(SnifferIsProtoSubsetOf); ok {
-			if resultSubset.IsProtoSubsetOf(p) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
-func sniffer(ctx context.Context, cReader *cachedReader, metadataOnly bool) (SniffResult, error) {
-	payload := buf.New()
-	defer payload.Release()
-	sniffer := NewSniffer(ctx)
-	metaresult, metadataErr := sniffer.SniffMetadata(ctx)
-	if metadataOnly {
-		return metaresult, metadataErr
-	}
-	contentResult, contentErr := func() (SniffResult, error) {
-		totalAttempt := 0
-		for {
-			select {
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			default:
-				totalAttempt++
-				if totalAttempt > 2 {
-					return nil, errSniffingTimeout
-				}
-
-				cReader.Cache(payload)
-				if !payload.IsEmpty() {
-					result, err := sniffer.Sniff(ctx, payload.Bytes())
-					if err != common.ErrNoClue {
-						return result, err
-					}
-				}
-				if payload.IsFull() {
-					return nil, errUnknownContent
-				}
-			}
-		}
-	}()
-	if contentErr != nil && metadataErr == nil {
-		return metaresult, nil
-	}
-	if contentErr == nil && metadataErr == nil {
-		return CompositeResult(metaresult, contentResult), nil
-	}
-	return contentResult, contentErr
 }
 
 func (r *cachedReader) Cache(b *buf.Buffer) {
@@ -131,16 +68,6 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 	case !sniffingRequest.Enabled:
 		go d.routedDispatch(ctx, outbound, destination)
 	case destination.Network != net.Network_TCP:
-		result, err := sniffer(ctx, nil, true)
-		if err == nil {
-			content.Protocol = result.Protocol()
-			if shouldOverride(result, sniffingRequest.OverrideDestinationForProtocol) {
-				domain := result.Domain()
-				newError("sniffed domain: ", domain).WriteToLog(session.ExportIDToError(ctx))
-				destination.Address = net.ParseAddress(domain)
-				ob.Target = destination
-			}
-		}
 		go d.routedDispatch(ctx, outbound, destination)
 	default:
 		go func() {
@@ -148,16 +75,6 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 				reader: outbound.Reader.(*pipe.Reader),
 			}
 			outbound.Reader = cReader
-			result, err := sniffer(ctx, cReader, sniffingRequest.MetadataOnly)
-			if err == nil {
-				content.Protocol = result.Protocol()
-			}
-			if err == nil && shouldOverride(result, sniffingRequest.OverrideDestinationForProtocol) {
-				domain := result.Domain()
-				newError("sniffed domain: ", domain).WriteToLog(session.ExportIDToError(ctx))
-				destination.Address = net.ParseAddress(domain)
-				ob.Target = destination
-			}
 			d.routedDispatch(ctx, outbound, destination)
 		}()
 	}
