@@ -12,7 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/dns/localdns"
 	"github.com/vmessocket/vmessocket/features/inbound"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 )
 
@@ -123,7 +122,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 		Instance features.Feature
 	}{
 		{dns.ClientType(), localdns.New()},
-		{policy.ManagerType(), policy.DefaultManager{}},
 		{routing.RouterType(), routing.DefaultRouter{}},
 	}
 	for _, f := range essentialFeatures {

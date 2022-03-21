@@ -9,11 +9,9 @@ import (
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/log"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/protocol"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/policy"
 	"github.com/vmessocket/vmessocket/features/routing"
 	routing_session "github.com/vmessocket/vmessocket/features/routing/session"
 	"github.com/vmessocket/vmessocket/transport"
@@ -29,7 +27,6 @@ type cachedReader struct {
 type DefaultDispatcher struct {
 	ohm    outbound.Manager
 	router routing.Router
-	policy policy.Manager
 }
 
 func (r *cachedReader) Cache(b *buf.Buffer) {
@@ -93,21 +90,12 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 		Reader: uplinkReader,
 		Writer: downlinkWriter,
 	}
-	sessionInbound := session.InboundFromContext(ctx)
-	var user *protocol.MemoryUser
-	if sessionInbound != nil {
-		user = sessionInbound.User
-	}
-	if user != nil && len(user.Email) > 0 {
-		d.policy.ForLevel(user.Level)
-	}
 	return inboundLink, outboundLink
 }
 
-func (d *DefaultDispatcher) Init(config *Config, om outbound.Manager, router routing.Router, pm policy.Manager) error {
+func (d *DefaultDispatcher) Init(config *Config, om outbound.Manager, router routing.Router) error {
 	d.ohm = om
 	d.router = router
-	d.policy = pm
 	return nil
 }
 
@@ -202,8 +190,8 @@ func (*DefaultDispatcher) Type() interface{} {
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		d := new(DefaultDispatcher)
-		if err := core.RequireFeatures(ctx, func(om outbound.Manager, router routing.Router, pm policy.Manager) error {
-			return d.Init(config.(*Config), om, router, pm)
+		if err := core.RequireFeatures(ctx, func(om outbound.Manager, router routing.Router) error {
+			return d.Init(config.(*Config), om, router)
 		}); err != nil {
 			return nil, err
 		}
