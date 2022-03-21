@@ -312,8 +312,5 @@ func (c *WebSocketConfig) Build() (proto.Message, error) {
 		UseBrowserForwarding: c.UseBrowserForwarding,
 		EarlyDataHeaderName:  c.EarlyDataHeaderName,
 	}
-	if c.AcceptProxyProtocol {
-		config.AcceptProxyProtocol = c.AcceptProxyProtocol
-	}
 	return config, nil
 }
