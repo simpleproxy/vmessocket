@@ -5,7 +5,6 @@ import (
 
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/signal/done"
-	"github.com/vmessocket/vmessocket/features/policy"
 )
 
 type Option func(*pipeOption)
@@ -37,12 +36,6 @@ func New(opts ...Option) (*Reader, *Writer) {
 
 func OptionsFromContext(ctx context.Context) []Option {
 	var opt []Option
-	bp := policy.BufferPolicyFromContext(ctx)
-	if bp.PerConnection >= 0 {
-		opt = append(opt, WithSizeLimit(bp.PerConnection))
-	} else {
-		opt = append(opt, WithoutSizeLimit())
-	}
 	return opt
 }
 
