@@ -11,17 +11,10 @@ import (
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	httpheader "github.com/vmessocket/vmessocket/transport/internet/headers/http"
 	"github.com/vmessocket/vmessocket/transport/internet/http"
 	"github.com/vmessocket/vmessocket/transport/internet/tcp"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
 	"github.com/vmessocket/vmessocket/transport/internet/websocket"
-)
-
-var (
-	tcpHeaderLoader = NewJSONConfigLoader(ConfigCreatorCache{
-		"http": func() interface{} { return new(Authenticator) },
-	}, "type", "")
 )
 
 type HTTPConfig struct {
@@ -109,20 +102,6 @@ func (c *HTTPConfig) Build() (proto.Message, error) {
 	}
 	if c.Method != "" {
 		config.Method = c.Method
-	}
-	if len(c.Headers) > 0 {
-		config.Header = make([]*httpheader.Header, 0, len(c.Headers))
-		headerNames := sortMapKeys(c.Headers)
-		for _, key := range headerNames {
-			value := c.Headers[key]
-			if value == nil {
-				return nil, newError("empty HTTP header value: " + key).AtError()
-			}
-			config.Header = append(config.Header, &httpheader.Header{
-				Name:  key,
-				Value: append([]string(nil), (*value)...),
-			})
-		}
 	}
 	return config, nil
 }
@@ -235,17 +214,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 
 func (c *TCPConfig) Build() (proto.Message, error) {
 	config := new(tcp.Config)
-	if len(c.HeaderConfig) > 0 {
-		headerConfig, _, err := tcpHeaderLoader.Load(c.HeaderConfig)
-		if err != nil {
-			return nil, newError("invalid TCP header config").Base(err).AtError()
-		}
-		ts, err := headerConfig.(Buildable).Build()
-		if err != nil {
-			return nil, newError("invalid TCP header config").Base(err).AtError()
-		}
-		config.HeaderSettings = serial.ToTypedMessage(ts)
-	}
 	if c.AcceptProxyProtocol {
 		config.AcceptProxyProtocol = c.AcceptProxyProtocol
 	}

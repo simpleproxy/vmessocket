@@ -40,11 +40,6 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 		httpMethod = httpSettings.Method
 	}
 	httpHeaders := make(http.Header)
-	for _, httpHeader := range httpSettings.Header {
-		for _, httpHeaderValue := range httpHeader.Value {
-			httpHeaders.Set(httpHeader.Name, httpHeaderValue)
-		}
-	}
 	request := &http.Request{
 		Method: httpMethod,
 		Host:   httpSettings.getRandomHost(),
