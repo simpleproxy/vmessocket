@@ -12,8 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/tls"
-	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
 type Handler struct {
@@ -84,15 +82,6 @@ func (h *Handler) Dial(ctx context.Context, dest net.Destination) (internet.Conn
 				ctx = session.ContextWithOutbound(ctx, &session.Outbound{
 					Target: dest,
 				})
-				opts := pipe.OptionsFromContext(ctx)
-				uplinkReader, uplinkWriter := pipe.New(opts...)
-				downlinkReader, downlinkWriter := pipe.New(opts...)
-				go handler.Dispatch(ctx, &transport.Link{Reader: uplinkReader, Writer: downlinkWriter})
-				conn := net.NewConnection(net.ConnectionInputMulti(uplinkWriter), net.ConnectionOutputMulti(downlinkReader))
-				if config := tls.ConfigFromStreamSettings(h.streamSettings); config != nil {
-					tlsConfig := config.GetTLSConfig(tls.WithDestination(dest))
-					conn = tls.Client(conn, tlsConfig)
-				}
 				return nil, nil
 			}
 			newError("failed to get outbound handler with tag: ", tag).AtWarning().WriteToLog(session.ExportIDToError(ctx))
