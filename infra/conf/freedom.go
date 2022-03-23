@@ -24,9 +24,6 @@ func (c *FreedomConfig) Build() (proto.Message, error) {
 	switch strings.ToLower(c.DomainStrategy) {
 	case "useip", "use_ip", "use-ip":
 		config.DomainStrategy = freedom.Config_USE_IP
-	case "useip4", "useipv4", "use_ip4", "use_ipv4", "use_ip_v4", "use-ip4", "use-ipv4", "use-ip-v4":
-		config.DomainStrategy = freedom.Config_USE_IP4
-	}
 	if c.Timeout != nil {
 		config.Timeout = *c.Timeout
 	}
