@@ -7,7 +7,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/dice"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/retry"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
@@ -55,29 +54,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 	input := link.Reader
 	output := link.Writer
 	var conn internet.Connection
-	err := retry.ExponentialBackoff(5, 100).On(func() error {
-		dialDest := destination
-		if h.config.useIP() && dialDest.Address.Family().IsDomain() {
-			ip := h.resolveIP(ctx, dialDest.Address.Domain(), dialer.Address())
-			if ip != nil {
-				dialDest = net.Destination{
-					Network: dialDest.Network,
-					Address: ip,
-					Port:    dialDest.Port,
-				}
-				newError("dialing to ", dialDest).WriteToLog(session.ExportIDToError(ctx))
-			}
-		}
-		rawConn, err := dialer.Dial(ctx, dialDest)
-		if err != nil {
-			return err
-		}
-		conn = rawConn
-		return nil
-	})
-	if err != nil {
-		return newError("failed to open connection to ", destination).Base(err)
-	}
 	defer conn.Close()
 	ctx, cancel := context.WithCancel(ctx)
 	timer := signal.CancelAfterInactivity(ctx, cancel)
