@@ -8,7 +8,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/common/retry"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
@@ -56,18 +55,6 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	var server *protocol.ServerSpec
 	var dest net.Destination
 	var conn internet.Connection
-	if err := retry.ExponentialBackoff(5, 100).On(func() error {
-		server = c.serverPicker.PickServer()
-		dest = server.Destination()
-		rawConn, err := dialer.Dial(ctx, dest)
-		if err != nil {
-			return err
-		}
-		conn = rawConn
-		return nil
-	}); err != nil {
-		return newError("failed to find an available destination").Base(err)
-	}
 	defer func() {
 		if err := conn.Close(); err != nil {
 			newError("failed to closed connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
