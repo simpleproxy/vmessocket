@@ -14,7 +14,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/tls"
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
 
@@ -27,11 +26,7 @@ type dialerCanceller func()
 
 func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (internet.Connection, error) {
 	httpSettings := streamSettings.ProtocolSettings.(*Config)
-	tlsConfig := tls.ConfigFromStreamSettings(streamSettings)
-	if tlsConfig == nil {
-		return nil, newError("TLS must be enabled for http transport.").AtWarning()
-	}
-	client, canceller := getHTTPClient(ctx, dest, tlsConfig, streamSettings)
+	client, canceller := getHTTPClient(ctx, dest, streamSettings)
 	opts := pipe.OptionsFromContext(ctx)
 	preader, pwriter := pipe.New(opts...)
 	breader := &buf.BufferedReader{Reader: preader}
@@ -72,7 +67,7 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 	), nil
 }
 
-func getHTTPClient(ctx context.Context, dest net.Destination, tlsSettings *tls.Config, streamSettings *internet.MemoryStreamConfig) (*http.Client, dialerCanceller) {
+func getHTTPClient(ctx context.Context, dest net.Destination, streamSettings *internet.MemoryStreamConfig) (*http.Client, dialerCanceller) {
 	globalDialerAccess.Lock()
 	defer globalDialerAccess.Unlock()
 	canceller := func() {
@@ -120,7 +115,6 @@ func getHTTPClient(ctx context.Context, dest net.Destination, tlsSettings *tls.C
 			}
 			return cn, nil
 		},
-		TLSClientConfig: tlsSettings.GetTLSConfig(tls.WithDestination(dest)),
 	}
 	client := &http.Client{
 		Transport: transport,
