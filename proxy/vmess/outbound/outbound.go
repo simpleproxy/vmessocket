@@ -12,7 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/platform"
 	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/common/retry"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
@@ -55,18 +54,6 @@ func shouldEnablePadding(s protocol.SecurityType) bool {
 func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer internet.Dialer) error {
 	var rec *protocol.ServerSpec
 	var conn internet.Connection
-	err := retry.ExponentialBackoff(5, 200).On(func() error {
-		rec = h.serverPicker.PickServer()
-		rawConn, err := dialer.Dial(ctx, rec.Destination())
-		if err != nil {
-			return err
-		}
-		conn = rawConn
-		return nil
-	})
-	if err != nil {
-		return newError("failed to find an available destination").Base(err).AtWarning()
-	}
 	defer conn.Close()
 	outbound := session.OutboundFromContext(ctx)
 	if outbound == nil || !outbound.Target.IsValid() {
