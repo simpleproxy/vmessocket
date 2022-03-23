@@ -10,7 +10,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/tls"
 )
 
 type Listener struct {
@@ -54,9 +53,6 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 		newError("listening TCP on ", address, ":", port).WriteToLog(session.ExportIDToError(ctx))
 	}
 	l.listener = listener
-	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
-		l.tlsConfig = config.GetTLSConfig()
-	}
 	if tcpSettings.HeaderSettings != nil {
 		headerConfig, err := tcpSettings.HeaderSettings.GetInstance()
 		if err != nil {
@@ -89,9 +85,6 @@ func (v *Listener) keepAccepting() {
 				time.Sleep(time.Millisecond * 500)
 			}
 			continue
-		}
-		if v.tlsConfig != nil {
-			conn = tls.Server(conn, v.tlsConfig)
 		}
 		if v.authConfig != nil {
 			conn = v.authConfig.Server(conn)
