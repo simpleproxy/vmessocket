@@ -113,11 +113,6 @@ func (h *Handler) Process(ctx context.Context, link *transport.Link, dialer inte
 
 func (h *Handler) resolveIP(ctx context.Context, domain string, localAddr net.Address) net.Address {
 	lookupFunc := h.dns.LookupIP
-	if h.config.DomainStrategy == Config_USE_IP4 || (localAddr != nil && localAddr.Family().IsIPv4()) {
-		if lookupIPv4, ok := h.dns.(dns.IPv4Lookup); ok {
-			lookupFunc = lookupIPv4.LookupIPv4
-		}
-	}
 	ips, err := lookupFunc(domain)
 	if err != nil {
 		newError("failed to get IP address for domain ", domain).Base(err).WriteToLog(session.ExportIDToError(ctx))
