@@ -16,7 +16,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/bytespool"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/protocol"
-	"github.com/vmessocket/vmessocket/common/retry"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
@@ -193,12 +192,9 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 		return newError("target not specified.")
 	}
 	target := outbound.Target
-	targetAddr := target.NetAddr()
-
 	if target.Network == net.Network_UDP {
 		return newError("UDP is not supported by HTTP outbound")
 	}
-	var user *protocol.MemoryUser
 	var conn internet.Connection
 	mbuf, _ := link.Reader.ReadMultiBuffer()
 	len := mbuf.Len()
@@ -207,24 +203,6 @@ func (c *Client) Process(ctx context.Context, link *transport.Link, dialer inter
 	firstPayload = firstPayload[:len]
 	buf.ReleaseMulti(mbuf)
 	defer bytespool.Free(firstPayload)
-	if err := retry.ExponentialBackoff(5, 100).On(func() error {
-		server := c.serverPicker.PickServer()
-		dest := server.Destination()
-		user = server.PickUser()
-		netConn, err := setUpHTTPTunnel(ctx, dest, targetAddr, user, dialer, firstPayload)
-		if netConn != nil {
-			if _, ok := netConn.(*http2Conn); !ok {
-				if _, err := netConn.Write(firstPayload); err != nil {
-					netConn.Close()
-					return err
-				}
-			}
-			conn = internet.Connection(netConn)
-		}
-		return err
-	}); err != nil {
-		return newError("failed to find an available destination").Base(err)
-	}
 	defer func() {
 		if err := conn.Close(); err != nil {
 			newError("failed to closed connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
