@@ -79,17 +79,8 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 }
 
 func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *transport.Link) {
-	opt := pipe.OptionsFromContext(ctx)
-	uplinkReader, uplinkWriter := pipe.New(opt...)
-	downlinkReader, downlinkWriter := pipe.New(opt...)
-	inboundLink := &transport.Link{
-		Reader: downlinkReader,
-		Writer: uplinkWriter,
-	}
-	outboundLink := &transport.Link{
-		Reader: uplinkReader,
-		Writer: downlinkWriter,
-	}
+	inboundLink := &transport.Link{}
+	outboundLink := &transport.Link{}
 	return inboundLink, outboundLink
 }
 
