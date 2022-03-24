@@ -107,7 +107,7 @@ func (c *StreamConfig) HasSecuritySettings() bool {
 }
 
 func (c *ProxyConfig) HasTag() bool {
-	return c != nil && len(c.Tag) > 0
+	return c != nil 
 }
 
 func (m SocketConfig_TProxyMode) IsEnabled() bool {
