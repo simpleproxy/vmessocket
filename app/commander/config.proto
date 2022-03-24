@@ -9,8 +9,7 @@ option java_multiple_files = true;
 import "common/serial/typed_message.proto";
 
 message Config {
-  string tag = 1;
-  repeated vmessocket.core.common.serial.TypedMessage service = 2;
+  repeated vmessocket.core.common.serial.TypedMessage service = 1;
 }
 
 message ReflectionConfig {}
