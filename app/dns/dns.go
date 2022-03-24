@@ -23,7 +23,6 @@ type DomainMatcherInfo struct {
 
 type DNS struct {
 	sync.Mutex
-	tag                    string
 	disableCache           bool
 	disableFallback        bool
 	disableFallbackIfMatch bool
@@ -36,12 +35,6 @@ type DNS struct {
 }
 
 func New(ctx context.Context, config *Config) (*DNS, error) {
-	var tag string
-	if len(config.Tag) > 0 {
-		tag = config.Tag
-	} else {
-		tag = generateRandomTag()
-	}
 	var clientIP net.IP
 	switch len(config.ClientIp) {
 	case 0, net.IPv4len, net.IPv6len:
@@ -112,7 +105,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		clients = append(clients, NewLocalDNSClient())
 	}
 	return &DNS{
-		tag:                    tag,
 		hosts:                  hosts,
 		ipOption:               ipOption,
 		clients:                clients,
@@ -135,7 +127,7 @@ func (s *DNS) GetIPOption() *dns.IPOption {
 
 func (s *DNS) IsOwnLink(ctx context.Context) bool {
 	inbound := session.InboundFromContext(ctx)
-	return inbound != nil && inbound.Tag == s.tag
+	return inbound != nil
 }
 
 func (s *DNS) LookupIP(domain string) ([]net.IP, error) {
@@ -160,7 +152,7 @@ func (s *DNS) lookupIPInternal(domain string, option dns.IPOption) ([]net.IP, er
 		return toNetIP(addrs)
 	}
 	errs := []error{}
-	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{Tag: s.tag})
+	ctx := session.ContextWithInbound(s.ctx, &session.Inbound{})
 	for _, client := range s.sortClients(domain) {
 		ips, err := client.QueryIP(ctx, domain, option, s.disableCache)
 		if len(ips) > 0 {

@@ -101,7 +101,6 @@ func (c *DNSConfig) Build() (*dns.Config, error) {
 	cfgEnv := cfgcommon.GetConfigureLoadingEnvironment(cfgctx)
 	geoLoader := cfgEnv.GetGeoLoader()
 	config := &dns.Config{
-		Tag:                    c.Tag,
 		DisableCache:           c.DisableCache,
 		DisableFallback:        c.DisableFallback,
 		DisableFallbackIfMatch: c.DisableFallbackIfMatch,
