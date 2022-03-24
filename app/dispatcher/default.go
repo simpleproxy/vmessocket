@@ -54,43 +54,12 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 		Target: destination,
 	}
 	ctx = session.ContextWithOutbound(ctx, ob)
-	inbound, outbound := d.getLink(ctx)
 	content := session.ContentFromContext(ctx)
 	if content == nil {
 		content = new(session.Content)
 		ctx = session.ContextWithContent(ctx, content)
 	}
-	sniffingRequest := content.SniffingRequest
-	switch {
-	case !sniffingRequest.Enabled:
-		go d.routedDispatch(ctx, outbound, destination)
-	case destination.Network != net.Network_TCP:
-		go d.routedDispatch(ctx, outbound, destination)
-	default:
-		go func() {
-			cReader := &cachedReader{
-				reader: outbound.Reader.(*pipe.Reader),
-			}
-			outbound.Reader = cReader
-			d.routedDispatch(ctx, outbound, destination)
-		}()
-	}
-	return inbound, nil
-}
-
-func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *transport.Link) {
-	opt := pipe.OptionsFromContext(ctx)
-	uplinkReader, uplinkWriter := pipe.New(opt...)
-	downlinkReader, downlinkWriter := pipe.New(opt...)
-	inboundLink := &transport.Link{
-		Reader: downlinkReader,
-		Writer: uplinkWriter,
-	}
-	outboundLink := &transport.Link{
-		Reader: uplinkReader,
-		Writer: downlinkWriter,
-	}
-	return inboundLink, outboundLink
+	return nil, nil
 }
 
 func (d *DefaultDispatcher) Init(config *Config, om outbound.Manager, router routing.Router) error {
