@@ -19,15 +19,13 @@ message Config {
 }
 
 message InboundHandlerConfig {
-  string tag = 1;
-  vmessocket.core.common.serial.TypedMessage receiver_settings = 2;
-  vmessocket.core.common.serial.TypedMessage proxy_settings = 3;
+  vmessocket.core.common.serial.TypedMessage receiver_settings = 1;
+  vmessocket.core.common.serial.TypedMessage proxy_settings = 2;
 }
 
 message OutboundHandlerConfig {
-  string tag = 1;
-  vmessocket.core.common.serial.TypedMessage sender_settings = 2;
-  vmessocket.core.common.serial.TypedMessage proxy_settings = 3;
-  int64 expire = 4;
-  string comment = 5;
+  vmessocket.core.common.serial.TypedMessage sender_settings = 1;
+  vmessocket.core.common.serial.TypedMessage proxy_settings = 2;
+  int64 expire = 3;
+  string comment = 4;
 }
