@@ -10,5 +10,4 @@ import "common/net/destination.proto";
 
 message Config {
   vmessocket.core.common.net.Endpoint server = 1;
-  uint32 user_level = 2;
 }
