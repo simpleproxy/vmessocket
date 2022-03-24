@@ -15,7 +15,6 @@ type FreedomConfig struct {
 	DomainStrategy string  `json:"domainStrategy"`
 	Timeout        *uint32 `json:"timeout"`
 	Redirect       string  `json:"redirect"`
-	UserLevel      uint32  `json:"userLevel"`
 }
 
 func (c *FreedomConfig) Build() (proto.Message, error) {
@@ -28,7 +27,6 @@ func (c *FreedomConfig) Build() (proto.Message, error) {
 	if c.Timeout != nil {
 		config.Timeout = *c.Timeout
 	}
-	config.UserLevel = c.UserLevel
 	if len(c.Redirect) > 0 {
 		host, portStr, err := net.SplitHostPort(c.Redirect)
 		if err != nil {
