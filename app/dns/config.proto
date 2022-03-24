@@ -57,7 +57,6 @@ message Config {
   }
 
   repeated HostMapping static_hosts = 4;
-  string tag = 6;
   reserved 7;
   bool disableCache = 8;
   QueryStrategy query_strategy = 9;
