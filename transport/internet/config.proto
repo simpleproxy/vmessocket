@@ -31,8 +31,6 @@ message StreamConfig {
 }
 
 message ProxyConfig {
-  string tag = 1;
-
   bool transportLayerProxy = 2;
 }
 
