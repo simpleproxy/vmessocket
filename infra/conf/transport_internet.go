@@ -25,7 +25,6 @@ type HTTPConfig struct {
 }
 
 type ProxyConfig struct {
-	Tag                 string `json:"tag"`
 	TransportLayerProxy bool   `json:"transportLayer"`
 }
 
@@ -101,11 +100,7 @@ func (c *HTTPConfig) Build() (proto.Message, error) {
 }
 
 func (v *ProxyConfig) Build() (*internet.ProxyConfig, error) {
-	if v.Tag == "" {
-		return nil, newError("Proxy tag is not set.")
-	}
 	return &internet.ProxyConfig{
-		Tag:                 v.Tag,
 		TransportLayerProxy: v.TransportLayerProxy,
 	}, nil
 }
