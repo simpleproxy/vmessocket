@@ -18,7 +18,6 @@ type Commander struct {
 	ohm      outbound.Manager
 	server   *grpc.Server
 	services []Service
-	tag      string
 }
 
 func NewCommander(ctx context.Context, config *Config) (*Commander, error) {
@@ -70,9 +69,6 @@ func (c *Commander) Start() error {
 			newError("failed to start grpc server").Base(err).AtError().WriteToLog()
 		}
 	}()
-	if err := c.ohm.RemoveHandler(context.Background(), c.tag); err != nil {
-		newError("failed to remove existing handler").WriteToLog()
-	}
 	return c.ohm.AddHandler(context.Background(), &Outbound{
 		listener: listener,
 	})
