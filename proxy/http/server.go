@@ -14,7 +14,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/errors"
 	"github.com/vmessocket/vmessocket/common/log"
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/common/protocol"
 	http_proto "github.com/vmessocket/vmessocket/common/protocol/http"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
@@ -201,11 +200,6 @@ func (*Server) Network() []net.Network {
 
 func (s *Server) Process(ctx context.Context, network net.Network, conn internet.Connection, dispatcher routing.Dispatcher) error {
 	inbound := session.InboundFromContext(ctx)
-	if inbound != nil {
-		inbound.User = &protocol.MemoryUser{
-			Level: s.config.UserLevel,
-		}
-	}
 	reader := bufio.NewReaderSize(readerOnly{conn}, buf.Size)
 
 Start:
