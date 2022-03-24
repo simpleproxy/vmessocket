@@ -38,7 +38,6 @@ type VMessInboundConfig struct {
 	Users        []json.RawMessage   `json:"clients"`
 	Features     *FeaturesConfig     `json:"features"`
 	Defaults     *VMessDefaultConfig `json:"default"`
-	DetourConfig *VMessDetourConfig  `json:"detour"`
 	SecureOnly   bool                `json:"disableInsecureEncryption"`
 }
 
@@ -98,9 +97,7 @@ func (c *VMessInboundConfig) Build() (proto.Message, error) {
 	if c.Defaults != nil {
 		config.Default = c.Defaults.Build()
 	}
-	if c.DetourConfig != nil {
-		config.Detour = c.DetourConfig.Build()
-	} else if c.Features != nil && c.Features.Detour != nil {
+	if c.Features != nil && c.Features.Detour != nil {
 		config.Detour = c.Features.Detour.Build()
 	}
 	config.User = make([]*protocol.User, len(c.Users))
