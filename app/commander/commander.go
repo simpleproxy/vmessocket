@@ -22,9 +22,7 @@ type Commander struct {
 }
 
 func NewCommander(ctx context.Context, config *Config) (*Commander, error) {
-	c := &Commander{
-		tag: config.Tag,
-	}
+	c := &Commander{}
 	common.Must(core.RequireFeatures(ctx, func(om outbound.Manager) {
 		c.ohm = om
 	}))
@@ -76,7 +74,6 @@ func (c *Commander) Start() error {
 		newError("failed to remove existing handler").WriteToLog()
 	}
 	return c.ohm.AddHandler(context.Background(), &Outbound{
-		tag:      c.tag,
 		listener: listener,
 	})
 }
