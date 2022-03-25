@@ -11,7 +11,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/task"
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
@@ -126,11 +125,6 @@ func (h *Handler) resolveIP(ctx context.Context, domain string, localAddr net.Ad
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		h := new(Handler)
-		if err := core.RequireFeatures(ctx, func(d dns.Client) error {
-			return h.Init(config.(*Config), d)
-		}); err != nil {
-			return nil, err
-		}
 		return h, nil
 	}))
 }
