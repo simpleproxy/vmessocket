@@ -9,7 +9,6 @@ import (
 
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/signal/done"
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/outbound"
 )
 
@@ -22,9 +21,6 @@ type Commander struct {
 
 func NewCommander(ctx context.Context, config *Config) (*Commander, error) {
 	c := &Commander{}
-	common.Must(core.RequireFeatures(ctx, func(om outbound.Manager) {
-		c.ohm = om
-	}))
 	for _, rawConfig := range config.Service {
 		config, err := rawConfig.GetInstance()
 		if err != nil {
