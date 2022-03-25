@@ -8,8 +8,6 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/features"
-	"github.com/vmessocket/vmessocket/features/dns"
-	"github.com/vmessocket/vmessocket/features/dns/localdns"
 	"github.com/vmessocket/vmessocket/features/inbound"
 	"github.com/vmessocket/vmessocket/features/outbound"
 )
@@ -115,22 +113,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 				return true, err
 			}
 		}
-	}
-	essentialFeatures := []struct {
-		Type     interface{}
-		Instance features.Feature
-	}{
-		{dns.ClientType(), localdns.New()},
-	}
-	for _, f := range essentialFeatures {
-		if server.GetFeature(f.Type) == nil {
-			if err := server.AddFeature(f.Instance); err != nil {
-				return true, err
-			}
-		}
-	}
-	if server.featureResolutions != nil {
-		return true, newError("not all dependency are resolved.")
 	}
 	if err := addInboundHandlers(server, config.Inbound); err != nil {
 		return true, err
