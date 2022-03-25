@@ -131,16 +131,6 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, err
 
 func NewSimpleClient(ctx context.Context, endpoint *net.Endpoint, clientIP net.IP) (*Client, error) {
 	client := &Client{}
-	err := core.RequireFeatures(ctx, func(dispatcher routing.Dispatcher) error {
-		server, err := NewServer(endpoint.AsDestination(), dispatcher)
-		if err != nil {
-			return newError("failed to create nameserver").Base(err).AtWarning()
-		}
-		client.server = server
-		client.clientIP = clientIP
-		return nil
-	})
-
 	if len(clientIP) > 0 {
 		switch endpoint.Address.GetAddress().(type) {
 		case *net.IPOrDomain_Domain:
@@ -150,7 +140,7 @@ func NewSimpleClient(ctx context.Context, endpoint *net.Endpoint, clientIP net.I
 		}
 	}
 
-	return client, err
+	return client, nil
 }
 
 func (c *Client) MatchExpectedIPs(domain string, ips []net.IP) ([]net.IP, error) {
