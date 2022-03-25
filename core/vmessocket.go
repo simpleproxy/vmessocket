@@ -8,11 +8,8 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/features"
-	"github.com/vmessocket/vmessocket/features/dns"
-	"github.com/vmessocket/vmessocket/features/dns/localdns"
 	"github.com/vmessocket/vmessocket/features/inbound"
 	"github.com/vmessocket/vmessocket/features/outbound"
-	"github.com/vmessocket/vmessocket/features/routing"
 )
 
 type Instance struct {
@@ -20,11 +17,6 @@ type Instance struct {
 	features           []features.Feature
 	running            bool
 	ctx                context.Context
-}
-
-type resolution struct {
-	deps     []reflect.Type
-	callback interface{}
 }
 
 type Server interface {
@@ -116,20 +108,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 			}
 		}
 	}
-	essentialFeatures := []struct {
-		Type     interface{}
-		Instance features.Feature
-	}{
-		{dns.ClientType(), localdns.New()},
-		{routing.RouterType(), routing.DefaultRouter{}},
-	}
-	for _, f := range essentialFeatures {
-		if server.GetFeature(f.Type) == nil {
-			if err := server.AddFeature(f.Instance); err != nil {
-				return true, err
-			}
-		}
-	}
 	if err := addInboundHandlers(server, config.Inbound); err != nil {
 		return true, err
 	}
@@ -202,53 +180,7 @@ func (s *Instance) RequireFeatures(callback interface{}) error {
 	for i := 0; i < callbackType.NumIn(); i++ {
 		featureTypes = append(featureTypes, reflect.PtrTo(callbackType.In(i)))
 	}
-	r := resolution{
-		deps:     featureTypes,
-		callback: callback,
-	}
-	if finished, err := r.resolve(s.features); finished {
-		return err
-	}
 	return nil
-}
-
-func (r *resolution) resolve(allFeatures []features.Feature) (bool, error) {
-	var fs []features.Feature
-	for _, d := range r.deps {
-		f := getFeature(allFeatures, d)
-		if f == nil {
-			return false, nil
-		}
-		fs = append(fs, f)
-	}
-	callback := reflect.ValueOf(r.callback)
-	var input []reflect.Value
-	callbackType := callback.Type()
-	for i := 0; i < callbackType.NumIn(); i++ {
-		pt := callbackType.In(i)
-		for _, f := range fs {
-			if reflect.TypeOf(f).AssignableTo(pt) {
-				input = append(input, reflect.ValueOf(f))
-				break
-			}
-		}
-	}
-	if len(input) != callbackType.NumIn() {
-		panic("Can't get all input parameters")
-	}
-	var err error
-	ret := callback.Call(input)
-	errInterface := reflect.TypeOf((*error)(nil)).Elem()
-	for i := len(ret) - 1; i >= 0; i-- {
-		if ret[i].Type() == errInterface {
-			v := ret[i].Interface()
-			if v != nil {
-				err = v.(error)
-			}
-			break
-		}
-	}
-	return true, err
 }
 
 func (s *Instance) Start() error {
