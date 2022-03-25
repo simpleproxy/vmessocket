@@ -18,7 +18,6 @@ import (
 type Instance struct {
 	access             sync.Mutex
 	features           []features.Feature
-	featureResolutions []resolution
 	running            bool
 	ctx                context.Context
 }
@@ -131,9 +130,6 @@ func initInstanceWithConfig(config *Config, server *Instance) (bool, error) {
 			}
 		}
 	}
-	if server.featureResolutions != nil {
-		return true, newError("not all dependency are resolved.")
-	}
 	if err := addInboundHandlers(server, config.Inbound); err != nil {
 		return true, err
 	}
@@ -174,24 +170,6 @@ func (s *Instance) AddFeature(feature features.Feature) error {
 		}
 		return nil
 	}
-	if s.featureResolutions == nil {
-		return nil
-	}
-	var pendingResolutions []resolution
-	for _, r := range s.featureResolutions {
-		finished, err := r.resolve(s.features)
-		if finished && err != nil {
-			return err
-		}
-		if !finished {
-			pendingResolutions = append(pendingResolutions, r)
-		}
-	}
-	if len(pendingResolutions) == 0 {
-		s.featureResolutions = nil
-	} else if len(pendingResolutions) < len(s.featureResolutions) {
-		s.featureResolutions = pendingResolutions
-	}
 	return nil
 }
 
@@ -231,7 +209,6 @@ func (s *Instance) RequireFeatures(callback interface{}) error {
 	if finished, err := r.resolve(s.features); finished {
 		return err
 	}
-	s.featureResolutions = append(s.featureResolutions, r)
 	return nil
 }
 
