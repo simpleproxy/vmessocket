@@ -26,13 +26,11 @@ message AllocationStrategy {
     uint32 value = 1;
   }
 
-  AllocationStrategyConcurrency concurrency = 2;
-
   message AllocationStrategyRefresh {
     uint32 value = 1;
   }
 
-  AllocationStrategyRefresh refresh = 3;
+  AllocationStrategyRefresh refresh = 2;
 }
 
 enum KnownProtocols {

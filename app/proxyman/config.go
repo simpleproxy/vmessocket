@@ -1,12 +1,5 @@
 package proxyman
 
-func (s *AllocationStrategy) GetConcurrencyValue() uint32 {
-	if s == nil || s.Concurrency == nil {
-		return 3
-	}
-	return s.Concurrency.Value
-}
-
 func (c *ReceiverConfig) GetEffectiveSniffingSettings() *SniffingConfig {
 	if c.SniffingSettings != nil {
 		return c.SniffingSettings
