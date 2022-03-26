@@ -56,7 +56,6 @@ type InboundDetourConfig struct {
 
 type OutboundDetourConfig struct {
 	Protocol      string           `json:"protocol"`
-	Tag           string           `json:"tag"`
 	Settings      *json.RawMessage `json:"settings"`
 	StreamSetting *StreamConfig    `json:"streamSettings"`
 	ProxySettings *ProxyConfig     `json:"proxySettings"`
@@ -278,7 +277,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	}
 	return &core.OutboundHandlerConfig{
 		SenderSettings: serial.ToTypedMessage(senderSettings),
-		Tag:            c.Tag,
 		ProxySettings:  serial.ToTypedMessage(ts),
 	}, nil
 }
@@ -302,17 +300,6 @@ func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
 		DestinationOverride: p,
 		MetadataOnly:        c.MetadataOnly,
 	}, nil
-}
-
-func (c *Config) findOutboundTag(tag string) int {
-	found := -1
-	for idx, ob := range c.OutboundConfigs {
-		if ob.Tag == tag {
-			found = idx
-			break
-		}
-	}
-	return found
 }
 
 func (c *Config) Override(o *Config, fn string) {
@@ -348,18 +335,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if len(o.OutboundConfigs) > 0 {
 		if len(c.OutboundConfigs) > 0 && len(o.OutboundConfigs) == 1 {
-			if idx := c.findOutboundTag(o.OutboundConfigs[0].Tag); idx > -1 {
-				c.OutboundConfigs[idx] = o.OutboundConfigs[0]
-				ctllog.Println("[", fn, "] updated outbound with tag: ", o.OutboundConfigs[0].Tag)
-			} else {
-				if strings.Contains(strings.ToLower(fn), "tail") {
-					c.OutboundConfigs = append(c.OutboundConfigs, o.OutboundConfigs[0])
-					ctllog.Println("[", fn, "] appended outbound with tag: ", o.OutboundConfigs[0].Tag)
-				} else {
-					c.OutboundConfigs = append(o.OutboundConfigs, c.OutboundConfigs...)
-					ctllog.Println("[", fn, "] prepended outbound with tag: ", o.OutboundConfigs[0].Tag)
-				}
-			}
 		} else {
 			c.OutboundConfigs = o.OutboundConfigs
 		}
