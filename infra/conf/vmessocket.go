@@ -45,22 +45,21 @@ type Config struct {
 }
 
 type InboundDetourConfig struct {
-	Protocol       string                         `json:"protocol"`
-	PortRange      *cfgcommon.PortRange           `json:"port"`
-	ListenOn       *cfgcommon.Address             `json:"listen"`
-	Settings       *json.RawMessage               `json:"settings"`
-	Tag            string                         `json:"tag"`
-	StreamSetting  *StreamConfig                  `json:"streamSettings"`
-	DomainOverride *cfgcommon.StringList          `json:"domainOverride"`
-	SniffingConfig *SniffingConfig                `json:"sniffing"`
+	Protocol       string                `json:"protocol"`
+	PortRange      *cfgcommon.PortRange  `json:"port"`
+	ListenOn       *cfgcommon.Address    `json:"listen"`
+	Settings       *json.RawMessage      `json:"settings"`
+	StreamSetting  *StreamConfig         `json:"streamSettings"`
+	DomainOverride *cfgcommon.StringList `json:"domainOverride"`
+	SniffingConfig *SniffingConfig       `json:"sniffing"`
 }
 
 type OutboundDetourConfig struct {
-	Protocol      string             `json:"protocol"`
-	Tag           string             `json:"tag"`
-	Settings      *json.RawMessage   `json:"settings"`
-	StreamSetting *StreamConfig      `json:"streamSettings"`
-	ProxySettings *ProxyConfig       `json:"proxySettings"`
+	Protocol      string           `json:"protocol"`
+	Tag           string           `json:"tag"`
+	Settings      *json.RawMessage `json:"settings"`
+	StreamSetting *StreamConfig    `json:"streamSettings"`
+	ProxySettings *ProxyConfig     `json:"proxySettings"`
 }
 
 type SniffingConfig struct {
@@ -244,7 +243,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		return nil, err
 	}
 	return &core.InboundHandlerConfig{
-		Tag:              c.Tag,
 		ReceiverSettings: serial.ToTypedMessage(receiverSettings),
 		ProxySettings:    serial.ToTypedMessage(ts),
 	}, nil
@@ -306,17 +304,6 @@ func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
 	}, nil
 }
 
-func (c *Config) findInboundTag(tag string) int {
-	found := -1
-	for idx, ib := range c.InboundConfigs {
-		if ib.Tag == tag {
-			found = idx
-			break
-		}
-	}
-	return found
-}
-
 func (c *Config) findOutboundTag(tag string) int {
 	found := -1
 	for idx, ob := range c.OutboundConfigs {
@@ -355,13 +342,6 @@ func (c *Config) Override(o *Config, fn string) {
 	}
 	if len(o.InboundConfigs) > 0 {
 		if len(c.InboundConfigs) > 0 && len(o.InboundConfigs) == 1 {
-			if idx := c.findInboundTag(o.InboundConfigs[0].Tag); idx > -1 {
-				c.InboundConfigs[idx] = o.InboundConfigs[0]
-				ctllog.Println("[", fn, "] updated inbound with tag: ", o.InboundConfigs[0].Tag)
-			} else {
-				c.InboundConfigs = append(c.InboundConfigs, o.InboundConfigs[0])
-				ctllog.Println("[", fn, "] appended inbound with tag: ", o.InboundConfigs[0].Tag)
-			}
 		} else {
 			c.InboundConfigs = o.InboundConfigs
 		}
