@@ -44,7 +44,7 @@ func NewHandler(ctx context.Context, config *core.InboundHandlerConfig) (inbound
 			Mark: streamSettings.SocketSettings.Mark,
 		})
 	}
-	return nil, newError("unknown allocation strategy: ", receiverSettings.AllocationStrategy.Type).AtError()
+	return nil, err
 }
 
 func (m *Manager) AddHandler(ctx context.Context, handler inbound.Handler) error {
