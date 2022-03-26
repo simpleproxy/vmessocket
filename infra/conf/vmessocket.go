@@ -57,7 +57,6 @@ type InboundDetourConfig struct {
 
 type OutboundDetourConfig struct {
 	Protocol      string             `json:"protocol"`
-	SendThrough   *cfgcommon.Address `json:"sendThrough"`
 	Tag           string             `json:"tag"`
 	Settings      *json.RawMessage   `json:"settings"`
 	StreamSetting *StreamConfig      `json:"streamSettings"`
@@ -255,13 +254,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 
 func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	senderSettings := &proxyman.SenderConfig{}
-	if c.SendThrough != nil {
-		address := c.SendThrough
-		if address.Family().IsDomain() {
-			return nil, newError("unable to send through: " + address.String())
-		}
-		senderSettings.Via = address.Build()
-	}
 	if c.StreamSetting != nil {
 		ss, err := c.StreamSetting.Build()
 		if err != nil {
