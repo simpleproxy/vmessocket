@@ -11,7 +11,6 @@ import (
 
 type Content struct {
 	Protocol        string
-	SniffingRequest SniffingRequest
 	Attributes      map[string]string
 	SkipDNSResolve  bool
 }
@@ -28,12 +27,6 @@ type Inbound struct {
 type Outbound struct {
 	Target  net.Destination
 	Gateway net.Address
-}
-
-type SniffingRequest struct {
-	OverrideDestinationForProtocol []string
-	Enabled                        bool
-	MetadataOnly                   bool
 }
 
 type Sockopt struct {
