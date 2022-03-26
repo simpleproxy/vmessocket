@@ -68,5 +68,4 @@ message SenderConfig {
 
 message MultiplexingConfig {
   bool enabled = 1;
-  uint32 concurrency = 2;
 }
