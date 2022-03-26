@@ -51,7 +51,6 @@ type InboundDetourConfig struct {
 	Settings       *json.RawMessage      `json:"settings"`
 	StreamSetting  *StreamConfig         `json:"streamSettings"`
 	DomainOverride *cfgcommon.StringList `json:"domainOverride"`
-	SniffingConfig *SniffingConfig       `json:"sniffing"`
 }
 
 type OutboundDetourConfig struct {
@@ -59,12 +58,6 @@ type OutboundDetourConfig struct {
 	Settings      *json.RawMessage `json:"settings"`
 	StreamSetting *StreamConfig    `json:"streamSettings"`
 	ProxySettings *ProxyConfig     `json:"proxySettings"`
-}
-
-type SniffingConfig struct {
-	Enabled      bool                  `json:"enabled"`
-	DestOverride *cfgcommon.StringList `json:"destOverride"`
-	MetadataOnly bool                  `json:"metadataOnly"`
 }
 
 func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
@@ -215,13 +208,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		}
 		receiverSettings.StreamSettings = ss
 	}
-	if c.SniffingConfig != nil {
-		s, err := c.SniffingConfig.Build()
-		if err != nil {
-			return nil, newError("failed to build sniffing config").Base(err)
-		}
-		receiverSettings.SniffingSettings = s
-	}
 	if c.DomainOverride != nil {
 		kp, err := toProtocolList(*c.DomainOverride)
 		if err != nil {
@@ -278,27 +264,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 	return &core.OutboundHandlerConfig{
 		SenderSettings: serial.ToTypedMessage(senderSettings),
 		ProxySettings:  serial.ToTypedMessage(ts),
-	}, nil
-}
-
-func (c *SniffingConfig) Build() (*proxyman.SniffingConfig, error) {
-	var p []string
-	if c.DestOverride != nil {
-		for _, domainOverride := range *c.DestOverride {
-			switch strings.ToLower(domainOverride) {
-			case "http":
-				p = append(p, "http")
-			case "tls", "https", "ssl":
-				p = append(p, "tls")
-			default:
-				return nil, newError("unknown protocol: ", domainOverride)
-			}
-		}
-	}
-	return &proxyman.SniffingConfig{
-		Enabled:             c.Enabled,
-		DestinationOverride: p,
-		MetadataOnly:        c.MetadataOnly,
 	}, nil
 }
 
