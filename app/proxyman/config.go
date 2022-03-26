@@ -21,10 +21,3 @@ func (c *ReceiverConfig) GetEffectiveSniffingSettings() *SniffingConfig {
 	}
 	return nil
 }
-
-func (s *AllocationStrategy) GetRefreshValue() uint32 {
-	if s == nil || s.Refresh == nil {
-		return 5
-	}
-	return s.Refresh.Value
-}
