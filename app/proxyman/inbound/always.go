@@ -53,20 +53,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 		}
 		mss.SocketSettings.ReceiveOriginalDestAddress = true
 	}
-	if pr == nil {
-		if net.HasNetwork(nl, net.Network_UNIX) {
-			newError("creating unix domain socket worker on ", address).AtDebug().WriteToLog()
-			worker := &dsWorker{
-				address:        address,
-				proxy:          p,
-				stream:         mss,
-				tag:            tag,
-				dispatcher:     h.mux,
-				ctx:            ctx,
-			}
-			h.workers = append(h.workers, worker)
-		}
-	}
 	if pr != nil {
 		for port := pr.From; port <= pr.To; port++ {
 			if net.HasNetwork(nl, net.Network_TCP) {
