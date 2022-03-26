@@ -60,21 +60,13 @@ func (d *DefaultDispatcher) Dispatch(ctx context.Context, destination net.Destin
 		content = new(session.Content)
 		ctx = session.ContextWithContent(ctx, content)
 	}
-	sniffingRequest := content.SniffingRequest
-	switch {
-	case !sniffingRequest.Enabled:
-		go d.routedDispatch(ctx, outbound, destination)
-	case destination.Network != net.Network_TCP:
-		go d.routedDispatch(ctx, outbound, destination)
-	default:
-		go func() {
-			cReader := &cachedReader{
-				reader: outbound.Reader.(*pipe.Reader),
-			}
-			outbound.Reader = cReader
-			d.routedDispatch(ctx, outbound, destination)
-		}()
-	}
+	go func() {
+		cReader := &cachedReader{
+			reader: outbound.Reader.(*pipe.Reader),
+		}
+		outbound.Reader = cReader
+		d.routedDispatch(ctx, outbound, destination)
+	}()
 	return inbound, nil
 }
 
