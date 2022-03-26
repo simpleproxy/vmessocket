@@ -69,8 +69,6 @@ type SniffingConfig struct {
 	MetadataOnly bool                  `json:"metadataOnly"`
 }
 
-type StatsConfig struct{}
-
 func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
 	if s.HTTPSettings == nil {
 		s.HTTPSettings = t.HTTPConfig
