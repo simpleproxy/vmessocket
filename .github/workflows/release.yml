@@ -26,8 +26,6 @@ jobs:
             goarm: 7
           - goos: linux
             goarch: arm64
-          - goos: linux
-            goarch: riscv64
           - goos: windows
             goarch: arm64
           - goos: linux
