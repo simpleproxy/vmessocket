@@ -31,11 +31,9 @@ func NewHandler(ctx context.Context, config *core.InboundHandlerConfig) (inbound
 	if err != nil {
 		return nil, err
 	}
-	proxySettings, err := config.ProxySettings.GetInstance()
 	if err != nil {
 		return nil, err
 	}
-	tag := config.Tag
 	receiverSettings, ok := rawReceiverSettings.(*proxyman.ReceiverConfig)
 	if !ok {
 		return nil, newError("not a ReceiverConfig").AtError()
@@ -45,10 +43,6 @@ func NewHandler(ctx context.Context, config *core.InboundHandlerConfig) (inbound
 		ctx = session.ContextWithSockopt(ctx, &session.Sockopt{
 			Mark: streamSettings.SocketSettings.Mark,
 		})
-	}
-	allocStrategy := receiverSettings.AllocationStrategy
-	if allocStrategy == nil || allocStrategy.Type == proxyman.AllocationStrategy_Always {
-		return NewAlwaysOnInboundHandler(ctx, tag, receiverSettings, proxySettings)
 	}
 	return nil, newError("unknown allocation strategy: ", receiverSettings.AllocationStrategy.Type).AtError()
 }
