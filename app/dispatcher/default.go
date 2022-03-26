@@ -185,10 +185,3 @@ func (*DefaultDispatcher) Start() error {
 func (*DefaultDispatcher) Type() interface{} {
 	return routing.DispatcherType()
 }
-
-func init() {
-	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
-		d := new(DefaultDispatcher)
-		return d, nil
-	}))
-}
