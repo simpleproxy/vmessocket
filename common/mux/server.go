@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/vmessocket/vmessocket/common/net"
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport"
 )
@@ -21,9 +20,6 @@ type ServerWorker struct {
 
 func NewServer(ctx context.Context) *Server {
 	s := &Server{}
-	core.RequireFeatures(ctx, func(d routing.Dispatcher) {
-		s.dispatcher = d
-	})
 	return s
 }
 
