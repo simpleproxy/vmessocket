@@ -30,23 +30,18 @@ var (
 )
 
 type Config struct {
-	Port            uint16                 `json:"port"`
-	InboundConfig   *InboundDetourConfig   `json:"inbound"`
-	OutboundConfig  *OutboundDetourConfig  `json:"outbound"`
-	InboundDetours  []InboundDetourConfig  `json:"inboundDetour"`
-	OutboundDetours []OutboundDetourConfig `json:"outboundDetour"`
-	LogConfig       *LogConfig             `json:"log"`
-	RouterConfig    *RouterConfig          `json:"routing"`
-	DNSConfig       *DNSConfig             `json:"dns"`
-	InboundConfigs  []InboundDetourConfig  `json:"inbounds"`
-	OutboundConfigs []OutboundDetourConfig `json:"outbounds"`
-	Transport       *TransportConfig       `json:"transport"`
-	Services map[string]*json.RawMessage `json:"services"`
-}
-
-type InboundDetourAllocationConfig struct {
-	Strategy    string  `json:"strategy"`
-	RefreshMin  *uint32 `json:"refresh"`
+	Port            uint16                      `json:"port"`
+	InboundConfig   *InboundDetourConfig        `json:"inbound"`
+	OutboundConfig  *OutboundDetourConfig       `json:"outbound"`
+	InboundDetours  []InboundDetourConfig       `json:"inboundDetour"`
+	OutboundDetours []OutboundDetourConfig      `json:"outboundDetour"`
+	LogConfig       *LogConfig                  `json:"log"`
+	RouterConfig    *RouterConfig               `json:"routing"`
+	DNSConfig       *DNSConfig                  `json:"dns"`
+	InboundConfigs  []InboundDetourConfig       `json:"inbounds"`
+	OutboundConfigs []OutboundDetourConfig      `json:"outbounds"`
+	Transport       *TransportConfig            `json:"transport"`
+	Services        map[string]*json.RawMessage `json:"services"`
 }
 
 type InboundDetourConfig struct {
@@ -55,7 +50,6 @@ type InboundDetourConfig struct {
 	ListenOn       *cfgcommon.Address             `json:"listen"`
 	Settings       *json.RawMessage               `json:"settings"`
 	Tag            string                         `json:"tag"`
-	Allocation     *InboundDetourAllocationConfig `json:"allocate"`
 	StreamSetting  *StreamConfig                  `json:"streamSettings"`
 	DomainOverride *cfgcommon.StringList          `json:"domainOverride"`
 	SniffingConfig *SniffingConfig                `json:"sniffing"`
@@ -194,26 +188,6 @@ func (c *Config) Build() (*core.Config, error) {
 	return config, nil
 }
 
-func (c *InboundDetourAllocationConfig) Build() (*proxyman.AllocationStrategy, error) {
-	config := new(proxyman.AllocationStrategy)
-	switch strings.ToLower(c.Strategy) {
-	case "always":
-		config.Type = proxyman.AllocationStrategy_Always
-	case "random":
-		config.Type = proxyman.AllocationStrategy_Random
-	case "external":
-		config.Type = proxyman.AllocationStrategy_External
-	default:
-		return nil, newError("unknown allocation strategy: ", c.Strategy)
-	}
-	if c.RefreshMin != nil {
-		config.Refresh = &proxyman.AllocationStrategy_AllocationStrategyRefresh{
-			Value: *c.RefreshMin,
-		}
-	}
-	return config, nil
-}
-
 func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 	receiverSettings := &proxyman.ReceiverConfig{}
 	if c.ListenOn == nil {
@@ -238,13 +212,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		default:
 			return nil, newError("unable to listen on domain address: ", c.ListenOn.Domain())
 		}
-	}
-	if c.Allocation != nil {
-		as, err := c.Allocation.Build()
-		if err != nil {
-			return nil, err
-		}
-		receiverSettings.AllocationStrategy = as
 	}
 	if c.StreamSetting != nil {
 		ss, err := c.StreamSetting.Build()
