@@ -9,13 +9,8 @@ jobs:
   build:
     strategy:
       matrix:
-        goos: [windows, freebsd, openbsd, linux, dragonfly, darwin]
+        goos: [windows, freebsd, openbsd, linux]
         goarch: [amd64, 386]
-        exclude:
-          - goarch: 386
-            goos: dragonfly
-          - goarch: 386
-            goos: darwin
         include:
           - goos: linux
             goarch: arm
