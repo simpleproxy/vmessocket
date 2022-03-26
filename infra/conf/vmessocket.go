@@ -46,7 +46,6 @@ type Config struct {
 
 type InboundDetourAllocationConfig struct {
 	Strategy    string  `json:"strategy"`
-	Concurrency *uint32 `json:"concurrency"`
 	RefreshMin  *uint32 `json:"refresh"`
 }
 
@@ -207,11 +206,6 @@ func (c *InboundDetourAllocationConfig) Build() (*proxyman.AllocationStrategy, e
 	default:
 		return nil, newError("unknown allocation strategy: ", c.Strategy)
 	}
-	if c.Concurrency != nil {
-		config.Concurrency = &proxyman.AllocationStrategy_AllocationStrategyConcurrency{
-			Value: *c.Concurrency,
-		}
-	}
 	if c.RefreshMin != nil {
 		config.Refresh = &proxyman.AllocationStrategy_AllocationStrategyRefresh{
 			Value: *c.RefreshMin,
@@ -246,14 +240,6 @@ func (c *InboundDetourConfig) Build() (*core.InboundHandlerConfig, error) {
 		}
 	}
 	if c.Allocation != nil {
-		concurrency := -1
-		if c.Allocation.Concurrency != nil && c.Allocation.Strategy == "random" {
-			concurrency = int(*c.Allocation.Concurrency)
-		}
-		portRange := int(c.PortRange.To - c.PortRange.From + 1)
-		if concurrency >= 0 && concurrency >= portRange {
-			return nil, newError("not enough ports. concurrency = ", concurrency, " ports: ", c.PortRange.From, " - ", c.PortRange.To)
-		}
 		as, err := c.Allocation.Build()
 		if err != nil {
 			return nil, err
