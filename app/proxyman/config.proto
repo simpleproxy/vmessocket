@@ -28,12 +28,6 @@ enum KnownProtocols {
   TLS = 1;
 }
 
-message SniffingConfig {
-  bool enabled = 1;
-  repeated string destination_override = 2;
-  bool metadata_only = 3;
-}
-
 message ReceiverConfig {
   vmessocket.core.common.net.PortRange port_range = 1;
   vmessocket.core.common.net.IPOrDomain listen = 2;
