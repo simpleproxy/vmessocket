@@ -12,15 +12,6 @@ jobs:
         goos: [windows, freebsd, openbsd, linux]
         goarch: [amd64, 386]
         include:
-          - goos: linux
-            goarch: arm
-            goarm: 7
-          - goos: linux
-            goarch: arm
-            goarm: 6
-          - goos: linux
-            goarch: arm
-            goarm: 5
           - goos: windows
             goarch: arm
             goarm: 7
