@@ -9,7 +9,7 @@ import (
 )
 
 var (
-	version  = "1.1.0"
+	version  = "1.1.2"
 	build    = "Custom"
 	codename = "VMESSOCKET, an implementation of vmess and websocket protocol."
 )
