@@ -10,7 +10,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/log"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
-	"github.com/vmessocket/vmessocket/core"
 	"github.com/vmessocket/vmessocket/features/outbound"
 	"github.com/vmessocket/vmessocket/features/routing"
 	routing_session "github.com/vmessocket/vmessocket/features/routing/session"
@@ -190,11 +189,6 @@ func (*DefaultDispatcher) Type() interface{} {
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		d := new(DefaultDispatcher)
-		if err := core.RequireFeatures(ctx, func(om outbound.Manager, router routing.Router) error {
-			return d.Init(config.(*Config), om, router)
-		}); err != nil {
-			return nil, err
-		}
 		return d, nil
 	}))
 }
