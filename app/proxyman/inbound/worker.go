@@ -6,7 +6,6 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/vmessocket/vmessocket/app/proxyman"
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
 	"github.com/vmessocket/vmessocket/common/net"
@@ -33,7 +32,6 @@ type dsWorker struct {
 	stream         *internet.MemoryStreamConfig
 	tag            string
 	dispatcher     routing.Dispatcher
-	sniffingConfig *proxyman.SniffingConfig
 	hub            internet.Listener
 	ctx            context.Context
 }
@@ -46,7 +44,6 @@ type tcpWorker struct {
 	recvOrigDest   bool
 	tag            string
 	dispatcher     routing.Dispatcher
-	sniffingConfig *proxyman.SniffingConfig
 	hub            internet.Listener
 	ctx            context.Context
 }
@@ -71,7 +68,6 @@ type udpWorker struct {
 	tag            string
 	stream         *internet.MemoryStreamConfig
 	dispatcher     routing.Dispatcher
-	sniffingConfig *proxyman.SniffingConfig
 	checker        *task.Periodic
 	activeConn     map[connID]*udpConn
 	ctx            context.Context
@@ -101,11 +97,6 @@ func (w *dsWorker) callback(conn internet.Connection) {
 		Tag:     w.tag,
 	})
 	content := new(session.Content)
-	if w.sniffingConfig != nil {
-		content.SniffingRequest.Enabled = w.sniffingConfig.Enabled
-		content.SniffingRequest.OverrideDestinationForProtocol = w.sniffingConfig.DestinationOverride
-		content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
-	}
 	ctx = session.ContextWithContent(ctx, content)
 	if err := w.proxy.Process(ctx, net.Network_UNIX, conn, w.dispatcher); err != nil {
 		newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
@@ -145,11 +136,6 @@ func (w *tcpWorker) callback(conn internet.Connection) {
 		Tag:     w.tag,
 	})
 	content := new(session.Content)
-	if w.sniffingConfig != nil {
-		content.SniffingRequest.Enabled = w.sniffingConfig.Enabled
-		content.SniffingRequest.OverrideDestinationForProtocol = w.sniffingConfig.DestinationOverride
-		content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
-	}
 	ctx = session.ContextWithContent(ctx, content)
 	if err := w.proxy.Process(ctx, net.Network_TCP, conn, w.dispatcher); err != nil {
 		newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
@@ -186,11 +172,6 @@ func (w *udpWorker) callback(b *buf.Buffer, source net.Destination, originalDest
 				Tag:     w.tag,
 			})
 			content := new(session.Content)
-			if w.sniffingConfig != nil {
-				content.SniffingRequest.Enabled = w.sniffingConfig.Enabled
-				content.SniffingRequest.OverrideDestinationForProtocol = w.sniffingConfig.DestinationOverride
-				content.SniffingRequest.MetadataOnly = w.sniffingConfig.MetadataOnly
-			}
 			ctx = session.ContextWithContent(ctx, content)
 			if err := w.proxy.Process(ctx, net.Network_UDP, conn, w.dispatcher); err != nil {
 				newError("connection ends").Base(err).WriteToLog(session.ExportIDToError(ctx))
