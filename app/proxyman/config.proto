@@ -21,8 +21,6 @@ message AllocationStrategy {
   }
 
   Type type = 1;
-
-  AllocationStrategyRefresh refresh = 2;
 }
 
 enum KnownProtocols {
@@ -44,7 +42,6 @@ message ReceiverConfig {
   bool receive_original_destination = 5;
   reserved 6;
   repeated KnownProtocols domain_override = 7 [deprecated = true];
-  SniffingConfig sniffing_settings = 8;
 }
 
 message InboundHandlerConfig {
