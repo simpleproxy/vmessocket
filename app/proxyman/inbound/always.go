@@ -62,7 +62,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 				stream:         mss,
 				tag:            tag,
 				dispatcher:     h.mux,
-				sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 				ctx:            ctx,
 			}
 			h.workers = append(h.workers, worker)
@@ -80,7 +79,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					recvOrigDest:   receiverConfig.ReceiveOriginalDestination,
 					tag:            tag,
 					dispatcher:     h.mux,
-					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					ctx:            ctx,
 				}
 				h.workers = append(h.workers, worker)
@@ -93,7 +91,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 					address:        address,
 					port:           net.Port(port),
 					dispatcher:     h.mux,
-					sniffingConfig: receiverConfig.GetEffectiveSniffingSettings(),
 					stream:         mss,
 				}
 				h.workers = append(h.workers, worker)
