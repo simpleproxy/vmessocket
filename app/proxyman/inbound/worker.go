@@ -16,7 +16,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/proxy"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/tcp"
 	"github.com/vmessocket/vmessocket/transport/internet/udp"
 	"github.com/vmessocket/vmessocket/transport/pipe"
 )
@@ -80,13 +79,6 @@ type worker interface {
 	Proxy() proxy.Inbound
 }
 
-func getTProxyType(s *internet.MemoryStreamConfig) internet.SocketConfig_TProxyMode {
-	if s == nil || s.SocketSettings == nil {
-		return internet.SocketConfig_Off
-	}
-	return s.SocketSettings.Tproxy
-}
-
 func (w *dsWorker) callback(conn internet.Connection) {
 	ctx, cancel := context.WithCancel(w.ctx)
 	sid := session.NewID()
@@ -113,17 +105,6 @@ func (w *tcpWorker) callback(conn internet.Connection) {
 	ctx = session.ContextWithID(ctx, sid)
 	if w.recvOrigDest {
 		var dest net.Destination
-		switch getTProxyType(w.stream) {
-		case internet.SocketConfig_Redirect:
-			d, err := tcp.GetOriginalDestination(conn)
-			if err != nil {
-				newError("failed to get original destination").Base(err).WriteToLog(session.ExportIDToError(ctx))
-			} else {
-				dest = d
-			}
-		case internet.SocketConfig_TProxy:
-			dest = net.DestinationFromAddr(conn.LocalAddr())
-		}
 		if dest.IsValid() {
 			ctx = session.ContextWithOutbound(ctx, &session.Outbound{
 				Target: dest,
