@@ -27,7 +27,6 @@ message StreamConfig {
   repeated TransportConfig transport_settings = 2;
   string security_type = 3;
   repeated vmessocket.core.common.serial.TypedMessage security_settings = 4;
-  SocketConfig socket_settings = 6;
 }
 
 message ProxyConfig {
