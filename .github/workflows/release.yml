@@ -9,7 +9,7 @@ jobs:
   build:
     strategy:
       matrix:
-        goos: [windows, freebsd, openbsd, linux]
+        goos: [windows, linux]
         goarch: [amd64, 386, arm64]
       fail-fast: false
 
