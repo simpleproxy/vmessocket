@@ -38,14 +38,6 @@ message ProxyConfig {
 message SocketConfig {
   uint32 mark = 1;
 
-  enum TCPFastOpenState {
-    AsIs = 0;
-    Enable = 1;
-    Disable = 2;
-  }
-
-  TCPFastOpenState tfo = 2;
-
   enum TProxyMode {
     Off = 0;
     TProxy = 1;
