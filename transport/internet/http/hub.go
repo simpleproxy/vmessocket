@@ -35,24 +35,13 @@ type Listener struct {
 func Listen(ctx context.Context, address net.Address, port net.Port, streamSettings *internet.MemoryStreamConfig, handler internet.ConnHandler) (internet.Listener, error) {
 	httpSettings := streamSettings.ProtocolSettings.(*Config)
 	var listener *Listener
-	if port == net.Port(0) {
-		listener = &Listener{
-			handler: handler,
-			local: &net.UnixAddr{
-				Name: address.Domain(),
-				Net:  "unix",
-			},
-			config: httpSettings,
-		}
-	} else {
-		listener = &Listener{
-			handler: handler,
-			local: &net.TCPAddr{
-				IP:   address.IP(),
-				Port: int(port),
-			},
-			config: httpSettings,
-		}
+	listener = &Listener{
+		handler: handler,
+		local: &net.TCPAddr{
+			IP:   address.IP(),
+			Port: int(port),
+		},
+		config: httpSettings,
 	}
 	var server *http.Server
 	config := tls.ConfigFromStreamSettings(streamSettings)
@@ -75,24 +64,13 @@ func Listen(ctx context.Context, address net.Address, port net.Port, streamSetti
 	go func() {
 		var streamListener net.Listener
 		var err error
-		if port == net.Port(0) {
-			streamListener, err = internet.ListenSystem(ctx, &net.UnixAddr{
-				Name: address.Domain(),
-				Net:  "unix",
-			}, streamSettings.SocketSettings)
-			if err != nil {
-				newError("failed to listen on ", address).Base(err).AtError().WriteToLog(session.ExportIDToError(ctx))
-				return
-			}
-		} else {
-			streamListener, err = internet.ListenSystem(ctx, &net.TCPAddr{
-				IP:   address.IP(),
-				Port: int(port),
-			}, streamSettings.SocketSettings)
-			if err != nil {
-				newError("failed to listen on ", address, ":", port).Base(err).AtError().WriteToLog(session.ExportIDToError(ctx))
-				return
-			}
+		streamListener, err = internet.ListenSystem(ctx, &net.TCPAddr{
+			IP:   address.IP(),
+			Port: int(port),
+		}, streamSettings.SocketSettings)
+		if err != nil {
+			newError("failed to listen on ", address, ":", port).Base(err).AtError().WriteToLog(session.ExportIDToError(ctx))
+			return
 		}
 		if config == nil {
 			err = server.Serve(streamListener)
