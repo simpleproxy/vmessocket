@@ -28,14 +28,6 @@ type ProxyConfig struct {
 	TransportLayerProxy bool   `json:"transportLayer"`
 }
 
-type SocketConfig struct {
-	Mark                 uint32 `json:"mark"`
-	TFO                  *bool  `json:"tcpFastOpen"`
-	TFOQueueLength       uint32 `json:"tcpFastOpenQueueLength"`
-	TProxy               string `json:"tproxy"`
-	TCPKeepAliveInterval int32  `json:"tcpKeepAliveInterval"`
-}
-
 type StreamConfig struct {
 	Network        *TransportProtocol `json:"network"`
 	Security       string             `json:"security"`
@@ -43,7 +35,6 @@ type StreamConfig struct {
 	TCPSettings    *TCPConfig         `json:"tcpSettings"`
 	WSSettings     *WebSocketConfig   `json:"wsSettings"`
 	HTTPSettings   *HTTPConfig        `json:"httpSettings"`
-	SocketSettings *SocketConfig      `json:"sockopt"`
 }
 
 type TCPConfig struct {
@@ -105,37 +96,6 @@ func (v *ProxyConfig) Build() (*internet.ProxyConfig, error) {
 	}, nil
 }
 
-func (c *SocketConfig) Build() (*internet.SocketConfig, error) {
-	var tfoSettings internet.SocketConfig_TCPFastOpenState
-	if c.TFO != nil {
-		if *c.TFO {
-			tfoSettings = internet.SocketConfig_Enable
-		} else {
-			tfoSettings = internet.SocketConfig_Disable
-		}
-	}
-	tfoQueueLength := c.TFOQueueLength
-	if tfoQueueLength == 0 {
-		tfoQueueLength = 4096
-	}
-	var tproxy internet.SocketConfig_TProxyMode
-	switch strings.ToLower(c.TProxy) {
-	case "tproxy":
-		tproxy = internet.SocketConfig_TProxy
-	case "redirect":
-		tproxy = internet.SocketConfig_Redirect
-	default:
-		tproxy = internet.SocketConfig_Off
-	}
-	return &internet.SocketConfig{
-		Mark:                 c.Mark,
-		Tfo:                  tfoSettings,
-		TfoQueueLength:       tfoQueueLength,
-		Tproxy:               tproxy,
-		TcpKeepAliveInterval: c.TCPKeepAliveInterval,
-	}, nil
-}
-
 func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 	config := &internet.StreamConfig{
 		ProtocolName: "tcp",
@@ -189,13 +149,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 			ProtocolName: "http",
 			Settings:     serial.ToTypedMessage(ts),
 		})
-	}
-	if c.SocketSettings != nil {
-		ss, err := c.SocketSettings.Build()
-		if err != nil {
-			return nil, newError("Failed to build sockopt.").Base(err)
-		}
-		config.SocketSettings = ss
 	}
 	return config, nil
 }
