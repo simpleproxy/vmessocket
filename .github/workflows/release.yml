@@ -10,12 +10,7 @@ jobs:
     strategy:
       matrix:
         goos: [windows, freebsd, openbsd, linux]
-        goarch: [amd64, 386]
-        include:
-          - goos: linux
-            goarch: arm64
-          - goos: windows
-            goarch: arm64
+        goarch: [amd64, 386, arm64]
       fail-fast: false
 
     runs-on: ubuntu-latest
