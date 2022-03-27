@@ -44,15 +44,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	if err != nil {
 		return nil, newError("failed to parse stream config").Base(err).AtWarning()
 	}
-	if receiverConfig.ReceiveOriginalDestination {
-		if mss.SocketSettings == nil {
-			mss.SocketSettings = &internet.SocketConfig{}
-		}
-		if mss.SocketSettings.Tproxy == internet.SocketConfig_Off {
-			mss.SocketSettings.Tproxy = internet.SocketConfig_Redirect
-		}
-		mss.SocketSettings.ReceiveOriginalDestAddress = true
-	}
 	if pr != nil {
 		for port := pr.From; port <= pr.To; port++ {
 			if net.HasNetwork(nl, net.Network_TCP) {
