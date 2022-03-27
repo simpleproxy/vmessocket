@@ -27,11 +27,6 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 	}
 	tcpSettings := streamSettings.ProtocolSettings.(*Config)
 	l.config = tcpSettings
-	if l.config != nil {
-		if streamSettings.SocketSettings == nil {
-			streamSettings.SocketSettings = &internet.SocketConfig{}
-		}
-	}
 	var listener net.Listener
 	var err error
 	if port == net.Port(0) {
