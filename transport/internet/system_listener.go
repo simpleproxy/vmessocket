@@ -20,14 +20,6 @@ type DefaultListener struct {
 func getControlFunc(ctx context.Context, sockopt *SocketConfig, controllers []controller) func(network, address string, c syscall.RawConn) error {
 	return func(network, address string, c syscall.RawConn) error {
 		return c.Control(func(fd uintptr) {
-			if sockopt != nil {
-				if err := applyInboundSocketOptions(network, fd, sockopt); err != nil {
-					newError("failed to apply socket options to incoming connection").Base(err).WriteToLog(session.ExportIDToError(ctx))
-				}
-			}
-
-			setReusePort(fd)
-
 			for _, controller := range controllers {
 				if err := controller(network, address, fd); err != nil {
 					newError("failed to apply external controller").Base(err).WriteToLog(session.ExportIDToError(ctx))
