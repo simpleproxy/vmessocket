@@ -40,12 +40,6 @@ func NewHandler(ctx context.Context, config *core.InboundHandlerConfig) (inbound
 	if !ok {
 		return nil, newError("not a ReceiverConfig").AtError()
 	}
-	streamSettings := receiverSettings.StreamSettings
-	if streamSettings != nil && streamSettings.SocketSettings != nil {
-		ctx = session.ContextWithSockopt(ctx, &session.Sockopt{
-			Mark: streamSettings.SocketSettings.Mark,
-		})
-	}
 	allocStrategy := receiverSettings.AllocationStrategy
 	if allocStrategy == nil || allocStrategy.Type == proxyman.AllocationStrategy_Always {
 		return NewAlwaysOnInboundHandler(ctx, tag, receiverSettings, proxySettings)
