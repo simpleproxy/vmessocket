@@ -2,7 +2,6 @@ package internet
 
 import (
 	"context"
-	"runtime"
 	"syscall"
 
 	"github.com/vmessocket/vmessocket/common/net"
@@ -47,17 +46,6 @@ func (dl *DefaultListener) Listen(ctx context.Context, addr net.Addr, sockopt *S
 		network = addr.Network()
 		address = addr.String()
 		lc.Control = getControlFunc(ctx, sockopt, dl.controllers)
-	case *net.UnixAddr:
-		lc.Control = nil
-		network = addr.Network()
-		address = addr.Name
-		if (runtime.GOOS == "linux" || runtime.GOOS == "android") && address[0] == '@' {
-			if len(address) > 1 && address[1] == '@' {
-				fullAddr := make([]byte, len(syscall.RawSockaddrUnix{}.Path))
-				copy(fullAddr, address[1:])
-				address = string(fullAddr)
-			}
-		}
 	}
 	l, err = lc.Listen(ctx, network, address)
 	return l, err
