@@ -27,32 +27,16 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 	}
 	tcpSettings := streamSettings.ProtocolSettings.(*Config)
 	l.config = tcpSettings
-	if l.config != nil {
-		if streamSettings.SocketSettings == nil {
-			streamSettings.SocketSettings = &internet.SocketConfig{}
-		}
-	}
 	var listener net.Listener
 	var err error
-	if port == net.Port(0) {
-		listener, err = internet.ListenSystem(ctx, &net.UnixAddr{
-			Name: address.Domain(),
-			Net:  "unix",
-		}, streamSettings.SocketSettings)
-		if err != nil {
-			return nil, newError("failed to listen Unix Domain Socket on ", address).Base(err)
-		}
-		newError("listening Unix Domain Socket on ", address).WriteToLog(session.ExportIDToError(ctx))
-	} else {
-		listener, err = internet.ListenSystem(ctx, &net.TCPAddr{
-			IP:   address.IP(),
-			Port: int(port),
-		}, streamSettings.SocketSettings)
-		if err != nil {
-			return nil, newError("failed to listen TCP on ", address, ":", port).Base(err)
-		}
-		newError("listening TCP on ", address, ":", port).WriteToLog(session.ExportIDToError(ctx))
+	listener, err = internet.ListenSystem(ctx, &net.TCPAddr{
+		IP:   address.IP(),
+		Port: int(port),
+	}, streamSettings.SocketSettings)
+	if err != nil {
+		return nil, newError("failed to listen TCP on ", address, ":", port).Base(err)
 	}
+	newError("listening TCP on ", address, ":", port).WriteToLog(session.ExportIDToError(ctx))
 	l.listener = listener
 	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
 		l.tlsConfig = config.GetTLSConfig()
