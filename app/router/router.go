@@ -8,7 +8,6 @@ import (
 	"github.com/vmessocket/vmessocket/features/dns"
 	"github.com/vmessocket/vmessocket/features/outbound"
 	"github.com/vmessocket/vmessocket/features/routing"
-	routing_dns "github.com/vmessocket/vmessocket/features/routing/dns"
 )
 
 type Route struct {
@@ -84,9 +83,6 @@ func (r *Router) PickRoute(ctx routing.Context) (routing.Route, error) {
 
 func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context, error) {
 	skipDNSResolve := ctx.GetSkipDNSResolve()
-	if r.domainStrategy == Config_IpOnDemand && !skipDNSResolve {
-		ctx = routing_dns.ContextWithDNSClient(ctx, r.dns)
-	}
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
@@ -95,7 +91,6 @@ func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context,
 	if r.domainStrategy != Config_IpIfNonMatch || len(ctx.GetTargetDomain()) == 0 || skipDNSResolve {
 		return nil, ctx, common.ErrNoClue
 	}
-	ctx = routing_dns.ContextWithDNSClient(ctx, r.dns)
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
