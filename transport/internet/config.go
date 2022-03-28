@@ -105,7 +105,3 @@ func (c *TransportConfig) GetUnifiedProtocolName() string {
 func (c *StreamConfig) HasSecuritySettings() bool {
 	return len(c.SecurityType) > 0
 }
-
-func (c *ProxyConfig) HasTag() bool {
-	return c != nil && len(c.Tag) > 0
-}
