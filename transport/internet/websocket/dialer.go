@@ -14,7 +14,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/tls"
 )
 
 type dialerWithEarlyData struct {
@@ -48,10 +47,6 @@ func dialWebsocket(ctx context.Context, dest net.Destination, streamSettings *in
 		HandshakeTimeout: time.Second * 8,
 	}
 	protocol := "ws"
-	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
-		protocol = "wss"
-		dialer.TLSClientConfig = config.GetTLSConfig(tls.WithDestination(dest), tls.WithNextProto("http/1.1"))
-	}
 	host := dest.NetAddr()
 	if (protocol == "ws" && dest.Port == 80) || (protocol == "wss" && dest.Port == 443) {
 		host = dest.Address.String()
