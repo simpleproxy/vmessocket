@@ -90,12 +90,6 @@ func (c *HTTPConfig) Build() (proto.Message, error) {
 	return config, nil
 }
 
-func (v *ProxyConfig) Build() (*internet.ProxyConfig, error) {
-	return &internet.ProxyConfig{
-		TransportLayerProxy: v.TransportLayerProxy,
-	}, nil
-}
-
 func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 	config := &internet.StreamConfig{
 		ProtocolName: "tcp",

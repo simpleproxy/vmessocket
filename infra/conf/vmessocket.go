@@ -242,13 +242,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 		}
 		senderSettings.StreamSettings = ss
 	}
-	if c.ProxySettings != nil {
-		ps, err := c.ProxySettings.Build()
-		if err != nil {
-			return nil, newError("invalid outbound detour proxy settings.").Base(err)
-		}
-		senderSettings.ProxySettings = ps
-	}
 	settings := []byte("{}")
 	if c.Settings != nil {
 		settings = ([]byte)(*c.Settings)

@@ -49,8 +49,7 @@ message OutboundConfig {}
 message SenderConfig {
   vmessocket.core.common.net.IPOrDomain via = 1;
   vmessocket.core.transport.internet.StreamConfig stream_settings = 2;
-  vmessocket.core.transport.internet.ProxyConfig proxy_settings = 3;
-  MultiplexingConfig multiplex_settings = 4;
+  MultiplexingConfig multiplex_settings = 3;
 }
 
 message MultiplexingConfig {

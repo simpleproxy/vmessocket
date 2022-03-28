@@ -29,11 +29,6 @@ message StreamConfig {
   repeated vmessocket.core.common.serial.TypedMessage security_settings = 4;
 }
 
-message ProxyConfig {
-  string tag = 1;
-  bool transportLayerProxy = 2;
-}
-
 message SocketConfig {
   uint32 mark = 1;
   bool receive_original_dest_address = 4;
