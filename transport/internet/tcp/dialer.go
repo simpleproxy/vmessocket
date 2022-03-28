@@ -20,18 +20,6 @@ func Dial(ctx context.Context, dest net.Destination, streamSettings *internet.Me
 		tlsConfig := config.GetTLSConfig(tls.WithDestination(dest))
 		conn = tls.Client(conn, tlsConfig)
 	}
-	tcpSettings := streamSettings.ProtocolSettings.(*Config)
-	if tcpSettings.HeaderSettings != nil {
-		headerConfig, err := tcpSettings.HeaderSettings.GetInstance()
-		if err != nil {
-			return nil, newError("failed to get header settings").Base(err).AtError()
-		}
-		auth, err := internet.CreateConnectionAuthenticator(headerConfig)
-		if err != nil {
-			return nil, newError("failed to create header authenticator").Base(err).AtError()
-		}
-		conn = auth.Client(conn)
-	}
 	return internet.Connection(conn), nil
 }
 

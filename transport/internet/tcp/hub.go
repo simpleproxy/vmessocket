@@ -16,7 +16,6 @@ import (
 type Listener struct {
 	listener   net.Listener
 	tlsConfig  *gotls.Config
-	authConfig internet.ConnectionAuthenticator
 	config     *Config
 	addConn    internet.ConnHandler
 }
@@ -40,17 +39,6 @@ func ListenTCP(ctx context.Context, address net.Address, port net.Port, streamSe
 	l.listener = listener
 	if config := tls.ConfigFromStreamSettings(streamSettings); config != nil {
 		l.tlsConfig = config.GetTLSConfig()
-	}
-	if tcpSettings.HeaderSettings != nil {
-		headerConfig, err := tcpSettings.HeaderSettings.GetInstance()
-		if err != nil {
-			return nil, newError("invalid header settings").Base(err).AtError()
-		}
-		auth, err := internet.CreateConnectionAuthenticator(headerConfig)
-		if err != nil {
-			return nil, newError("invalid header settings.").Base(err).AtError()
-		}
-		l.authConfig = auth
 	}
 	go l.keepAccepting()
 	return nil, nil
@@ -76,9 +64,6 @@ func (v *Listener) keepAccepting() {
 		}
 		if v.tlsConfig != nil {
 			conn = tls.Server(conn, v.tlsConfig)
-		}
-		if v.authConfig != nil {
-			conn = v.authConfig.Server(conn)
 		}
 		v.addConn(internet.Connection(conn))
 	}
