@@ -16,13 +16,6 @@ import (
 	"github.com/vmessocket/vmessocket/transport/internet/websocket"
 )
 
-type HTTPConfig struct {
-	Host    *cfgcommon.StringList            `json:"host"`
-	Path    string                           `json:"path"`
-	Method  string                           `json:"method"`
-	Headers map[string]*cfgcommon.StringList `json:"headers"`
-}
-
 type ProxyConfig struct {
 	TransportLayerProxy bool   `json:"transportLayer"`
 }
