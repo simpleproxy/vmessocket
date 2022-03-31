@@ -7,23 +7,12 @@ import (
 )
 
 type TransportConfig struct {
-	HTTPConfig *HTTPConfig         `json:"httpSettings"`
 	TCPConfig  *TCPConfig          `json:"tcpSettings"`
 	WSConfig   *WebSocketConfig    `json:"wsSettings"`
 }
 
 func (c *TransportConfig) Build() (*transport.Config, error) {
 	config := new(transport.Config)
-	if c.HTTPConfig != nil {
-		ts, err := c.HTTPConfig.Build()
-		if err != nil {
-			return nil, newError("Failed to build HTTP config.").Base(err)
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "http",
-			Settings:     serial.ToTypedMessage(ts),
-		})
-	}
 	if c.TCPConfig != nil {
 		ts, err := c.TCPConfig.Build()
 		if err != nil {

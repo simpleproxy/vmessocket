@@ -11,18 +11,10 @@ import (
 	"github.com/vmessocket/vmessocket/common/serial"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/http"
 	"github.com/vmessocket/vmessocket/transport/internet/tcp"
 	"github.com/vmessocket/vmessocket/transport/internet/tls"
 	"github.com/vmessocket/vmessocket/transport/internet/websocket"
 )
-
-type HTTPConfig struct {
-	Host    *cfgcommon.StringList            `json:"host"`
-	Path    string                           `json:"path"`
-	Method  string                           `json:"method"`
-	Headers map[string]*cfgcommon.StringList `json:"headers"`
-}
 
 type ProxyConfig struct {
 	TransportLayerProxy bool   `json:"transportLayer"`
@@ -34,7 +26,6 @@ type StreamConfig struct {
 	TLSSettings    *TLSConfig         `json:"tlsSettings"`
 	TCPSettings    *TCPConfig         `json:"tcpSettings"`
 	WSSettings     *WebSocketConfig   `json:"wsSettings"`
-	HTTPSettings   *HTTPConfig        `json:"httpSettings"`
 }
 
 type TCPConfig struct {
@@ -75,19 +66,6 @@ func readFileOrString(f string, s []string) ([]byte, error) {
 		return []byte(strings.Join(s, "\n")), nil
 	}
 	return nil, newError("both file and bytes are empty.")
-}
-
-func (c *HTTPConfig) Build() (proto.Message, error) {
-	config := &http.Config{
-		Path: c.Path,
-	}
-	if c.Host != nil {
-		config.Host = []string(*c.Host)
-	}
-	if c.Method != "" {
-		config.Method = c.Method
-	}
-	return config, nil
 }
 
 func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
@@ -131,16 +109,6 @@ func (c *StreamConfig) Build() (*internet.StreamConfig, error) {
 		}
 		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
 			ProtocolName: "websocket",
-			Settings:     serial.ToTypedMessage(ts),
-		})
-	}
-	if c.HTTPSettings != nil {
-		ts, err := c.HTTPSettings.Build()
-		if err != nil {
-			return nil, newError("Failed to build HTTP config.").Base(err)
-		}
-		config.TransportSettings = append(config.TransportSettings, &internet.TransportConfig{
-			ProtocolName: "http",
 			Settings:     serial.ToTypedMessage(ts),
 		})
 	}
