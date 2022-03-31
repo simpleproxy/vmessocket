@@ -61,9 +61,6 @@ type OutboundDetourConfig struct {
 }
 
 func applyTransportConfig(s *StreamConfig, t *TransportConfig) {
-	if s.HTTPSettings == nil {
-		s.HTTPSettings = t.HTTPConfig
-	}
 	if s.TCPSettings == nil {
 		s.TCPSettings = t.TCPConfig
 	}
