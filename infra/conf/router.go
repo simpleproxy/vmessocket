@@ -3,7 +3,6 @@ package conf
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/vmessocket/vmessocket/app/router"
 	"github.com/vmessocket/vmessocket/common/platform"
@@ -14,25 +13,17 @@ import (
 type BalancingRule struct {
 	Tag       string               `json:"tag"`
 	Selectors cfgcommon.StringList `json:"selector"`
-	Strategy  StrategyConfig       `json:"strategy"`
 }
 
 type RouterConfig struct {
 	Settings       *RouterRulesConfig `json:"settings"`
 	RuleList       []json.RawMessage  `json:"rules"`
-	DomainStrategy *string            `json:"domainStrategy"`
 	Balancers      []*BalancingRule   `json:"balancers"`
 	DomainMatcher string `json:"domainMatcher"`
 }
 
 type RouterRulesConfig struct {
 	RuleList       []json.RawMessage `json:"rules"`
-	DomainStrategy string            `json:"domainStrategy"`
-}
-
-type StrategyConfig struct {
-	Type     string           `json:"type"`
-	Settings *json.RawMessage `json:"settings"`
 }
 
 func (r *BalancingRule) Build() (*router.BalancingRule, error) {
@@ -43,14 +34,6 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 		return nil, newError("empty selector list")
 	}
 	var strategy string
-	switch strings.ToLower(r.Strategy.Type) {
-	case strategyRandom, "":
-		strategy = strategyRandom
-	case strategyLeastPing:
-		strategy = "leastPing"
-	default:
-		return nil, newError("unknown balancing strategy: " + r.Strategy.Type)
-	}
 	return &router.BalancingRule{
 		Tag:              r.Tag,
 		OutboundSelector: []string(r.Selectors),
@@ -60,7 +43,6 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 
 func (c *RouterConfig) Build() (*router.Config, error) {
 	config := new(router.Config)
-	config.DomainStrategy = c.getDomainStrategy()
 	cfgctx := cfgcommon.NewConfigureLoadingContext(context.Background())
 	geoloadername := platform.NewEnvFlag("vmessocket.conf.geoloader").GetValue(func() string {
 		return "standard"
@@ -78,23 +60,4 @@ func (c *RouterConfig) Build() (*router.Config, error) {
 		config.BalancingRule = append(config.BalancingRule, balancer)
 	}
 	return config, nil
-}
-
-func (c *RouterConfig) getDomainStrategy() router.Config_DomainStrategy {
-	ds := ""
-	if c.DomainStrategy != nil {
-		ds = *c.DomainStrategy
-	} else if c.Settings != nil {
-		ds = c.Settings.DomainStrategy
-	}
-	switch strings.ToLower(ds) {
-	case "alwaysip", "always_ip", "always-ip":
-		return router.Config_UseIp
-	case "ipifnonmatch", "ip_if_non_match", "ip-if-non-match":
-		return router.Config_IpIfNonMatch
-	case "ipondemand", "ip_on_demand", "ip-on-demand":
-		return router.Config_IpOnDemand
-	default:
-		return router.Config_AsIs
-	}
 }

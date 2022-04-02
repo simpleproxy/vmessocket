@@ -2,7 +2,6 @@ package conf
 
 import (
 	"net"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 
@@ -12,18 +11,12 @@ import (
 )
 
 type FreedomConfig struct {
-	DomainStrategy string  `json:"domainStrategy"`
 	Timeout        *uint32 `json:"timeout"`
 	Redirect       string  `json:"redirect"`
 }
 
 func (c *FreedomConfig) Build() (proto.Message, error) {
 	config := new(freedom.Config)
-	config.DomainStrategy = freedom.Config_AS_IS
-	switch strings.ToLower(c.DomainStrategy) {
-	case "useip", "use_ip", "use-ip":
-		config.DomainStrategy = freedom.Config_USE_IP
-	}
 	if c.Timeout != nil {
 		config.Timeout = *c.Timeout
 	}
