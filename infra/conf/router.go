@@ -3,7 +3,6 @@ package conf
 import (
 	"context"
 	"encoding/json"
-	"strings"
 
 	"github.com/vmessocket/vmessocket/app/router"
 	"github.com/vmessocket/vmessocket/common/platform"
