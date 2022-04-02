@@ -99,16 +99,6 @@ message BalancingRule {
 }
 
 message Config {
-  enum DomainStrategy {
-    AsIs = 0;
-
-    UseIp = 1;
-
-    IpIfNonMatch = 2;
-
-    IpOnDemand = 3;
-  }
-  DomainStrategy domain_strategy = 1;
   repeated RoutingRule rule = 2;
   repeated BalancingRule balancing_rule = 3;
 }

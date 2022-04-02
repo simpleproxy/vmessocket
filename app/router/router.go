@@ -17,7 +17,6 @@ type Route struct {
 }
 
 type Router struct {
-	domainStrategy Config_DomainStrategy
 	rules          []*Rule
 	balancers      map[string]*Balancer
 	dns            dns.Client
@@ -36,7 +35,6 @@ func (r *Route) GetOutboundTag() string {
 }
 
 func (r *Router) Init(ctx context.Context, config *Config, d dns.Client, ohm outbound.Manager) error {
-	r.domainStrategy = config.DomainStrategy
 	r.dns = d
 	r.balancers = make(map[string]*Balancer, len(config.BalancingRule))
 	for _, rule := range config.BalancingRule {
@@ -82,14 +80,10 @@ func (r *Router) PickRoute(ctx routing.Context) (routing.Route, error) {
 }
 
 func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context, error) {
-	skipDNSResolve := ctx.GetSkipDNSResolve()
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
 		}
-	}
-	if r.domainStrategy != Config_IpIfNonMatch || len(ctx.GetTargetDomain()) == 0 || skipDNSResolve {
-		return nil, ctx, common.ErrNoClue
 	}
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
