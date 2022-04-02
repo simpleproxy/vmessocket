@@ -35,14 +35,6 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 		return nil, newError("empty selector list")
 	}
 	var strategy string
-	switch strings.ToLower(r.Strategy.Type) {
-	case strategyRandom, "":
-		strategy = strategyRandom
-	case strategyLeastPing:
-		strategy = "leastPing"
-	default:
-		return nil, newError("unknown balancing strategy: " + r.Strategy.Type)
-	}
 	return &router.BalancingRule{
 		Tag:              r.Tag,
 		OutboundSelector: []string(r.Selectors),
