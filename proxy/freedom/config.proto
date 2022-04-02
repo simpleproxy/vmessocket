@@ -13,11 +13,6 @@ message DestinationOverride {
 }
 
 message Config {
-  enum DomainStrategy {
-    AS_IS = 0;
-    USE_IP = 1;
-  }
-  DomainStrategy domain_strategy = 1;
   uint32 timeout = 2 [deprecated = true];
   DestinationOverride destination_override = 3;
 }
