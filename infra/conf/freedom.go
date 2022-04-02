@@ -2,7 +2,6 @@ package conf
 
 import (
 	"net"
-	"strings"
 
 	"github.com/golang/protobuf/proto"
 
