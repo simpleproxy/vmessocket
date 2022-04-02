@@ -80,7 +80,6 @@ func (r *Router) PickRoute(ctx routing.Context) (routing.Route, error) {
 }
 
 func (r *Router) pickRouteInternal(ctx routing.Context) (*Rule, routing.Context, error) {
-	skipDNSResolve := ctx.GetSkipDNSResolve()
 	for _, rule := range r.rules {
 		if rule.Apply(ctx) {
 			return rule, ctx, nil
