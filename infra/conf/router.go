@@ -14,7 +14,6 @@ import (
 type BalancingRule struct {
 	Tag       string               `json:"tag"`
 	Selectors cfgcommon.StringList `json:"selector"`
-	Strategy  StrategyConfig       `json:"strategy"`
 }
 
 type RouterConfig struct {
@@ -53,7 +52,6 @@ func (r *BalancingRule) Build() (*router.BalancingRule, error) {
 
 func (c *RouterConfig) Build() (*router.Config, error) {
 	config := new(router.Config)
-	config.DomainStrategy = c.getDomainStrategy()
 	cfgctx := cfgcommon.NewConfigureLoadingContext(context.Background())
 	geoloadername := platform.NewEnvFlag("vmessocket.conf.geoloader").GetValue(func() string {
 		return "standard"
