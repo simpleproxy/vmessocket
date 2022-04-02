@@ -20,19 +20,12 @@ type BalancingRule struct {
 type RouterConfig struct {
 	Settings       *RouterRulesConfig `json:"settings"`
 	RuleList       []json.RawMessage  `json:"rules"`
-	DomainStrategy *string            `json:"domainStrategy"`
 	Balancers      []*BalancingRule   `json:"balancers"`
 	DomainMatcher string `json:"domainMatcher"`
 }
 
 type RouterRulesConfig struct {
 	RuleList       []json.RawMessage `json:"rules"`
-	DomainStrategy string            `json:"domainStrategy"`
-}
-
-type StrategyConfig struct {
-	Type     string           `json:"type"`
-	Settings *json.RawMessage `json:"settings"`
 }
 
 func (r *BalancingRule) Build() (*router.BalancingRule, error) {
@@ -78,23 +71,4 @@ func (c *RouterConfig) Build() (*router.Config, error) {
 		config.BalancingRule = append(config.BalancingRule, balancer)
 	}
 	return config, nil
-}
-
-func (c *RouterConfig) getDomainStrategy() router.Config_DomainStrategy {
-	ds := ""
-	if c.DomainStrategy != nil {
-		ds = *c.DomainStrategy
-	} else if c.Settings != nil {
-		ds = c.Settings.DomainStrategy
-	}
-	switch strings.ToLower(ds) {
-	case "alwaysip", "always_ip", "always-ip":
-		return router.Config_UseIp
-	case "ipifnonmatch", "ip_if_non_match", "ip-if-non-match":
-		return router.Config_IpIfNonMatch
-	case "ipondemand", "ip_on_demand", "ip-on-demand":
-		return router.Config_IpOnDemand
-	default:
-		return router.Config_AsIs
-	}
 }
