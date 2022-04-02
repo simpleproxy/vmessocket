@@ -17,7 +17,6 @@ type FreedomConfig struct {
 
 func (c *FreedomConfig) Build() (proto.Message, error) {
 	config := new(freedom.Config)
-	config.DomainStrategy = freedom.Config_AS_IS
 	if c.Timeout != nil {
 		config.Timeout = *c.Timeout
 	}
