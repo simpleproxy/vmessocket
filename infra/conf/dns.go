@@ -229,24 +229,11 @@ func (c *DNSConfig) Build() (*dns.Config, error) {
 }
 
 func (c *NameServerConfig) Build() (*dns.NameServer, error) {
-	cfgctx := c.cfgctx
 	if c.Address == nil {
 		return nil, newError("NameServer address is not specified.")
 	}
 	var domains []*dns.NameServer_PriorityDomain
 	var originalRules []*dns.NameServer_OriginalRule
-	for _, rule := range c.Domains {
-		for _, pd := range parsedDomain {
-			domains = append(domains, &dns.NameServer_PriorityDomain{
-				Type:   toDomainMatchingType(pd.Type),
-				Domain: pd.Value,
-			})
-		}
-		originalRules = append(originalRules, &dns.NameServer_OriginalRule{
-			Rule: rule,
-			Size: uint32(len(parsedDomain)),
-		})
-	}
 	var myClientIP []byte
 	if c.ClientIP != nil {
 		if !c.ClientIP.Family().IsIP() {
