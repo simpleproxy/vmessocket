@@ -12,7 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/platform"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 	"github.com/vmessocket/vmessocket/infra/conf/geodata"
-	rule2 "github.com/vmessocket/vmessocket/infra/conf/rule"
 )
 
 var typeMap = map[router.Domain_Type]dns.DomainMatchingType{
@@ -230,32 +229,11 @@ func (c *DNSConfig) Build() (*dns.Config, error) {
 }
 
 func (c *NameServerConfig) Build() (*dns.NameServer, error) {
-	cfgctx := c.cfgctx
 	if c.Address == nil {
 		return nil, newError("NameServer address is not specified.")
 	}
 	var domains []*dns.NameServer_PriorityDomain
 	var originalRules []*dns.NameServer_OriginalRule
-	for _, rule := range c.Domains {
-		parsedDomain, err := rule2.ParseDomainRule(cfgctx, rule)
-		if err != nil {
-			return nil, newError("invalid domain rule: ", rule).Base(err)
-		}
-		for _, pd := range parsedDomain {
-			domains = append(domains, &dns.NameServer_PriorityDomain{
-				Type:   toDomainMatchingType(pd.Type),
-				Domain: pd.Value,
-			})
-		}
-		originalRules = append(originalRules, &dns.NameServer_OriginalRule{
-			Rule: rule,
-			Size: uint32(len(parsedDomain)),
-		})
-	}
-	geoipList, err := rule2.ToCidrList(cfgctx, c.ExpectIPs)
-	if err != nil {
-		return nil, newError("invalid IP rule: ", c.ExpectIPs).Base(err)
-	}
 	var myClientIP []byte
 	if c.ClientIP != nil {
 		if !c.ClientIP.Family().IsIP() {
@@ -272,7 +250,6 @@ func (c *NameServerConfig) Build() (*dns.NameServer, error) {
 		ClientIp:          myClientIP,
 		SkipFallback:      c.SkipFallback,
 		PrioritizedDomain: domains,
-		Geoip:             geoipList,
 		OriginalRules:     originalRules,
 	}, nil
 }
