@@ -12,7 +12,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/platform"
 	"github.com/vmessocket/vmessocket/infra/conf/cfgcommon"
 	"github.com/vmessocket/vmessocket/infra/conf/geodata"
-	rule2 "github.com/vmessocket/vmessocket/infra/conf/rule"
 )
 
 var typeMap = map[router.Domain_Type]dns.DomainMatchingType{
