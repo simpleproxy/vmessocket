@@ -250,7 +250,6 @@ func (c *NameServerConfig) Build() (*dns.NameServer, error) {
 		ClientIp:          myClientIP,
 		SkipFallback:      c.SkipFallback,
 		PrioritizedDomain: domains,
-		Geoip:             geoipList,
 		OriginalRules:     originalRules,
 	}, nil
 }
