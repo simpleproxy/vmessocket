@@ -36,7 +36,6 @@ type Config struct {
 	InboundDetours  []InboundDetourConfig       `json:"inboundDetour"`
 	OutboundDetours []OutboundDetourConfig      `json:"outboundDetour"`
 	LogConfig       *LogConfig                  `json:"log"`
-	DNSConfig       *DNSConfig                  `json:"dns"`
 	InboundConfigs  []InboundDetourConfig       `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig      `json:"outbounds"`
 	Transport       *TransportConfig            `json:"transport"`
@@ -98,13 +97,6 @@ func (c *Config) Build() (*core.Config, error) {
 		logConfMsg = serial.ToTypedMessage(DefaultLogConfig())
 	}
 	config.App = append([]*serial.TypedMessage{logConfMsg}, config.App...)
-	if c.DNSConfig != nil {
-		dnsApp, err := c.DNSConfig.Build()
-		if err != nil {
-			return nil, newError("failed to parse DNS config").Base(err)
-		}
-		config.App = append(config.App, serial.ToTypedMessage(dnsApp))
-	}
 	if msg, err := c.BuildServices(c.Services); err != nil {
 		return nil, newError("Cannot load service").Base(err)
 	} else {
@@ -252,9 +244,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 func (c *Config) Override(o *Config, fn string) {
 	if o.LogConfig != nil {
 		c.LogConfig = o.LogConfig
-	}
-	if o.DNSConfig != nil {
-		c.DNSConfig = o.DNSConfig
 	}
 	if o.Transport != nil {
 		c.Transport = o.Transport
