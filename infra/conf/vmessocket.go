@@ -36,7 +36,6 @@ type Config struct {
 	InboundDetours  []InboundDetourConfig       `json:"inboundDetour"`
 	OutboundDetours []OutboundDetourConfig      `json:"outboundDetour"`
 	LogConfig       *LogConfig                  `json:"log"`
-	RouterConfig    *RouterConfig               `json:"routing"`
 	DNSConfig       *DNSConfig                  `json:"dns"`
 	InboundConfigs  []InboundDetourConfig       `json:"inbounds"`
 	OutboundConfigs []OutboundDetourConfig      `json:"outbounds"`
@@ -99,13 +98,6 @@ func (c *Config) Build() (*core.Config, error) {
 		logConfMsg = serial.ToTypedMessage(DefaultLogConfig())
 	}
 	config.App = append([]*serial.TypedMessage{logConfMsg}, config.App...)
-	if c.RouterConfig != nil {
-		routerConfig, err := c.RouterConfig.Build()
-		if err != nil {
-			return nil, err
-		}
-		config.App = append(config.App, serial.ToTypedMessage(routerConfig))
-	}
 	if c.DNSConfig != nil {
 		dnsApp, err := c.DNSConfig.Build()
 		if err != nil {
@@ -260,9 +252,6 @@ func (c *OutboundDetourConfig) Build() (*core.OutboundHandlerConfig, error) {
 func (c *Config) Override(o *Config, fn string) {
 	if o.LogConfig != nil {
 		c.LogConfig = o.LogConfig
-	}
-	if o.RouterConfig != nil {
-		c.RouterConfig = o.RouterConfig
 	}
 	if o.DNSConfig != nil {
 		c.DNSConfig = o.DNSConfig
