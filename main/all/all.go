@@ -10,7 +10,6 @@ import (
 	_ "github.com/vmessocket/vmessocket/app/proxyman/inbound"
 	_ "github.com/vmessocket/vmessocket/app/proxyman/outbound"
 	_ "github.com/vmessocket/vmessocket/app/router"
-	_ "github.com/vmessocket/vmessocket/infra/conf/geodata/standard"
 	_ "github.com/vmessocket/vmessocket/main/confloader/external"
 	_ "github.com/vmessocket/vmessocket/main/jsonem"
 	_ "github.com/vmessocket/vmessocket/proxy/dns"
