@@ -119,9 +119,6 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, err
 	if dest.Network == net.Network_Unknown {
 		dest.Network = net.Network_UDP
 	}
-	if dest.Network == net.Network_UDP {
-		return NewClassicNameServer(dest, dispatcher), nil
-	}
 	return nil, newError("No available name server could be created from ", dest).AtWarning()
 }
 
