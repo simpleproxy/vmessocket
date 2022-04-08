@@ -110,8 +110,6 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, err
 		switch {
 		case strings.EqualFold(u.String(), "localhost"):
 			return NewLocalNameServer(), nil
-		case strings.EqualFold(u.Scheme, "https"):
-			return NewDoHNameServer(u, dispatcher)
 		case strings.EqualFold(u.Scheme, "https+local"):
 			return NewDoHLocalNameServer(u), nil
 		case strings.EqualFold(u.Scheme, "tcp"):
