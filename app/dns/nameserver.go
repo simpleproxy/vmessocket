@@ -37,16 +37,6 @@ func NewClient(ctx context.Context, ns *NameServer, clientIP net.IP, container r
 		if err != nil {
 			return newError("failed to create nameserver").Base(err).AtWarning()
 		}
-		if _, isLocalDNS := server.(*LocalNameServer); isLocalDNS {
-			ns.PrioritizedDomain = append(ns.PrioritizedDomain, localTLDsAndDotlessDomains...)
-			ns.OriginalRules = append(ns.OriginalRules, localTLDsAndDotlessDomainsRule)
-			for i := 0; i < len(localTLDsAndDotlessDomains); i++ {
-				*matcherInfos = append(*matcherInfos, &DomainMatcherInfo{
-					clientIdx:     uint16(0),
-					domainRuleIdx: uint16(0),
-				})
-			}
-		}
 		var rules []string
 		ruleCurr := 0
 		ruleIter := 0
@@ -108,8 +98,6 @@ func NewServer(dest net.Destination, dispatcher routing.Dispatcher) (Server, err
 			return nil, err
 		}
 		switch {
-		case strings.EqualFold(u.String(), "localhost"):
-			return NewLocalNameServer(), nil
 		case strings.EqualFold(u.Scheme, "tcp"):
 			return NewTCPNameServer(u, dispatcher)
 		case strings.EqualFold(u.Scheme, "tcp+local"):

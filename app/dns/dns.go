@@ -101,9 +101,6 @@ func New(ctx context.Context, config *Config) (*DNS, error) {
 		}
 		clients = append(clients, client)
 	}
-	if len(clients) == 0 {
-		clients = append(clients, NewLocalDNSClient())
-	}
 	return &DNS{
 		hosts:                  hosts,
 		ipOption:               ipOption,
