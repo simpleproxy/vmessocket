@@ -13,7 +13,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/common/signal"
 	"github.com/vmessocket/vmessocket/common/signal/done"
-	"github.com/vmessocket/vmessocket/features/routing"
 	"github.com/vmessocket/vmessocket/transport"
 )
 
