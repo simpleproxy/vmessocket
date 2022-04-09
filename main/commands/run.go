@@ -39,14 +39,6 @@ var (
 	configDir   string
 	version     = flag.Bool("version", false, "Show current version of vmessocket.")
 	format      = flag.String("format", "json", "Format of input file.")
-
-	_ = func() error {
-		flag.Var(&configFiles, "config", "Config file for vmessocket. Multiple assign is accepted (only json). Latter ones overrides the former ones.")
-		flag.Var(&configFiles, "c", "Short alias of -config")
-		flag.StringVar(&configDir, "confdir", "", "A dir with multiple json config")
-
-		return nil
-	}()
 )
 
 func dirExists(file string) bool {
