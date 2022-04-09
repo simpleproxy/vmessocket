@@ -103,7 +103,6 @@ func (v *Dispatcher) getInboundRay(ctx context.Context, dest net.Destination) *c
 		v.RemoveRay(dest)
 	}
 	timer := signal.CancelAfterInactivity(ctx, removeRay)
-	link, _ := v.dispatcher.Dispatch(ctx, dest)
 	entry := &connEntry{
 		link:   link,
 		timer:  timer,
