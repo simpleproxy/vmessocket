@@ -3,7 +3,6 @@ package websocket
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"io"
 	"net/http"
@@ -18,7 +17,6 @@ import (
 	http_proto "github.com/vmessocket/vmessocket/common/protocol/http"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	v2tls "github.com/vmessocket/vmessocket/transport/internet/tls"
 )
 
 var upgrader = &websocket.Upgrader{
@@ -61,11 +59,6 @@ func ListenWS(ctx context.Context, address net.Address, port net.Port, streamSet
 		return nil, newError("failed to listen TCP(for WS) on ", address, ":", port).Base(err)
 	}
 	newError("listening TCP(for WS) on ", address, ":", port).WriteToLog(session.ExportIDToError(ctx))
-	if config := v2tls.ConfigFromStreamSettings(streamSettings); config != nil {
-		if tlsConfig := config.GetTLSConfig(); tlsConfig != nil {
-			listener = tls.NewListener(listener, tlsConfig)
-		}
-	}
 	l.listener = listener
 	useEarlyData := false
 	earlyDataHeaderName := ""
