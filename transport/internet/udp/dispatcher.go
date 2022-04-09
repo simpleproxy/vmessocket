@@ -25,7 +25,6 @@ type connEntry struct {
 type Dispatcher struct {
 	sync.RWMutex
 	conns      map[net.Destination]*connEntry
-	dispatcher routing.Dispatcher
 	callback   ResponseCallback
 }
 
@@ -35,25 +34,7 @@ type dispatcherConn struct {
 	done       *done.Instance
 }
 
-func NewDispatcher(dispatcher routing.Dispatcher, callback ResponseCallback) *Dispatcher {
-	return &Dispatcher{
-		conns:      make(map[net.Destination]*connEntry),
-		dispatcher: dispatcher,
-		callback:   callback,
-	}
-}
-
 type ResponseCallback func(ctx context.Context, packet *udp.Packet)
-
-func DialDispatcher(ctx context.Context, dispatcher routing.Dispatcher) (net.PacketConn, error) {
-	c := &dispatcherConn{
-		cache: make(chan *udp.Packet, 16),
-		done:  done.New(),
-	}
-	d := NewDispatcher(dispatcher, c.callback)
-	c.dispatcher = d
-	return c, nil
-}
 
 func handleInput(ctx context.Context, conn *connEntry, dest net.Destination, callback ResponseCallback) {
 	defer conn.cancel()
