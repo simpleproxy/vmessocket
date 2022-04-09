@@ -3,7 +3,6 @@ package all
 import (
 	_ "github.com/vmessocket/vmessocket/app/commander"
 	_ "github.com/vmessocket/vmessocket/app/dispatcher"
-	_ "github.com/vmessocket/vmessocket/app/dns"
 	_ "github.com/vmessocket/vmessocket/app/log"
 	_ "github.com/vmessocket/vmessocket/app/log/command"
 	_ "github.com/vmessocket/vmessocket/app/proxyman/command"
