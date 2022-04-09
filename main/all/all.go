@@ -18,7 +18,6 @@ import (
 	_ "github.com/vmessocket/vmessocket/proxy/vmess/inbound"
 	_ "github.com/vmessocket/vmessocket/proxy/vmess/outbound"
 	_ "github.com/vmessocket/vmessocket/transport/internet/tcp"
-	_ "github.com/vmessocket/vmessocket/transport/internet/tls"
 	_ "github.com/vmessocket/vmessocket/transport/internet/udp"
 	_ "github.com/vmessocket/vmessocket/transport/internet/websocket"
 )
