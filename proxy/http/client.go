@@ -22,7 +22,6 @@ import (
 	"github.com/vmessocket/vmessocket/common/task"
 	"github.com/vmessocket/vmessocket/transport"
 	"github.com/vmessocket/vmessocket/transport/internet"
-	"github.com/vmessocket/vmessocket/transport/internet/tls"
 )
 
 var (
@@ -145,13 +144,6 @@ func setUpHTTPTunnel(ctx context.Context, dest net.Destination, target string, u
 		iConn = statConn.Connection
 	}
 	nextProto := ""
-	if tlsConn, ok := iConn.(*tls.Conn); ok {
-		if err := tlsConn.Handshake(); err != nil {
-			rawConn.Close()
-			return nil, err
-		}
-		nextProto = tlsConn.ConnectionState().NegotiatedProtocol
-	}
 	switch nextProto {
 	case "", "http/1.1":
 		return connectHTTP1(rawConn)
