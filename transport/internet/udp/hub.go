@@ -75,34 +75,12 @@ func (h *Hub) Receive() <-chan *udp.Packet {
 func (h *Hub) start() {
 	c := h.cache
 	defer close(c)
-	oobBytes := make([]byte, 256)
 	for {
 		buffer := buf.New()
-		var noob int
 		var addr *net.UDPAddr
-		rawBytes := buffer.Extend(buf.Size)
-		n, noob, _, addr, err := ReadUDPMsg(h.conn, rawBytes, oobBytes)
-		if err != nil {
-			newError("failed to read UDP msg").Base(err).WriteToLog()
-			buffer.Release()
-			break
-		}
-		buffer.Resize(0, int32(n))
-		if buffer.IsEmpty() {
-			buffer.Release()
-			continue
-		}
 		payload := &udp.Packet{
 			Payload: buffer,
 			Source:  net.UDPDestination(net.IPAddress(addr.IP), net.Port(addr.Port)),
-		}
-		if h.recvOrigDest && noob > 0 {
-			payload.Target = RetrieveOriginalDest(oobBytes[:noob])
-			if payload.Target.IsValid() {
-				newError("UDP original destination: ", payload.Target).AtDebug().WriteToLog()
-			} else {
-				newError("failed to read UDP original destination").WriteToLog()
-			}
 		}
 		select {
 		case c <- payload:
