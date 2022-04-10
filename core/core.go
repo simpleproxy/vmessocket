@@ -1,7 +1,5 @@
 package core
 
-//go:generate go run github.com/vmessocket/vmessocket/common/errors/errorgen
-
 import (
 	"runtime"
 
@@ -9,7 +7,7 @@ import (
 )
 
 var (
-	version  = "1.1.3"
+	version  = "1.2.0"
 	build    = "Custom"
 	codename = "VMESSOCKET, an implementation of vmess and websocket protocol."
 )
