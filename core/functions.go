@@ -7,7 +7,6 @@ import (
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/features/routing"
-	"github.com/vmessocket/vmessocket/transport/internet/udp"
 )
 
 func CreateObject(v *Instance, config interface{}) (interface{}, error) {
@@ -35,15 +34,6 @@ func Dial(ctx context.Context, v *Instance, dest net.Destination) (net.Conn, err
 		readerOpt = net.ConnectionOutputMultiUDP(r.Reader)
 	}
 	return net.NewConnection(net.ConnectionInputMulti(r.Writer), readerOpt), nil
-}
-
-func DialUDP(ctx context.Context, v *Instance) (net.PacketConn, error) {
-	ctx = toContext(ctx, v)
-	dispatcher := v.GetFeature(routing.DispatcherType())
-	if dispatcher == nil {
-		return nil, newError("routing.Dispatcher is not registered in vmessocket")
-	}
-	return udp.DialDispatcher(ctx, dispatcher.(routing.Dispatcher))
 }
 
 func StartInstance(configFormat string, configBytes []byte) (*Instance, error) {
