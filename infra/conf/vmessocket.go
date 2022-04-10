@@ -16,14 +16,12 @@ import (
 var (
 	inboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
 		"http":  func() interface{} { return new(HTTPServerConfig) },
-		"socks": func() interface{} { return new(SocksServerConfig) },
 		"vmess": func() interface{} { return new(VMessInboundConfig) },
 	}, "protocol", "settings")
 	outboundConfigLoader = NewJSONConfigLoader(ConfigCreatorCache{
 		"dns":     func() interface{} { return new(DNSOutboundConfig) },
 		"freedom": func() interface{} { return new(FreedomConfig) },
 		"http":    func() interface{} { return new(HTTPClientConfig) },
-		"socks":   func() interface{} { return new(SocksClientConfig) },
 		"vmess":   func() interface{} { return new(VMessOutboundConfig) },
 	}, "protocol", "settings")
 	ctllog = log.New(os.Stderr, "v2ctl> ", 0)
