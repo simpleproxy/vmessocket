@@ -13,7 +13,6 @@ import (
 	_ "github.com/vmessocket/vmessocket/proxy/dns"
 	_ "github.com/vmessocket/vmessocket/proxy/freedom"
 	_ "github.com/vmessocket/vmessocket/proxy/http"
-	_ "github.com/vmessocket/vmessocket/proxy/socks"
 	_ "github.com/vmessocket/vmessocket/proxy/vmess/inbound"
 	_ "github.com/vmessocket/vmessocket/proxy/vmess/outbound"
 	_ "github.com/vmessocket/vmessocket/transport/internet/tcp"
