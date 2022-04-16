@@ -14,10 +14,6 @@ import (
 	"github.com/vmessocket/vmessocket/proxy/vmess/outbound"
 )
 
-type FeaturesConfig struct {
-	Detour *VMessDetourConfig `json:"detour"`
-}
-
 type VMessAccount struct {
 	ID          string `json:"id"`
 	AlterIds    uint16 `json:"alterId"`
@@ -30,13 +26,8 @@ type VMessDefaultConfig struct {
 	Level    byte   `json:"level"`
 }
 
-type VMessDetourConfig struct {
-	ToTag string `json:"to"`
-}
-
 type VMessInboundConfig struct {
 	Users        []json.RawMessage   `json:"clients"`
-	Features     *FeaturesConfig     `json:"features"`
 	Defaults     *VMessDefaultConfig `json:"default"`
 	SecureOnly   bool                `json:"disableInsecureEncryption"`
 }
@@ -84,21 +75,12 @@ func (c *VMessDefaultConfig) Build() *inbound.DefaultConfig {
 	return config
 }
 
-func (c *VMessDetourConfig) Build() *inbound.DetourConfig {
-	return &inbound.DetourConfig{
-		To: c.ToTag,
-	}
-}
-
 func (c *VMessInboundConfig) Build() (proto.Message, error) {
 	config := &inbound.Config{
 		SecureEncryptionOnly: c.SecureOnly,
 	}
 	if c.Defaults != nil {
 		config.Default = c.Defaults.Build()
-	}
-	if c.Features != nil && c.Features.Detour != nil {
-		config.Detour = c.Features.Detour.Build()
 	}
 	config.User = make([]*protocol.User, len(c.Users))
 	for idx, rawData := range c.Users {
