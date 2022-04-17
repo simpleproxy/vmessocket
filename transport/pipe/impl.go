@@ -140,11 +140,6 @@ func (p *pipe) WriteMultiBuffer(mb buf.MultiBuffer) error {
 		return nil
 	}
 	for {
-		err := p.writeMultiBufferInternal(mb)
-		if err == nil {
-			p.readSignal.Signal()
-			return nil
-		}
 		if err == errSlowDown {
 			p.readSignal.Signal()
 
