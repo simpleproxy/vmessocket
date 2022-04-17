@@ -167,17 +167,3 @@ func (p *pipe) WriteMultiBuffer(mb buf.MultiBuffer) error {
 		}
 	}
 }
-
-func (p *pipe) writeMultiBufferInternal(mb buf.MultiBuffer) error {
-	p.Lock()
-	defer p.Unlock()
-	if err := p.getState(false); err != nil {
-		return err
-	}
-	if p.data == nil {
-		p.data = mb
-		return nil
-	}
-	p.data, _ = buf.MergeMulti(p.data, mb)
-	return errSlowDown
-}
