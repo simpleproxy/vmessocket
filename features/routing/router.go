@@ -9,8 +9,6 @@ type DefaultRouter struct{}
 
 type Route interface {
 	Context
-	GetOutboundGroupTags() []string
-	GetOutboundTag() string
 }
 
 type Router interface {
