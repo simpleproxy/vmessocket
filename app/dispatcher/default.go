@@ -130,15 +130,6 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 	var handler outbound.Handler
 	if forcedOutboundTag := session.GetForcedOutboundTagFromContext(ctx); forcedOutboundTag != "" {
 		ctx = session.SetForcedOutboundTagToContext(ctx, "")
-		if h := d.ohm.GetHandler(forcedOutboundTag); h != nil {
-			newError("taking platform initialized detour [", forcedOutboundTag, "] for [", destination, "]").WriteToLog(session.ExportIDToError(ctx))
-			handler = h
-		} else {
-			newError("non existing tag for platform initialized detour: ", forcedOutboundTag).AtError().WriteToLog(session.ExportIDToError(ctx))
-			common.Close(link.Writer)
-			common.Interrupt(link.Reader)
-			return
-		}
 	}
 	if handler == nil {
 		handler = d.ohm.GetDefaultHandler()
