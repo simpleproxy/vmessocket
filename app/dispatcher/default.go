@@ -7,7 +7,6 @@ import (
 
 	"github.com/vmessocket/vmessocket/common"
 	"github.com/vmessocket/vmessocket/common/buf"
-	"github.com/vmessocket/vmessocket/common/log"
 	"github.com/vmessocket/vmessocket/common/net"
 	"github.com/vmessocket/vmessocket/common/session"
 	"github.com/vmessocket/vmessocket/core"
@@ -136,12 +135,6 @@ func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.
 		common.Close(link.Writer)
 		common.Interrupt(link.Reader)
 		return
-	}
-	if accessMessage := log.AccessMessageFromContext(ctx); accessMessage != nil {
-		if tag := handler.Tag(); tag != "" {
-			accessMessage.Detour = tag
-		}
-		log.Record(accessMessage)
 	}
 	handler.Dispatch(ctx, link)
 }
