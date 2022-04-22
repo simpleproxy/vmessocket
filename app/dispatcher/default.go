@@ -128,9 +128,6 @@ func (r *cachedReader) ReadMultiBufferTimeout(timeout time.Duration) (buf.MultiB
 
 func (d *DefaultDispatcher) routedDispatch(ctx context.Context, link *transport.Link, destination net.Destination) {
 	var handler outbound.Handler
-	if forcedOutboundTag := session.GetForcedOutboundTagFromContext(ctx); forcedOutboundTag != "" {
-		ctx = session.SetForcedOutboundTagToContext(ctx, "")
-	}
 	if handler == nil {
 		handler = d.ohm.GetDefaultHandler()
 	}
