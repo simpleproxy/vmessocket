@@ -39,9 +39,8 @@ message ReceiverConfig {
 }
 
 message InboundHandlerConfig {
-  string tag = 1;
-  vmessocket.core.common.serial.TypedMessage receiver_settings = 2;
-  vmessocket.core.common.serial.TypedMessage proxy_settings = 3;
+  vmessocket.core.common.serial.TypedMessage receiver_settings = 1;
+  vmessocket.core.common.serial.TypedMessage proxy_settings = 2;
 }
 
 message OutboundConfig {}
