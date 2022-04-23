@@ -17,7 +17,6 @@ type AlwaysOnInboundHandler struct {
 	proxy   proxy.Inbound
 	workers []worker
 	mux     *mux.Server
-	tag     string
 }
 
 func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *proxyman.ReceiverConfig, proxyConfig interface{}) (*AlwaysOnInboundHandler, error) {
@@ -32,7 +31,6 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 	h := &AlwaysOnInboundHandler{
 		proxy: p,
 		mux:   mux.NewServer(ctx),
-		tag:   tag,
 	}
 	nl := p.Network()
 	pr := receiverConfig.PortRange
@@ -109,6 +107,3 @@ func (h *AlwaysOnInboundHandler) Start() error {
 	return nil
 }
 
-func (h *AlwaysOnInboundHandler) Tag() string {
-	return h.tag
-}
