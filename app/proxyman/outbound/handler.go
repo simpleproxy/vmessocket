@@ -15,7 +15,6 @@ import (
 )
 
 type Handler struct {
-	tag             string
 	senderSettings  *proxyman.SenderConfig
 	streamSettings  *internet.MemoryStreamConfig
 	proxy           proxy.Outbound
@@ -25,7 +24,6 @@ type Handler struct {
 func NewHandler(ctx context.Context, config *core.OutboundHandlerConfig) (outbound.Handler, error) {
 	v := core.MustFromContext(ctx)
 	h := &Handler{
-		tag:             config.Tag,
 		outboundManager: v.GetFeature(outbound.ManagerType()).(outbound.Manager),
 	}
 	if config.SenderSettings != nil {
@@ -105,8 +103,4 @@ func (h *Handler) GetOutbound() proxy.Outbound {
 
 func (h *Handler) Start() error {
 	return nil
-}
-
-func (h *Handler) Tag() string {
-	return h.tag
 }
