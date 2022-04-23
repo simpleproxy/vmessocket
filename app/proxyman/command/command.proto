@@ -24,9 +24,7 @@ message AddInboundRequest {
 
 message AddInboundResponse {}
 
-message RemoveInboundRequest {
-  string tag = 1;
-}
+message RemoveInboundRequest {}
 
 message RemoveInboundResponse {}
 
