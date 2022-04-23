@@ -19,7 +19,7 @@ type AlwaysOnInboundHandler struct {
 	mux     *mux.Server
 }
 
-func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *proxyman.ReceiverConfig, proxyConfig interface{}) (*AlwaysOnInboundHandler, error) {
+func NewAlwaysOnInboundHandler(ctx context.Context, receiverConfig *proxyman.ReceiverConfig, proxyConfig interface{}) (*AlwaysOnInboundHandler, error) {
 	rawProxy, err := common.CreateObject(ctx, proxyConfig)
 	if err != nil {
 		return nil, err
@@ -47,26 +47,24 @@ func NewAlwaysOnInboundHandler(ctx context.Context, tag string, receiverConfig *
 			if net.HasNetwork(nl, net.Network_TCP) {
 				newError("creating stream worker on ", address, ":", port).AtDebug().WriteToLog()
 				worker := &tcpWorker{
-					address:        address,
-					port:           net.Port(port),
-					proxy:          p,
-					stream:         mss,
-					recvOrigDest:   receiverConfig.ReceiveOriginalDestination,
-					tag:            tag,
-					dispatcher:     h.mux,
-					ctx:            ctx,
+					address:      address,
+					port:         net.Port(port),
+					proxy:        p,
+					stream:       mss,
+					recvOrigDest: receiverConfig.ReceiveOriginalDestination,
+					dispatcher:   h.mux,
+					ctx:          ctx,
 				}
 				h.workers = append(h.workers, worker)
 			}
 			if net.HasNetwork(nl, net.Network_UDP) {
 				worker := &udpWorker{
-					ctx:            ctx,
-					tag:            tag,
-					proxy:          p,
-					address:        address,
-					port:           net.Port(port),
-					dispatcher:     h.mux,
-					stream:         mss,
+					ctx:        ctx,
+					proxy:      p,
+					address:    address,
+					port:       net.Port(port),
+					dispatcher: h.mux,
+					stream:     mss,
 				}
 				h.workers = append(h.workers, worker)
 			}
@@ -106,4 +104,3 @@ func (h *AlwaysOnInboundHandler) Start() error {
 	}
 	return nil
 }
-
