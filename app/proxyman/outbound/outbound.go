@@ -33,12 +33,7 @@ func (m *Manager) AddHandler(ctx context.Context, handler outbound.Handler) erro
 	if m.defaultHandler == nil {
 		m.defaultHandler = handler
 	}
-	tag := handler.Tag()
-	if len(tag) > 0 {
-		m.taggedHandler[tag] = handler
-	} else {
-		m.untaggedHandlers = append(m.untaggedHandlers, handler)
-	}
+	m.untaggedHandlers = append(m.untaggedHandlers, handler)
 	if m.running {
 		return handler.Start()
 	}
@@ -84,9 +79,6 @@ func (m *Manager) RemoveHandler(ctx context.Context, tag string) error {
 	m.access.Lock()
 	defer m.access.Unlock()
 	delete(m.taggedHandler, tag)
-	if m.defaultHandler != nil && m.defaultHandler.Tag() == tag {
-		m.defaultHandler = nil
-	}
 	return nil
 }
 
