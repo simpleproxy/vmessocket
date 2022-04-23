@@ -14,7 +14,6 @@ type Outbound struct {
 	access   sync.RWMutex
 	closed   bool
 	listener *OutboundListener
-	tag      string
 }
 
 type OutboundListener struct {
@@ -89,8 +88,4 @@ func (co *Outbound) Start() error {
 	co.closed = false
 	co.access.Unlock()
 	return nil
-}
-
-func (co *Outbound) Tag() string {
-	return co.tag
 }
