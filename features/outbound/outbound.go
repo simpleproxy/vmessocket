@@ -10,7 +10,6 @@ import (
 
 type Handler interface {
 	common.Runnable
-	Tag() string
 	Dispatch(ctx context.Context, link *transport.Link)
 }
 
