@@ -50,12 +50,7 @@ func NewHandler(ctx context.Context, config *core.InboundHandlerConfig) (inbound
 func (m *Manager) AddHandler(ctx context.Context, handler inbound.Handler) error {
 	m.access.Lock()
 	defer m.access.Unlock()
-	tag := handler.Tag()
-	if len(tag) > 0 {
-		m.taggedHandlers[tag] = handler
-	} else {
-		m.untaggedHandler = append(m.untaggedHandler, handler)
-	}
+	m.untaggedHandler = append(m.untaggedHandler, handler)
 	if m.running {
 		return handler.Start()
 	}
