@@ -1,9 +1,6 @@
 package routing
 
-import (
-	"github.com/vmessocket/vmessocket/common"
-	"github.com/vmessocket/vmessocket/features"
-)
+import "github.com/vmessocket/vmessocket/features"
 
 type DefaultRouter struct{}
 
