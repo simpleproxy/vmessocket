@@ -24,7 +24,6 @@ type cachedReader struct {
 
 type DefaultDispatcher struct {
 	ohm    outbound.Manager
-	router routing.Router
 }
 
 func (r *cachedReader) Cache(b *buf.Buffer) {
@@ -83,9 +82,8 @@ func (d *DefaultDispatcher) getLink(ctx context.Context) (*transport.Link, *tran
 	return inboundLink, outboundLink
 }
 
-func (d *DefaultDispatcher) Init(config *Config, om outbound.Manager, router routing.Router) error {
+func (d *DefaultDispatcher) Init(config *Config, om outbound.Manager) error {
 	d.ohm = om
-	d.router = router
 	return nil
 }
 
@@ -150,8 +148,8 @@ func (*DefaultDispatcher) Type() interface{} {
 func init() {
 	common.Must(common.RegisterConfig((*Config)(nil), func(ctx context.Context, config interface{}) (interface{}, error) {
 		d := new(DefaultDispatcher)
-		if err := core.RequireFeatures(ctx, func(om outbound.Manager, router routing.Router) error {
-			return d.Init(config.(*Config), om, router)
+		if err := core.RequireFeatures(ctx, func(om outbound.Manager) error {
+			return d.Init(config.(*Config), om)
 		}); err != nil {
 			return nil, err
 		}
